@@ -28,60 +28,60 @@ export default function LawyerFilterSidebar() {
   const specialties = ['คดีฉ้อโกง SMEs', 'คดีแพ่งและพาณิชย์', 'การผิดสัญญา'];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>ตัวกรองการค้นหา</CardTitle>
+    <Card className="rounded-3xl shadow-lg border-2 border-slate-100 overflow-hidden">
+      <CardHeader className="bg-slate-50/50 pb-4">
+        <CardTitle className="text-xl text-primary">ตัวกรองการค้นหา</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="specialty">ความเชี่ยวชาญ</Label>
+      <CardContent className="space-y-6 pt-6">
+        <div className="space-y-3">
+          <Label htmlFor="specialty" className="text-sm font-medium text-slate-600">ความเชี่ยวชาญ</Label>
           <Select>
-            <SelectTrigger id="specialty">
+            <SelectTrigger id="specialty" className="rounded-full border-slate-200 bg-white shadow-sm hover:border-primary/50 transition-colors h-11">
               <SelectValue placeholder="ทั้งหมด" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทั้งหมด</SelectItem>
+            <SelectContent className="rounded-2xl">
+              <SelectItem value="all" className="rounded-lg">ทั้งหมด</SelectItem>
               {specialties.map((spec) => (
-                <SelectItem key={spec} value={spec}>
+                <SelectItem key={spec} value={spec} className="rounded-lg">
                   {spec}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>คะแนนรีวิวขั้นต่ำ</Label>
-          <RadioGroup defaultValue="all" className="space-y-2">
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-slate-600">คะแนนรีวิวขั้นต่ำ</Label>
+          <RadioGroup defaultValue="all" className="space-y-2.5">
             {[4, 3, 2].map((rating) => (
               <div key={rating} className="flex items-center space-x-2">
                 <RadioGroupItem value={String(rating)} id={`rating-${rating}`} />
-                <Label htmlFor={`rating-${rating}`} className="flex items-center gap-1 font-normal">
+                <Label htmlFor={`rating-${rating}`} className="flex items-center gap-1 font-normal text-slate-600 cursor-pointer">
                   {[...Array(5)].map((_, i) => (
-                    <Scale key={i} className={`w-4 h-4 ${i < rating ? 'text-yellow-500 fill-yellow-500/20' : 'text-muted-foreground'}`} />
+                    <Scale key={i} className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200'}`} />
                   ))}
-                  ขึ้นไป
+                  <span className="text-xs text-muted-foreground ml-1">ขึ้นไป</span>
                 </Label>
               </div>
             ))}
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="all" id="rating-all" />
-              <Label htmlFor="rating-all" className="font-normal">ทั้งหมด</Label>
+              <Label htmlFor="rating-all" className="font-normal text-slate-600 cursor-pointer">ทั้งหมด</Label>
             </div>
           </RadioGroup>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="province">จังหวัด/พื้นที่</Label>
+        <div className="space-y-3">
+          <Label htmlFor="province" className="text-sm font-medium text-slate-600">จังหวัด/พื้นที่</Label>
           <Select>
-            <SelectTrigger id="province">
+            <SelectTrigger id="province" className="rounded-full border-slate-200 bg-white shadow-sm hover:border-primary/50 transition-colors h-11">
               <SelectValue placeholder="ทุกจังหวัด" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกจังหวัด</SelectItem>
+            <SelectContent className="rounded-2xl">
+              <SelectItem value="all" className="rounded-lg">ทุกจังหวัด</SelectItem>
               {thaiProvinces.map((region) => (
                 <SelectGroup key={region.region}>
-                  <SelectLabel>{region.region}</SelectLabel>
+                  <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{region.region}</SelectLabel>
                   {region.provinces.map((prov) => (
-                    <SelectItem key={prov} value={prov}>
+                    <SelectItem key={prov} value={prov} className="rounded-lg">
                       {prov}
                     </SelectItem>
                   ))}
@@ -91,8 +91,8 @@ export default function LawyerFilterSidebar() {
           </Select>
         </div>
       </CardContent>
-      <CardFooter>
-        <Button className="w-full">ค้นหาด้วยตัวกรอง</Button>
+      <CardFooter className="pb-6 pt-2">
+        <Button className="w-full rounded-full h-11 text-base font-medium shadow-md hover:shadow-lg transition-all">ค้นหาด้วยตัวกรอง</Button>
       </CardFooter>
     </Card>
   );
