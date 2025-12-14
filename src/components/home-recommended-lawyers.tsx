@@ -51,7 +51,7 @@ export function HomeRecommendedLawyers() {
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute inset-0 bg-white/90 z-10" />
-                <div className="absolute inset-0 bg-gradient-to-b from-orange-50/50 to-orange-100/50 z-10" />
+                <div className="absolute inset-0 bg-gradient-to-b from-slate-50/50 to-blue-50/50 z-10" />
                 <img
                     src="/_next/image?url=%2Fpic%2FLawlanes-Hero-cover.jpg&w=1920&q=75"
                     alt="Background"
@@ -59,10 +59,10 @@ export function HomeRecommendedLawyers() {
                 />
             </div>
 
-            {/* Decorative Elements - Orange Theme */}
+            {/* Decorative Elements - Blue Theme */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-10">
-                <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] rounded-full bg-orange-200/20 blur-3xl animate-pulse" />
-                <div className="absolute top-[30%] -left-[10%] w-[30%] h-[30%] rounded-full bg-amber-200/20 blur-3xl" />
+                <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] rounded-full bg-blue-100/30 blur-3xl animate-pulse" />
+                <div className="absolute top-[30%] -left-[10%] w-[30%] h-[30%] rounded-full bg-indigo-100/30 blur-3xl" />
             </div>
 
             <div className="container mx-auto px-4 md:px-6 relative z-20">
@@ -71,7 +71,7 @@ export function HomeRecommendedLawyers() {
                         <h2 className='text-3xl font-bold tracking-tight text-[#0B3979] font-headline sm:text-5xl drop-shadow-sm'>ทนายความแนะนำ</h2>
                         <p className="mt-4 text-slate-600 max-w-2xl mx-auto text-lg">ทนายความที่มีประสบการณ์และความเชี่ยวชาญเฉพาะด้าน พร้อมให้คำปรึกษาและดูแลคดีของคุณอย่างใกล้ชิด</p>
                         <div className="flex justify-center mt-6">
-                            <div className="w-24 h-1.5 bg-orange-400 rounded-full" />
+                            <div className="w-24 h-1.5 bg-[#0B3979] rounded-full" />
                         </div>
                     </div>
                 </FadeIn>
@@ -95,7 +95,7 @@ export function HomeRecommendedLawyers() {
 
                 <div className="mt-20 text-center">
                     <FadeIn delay={400} direction="up">
-                        <Button asChild size="lg" variant="outline" className="bg-white hover:bg-orange-50 border-orange-200 text-orange-700 shadow-md hover:shadow-lg transition-all px-10 py-6 rounded-full text-lg font-medium">
+                        <Button asChild size="lg" variant="outline" className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-md hover:shadow-lg transition-all px-10 py-6 rounded-full text-lg font-medium">
                             <Link href={`/lawyers`}>ดูทนายความทั้งหมด</Link>
                         </Button>
                     </FadeIn>
