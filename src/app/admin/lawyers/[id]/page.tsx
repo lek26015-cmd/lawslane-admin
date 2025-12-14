@@ -63,6 +63,9 @@ import {
 import { useFirebase } from '@/firebase'
 import { doc, updateDoc } from 'firebase/firestore'
 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
 export default function AdminLawyerDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -73,6 +76,8 @@ export default function AdminLawyerDetailPage() {
   const [cases, setCases] = React.useState<any[]>([]);
   const [lawyer, setLawyer] = React.useState<LawyerProfile | null>(null);
   const [currentDate, setCurrentDate] = React.useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = React.useState("");
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = React.useState(false);
 
   React.useEffect(() => {
     setCurrentDate(new Date().toISOString());
@@ -95,12 +100,37 @@ export default function AdminLawyerDetailPage() {
     if (!lawyer || !firestore) return;
 
     const lawyerRef = doc(firestore, 'lawyerProfiles', lawyer.id);
-    updateDoc(lawyerRef, { status: newStatus }).then(() => {
+    const updateData: any = { status: newStatus };
+    if (newStatus === 'rejected') {
+      updateData.rejectionReason = rejectionReason;
+    }
+
+    updateDoc(lawyerRef, updateData).then(() => {
       toast({
         title: 'เปลี่ยนสถานะสำเร็จ',
         description: `สถานะของ ${lawyer.name} ถูกเปลี่ยนเป็น "${newStatus}"`,
       });
       setLawyer(prev => prev ? { ...prev, status: newStatus } : null);
+
+      if (newStatus === 'rejected') {
+        setIsRejectDialogOpen(false);
+        // Open Mail Client
+        const subject = encodeURIComponent("แจ้งผลการสมัคร Lawslane: ไม่ผ่านการเกณฑ์เบื้องต้น");
+        const body = encodeURIComponent(`เรียนคุณ ${lawyer.name},
+
+ทาง Lawslane ขอแจ้งผลการพิจารณาการสมัครสมาชิกทนายความของคุณ
+
+ผลการพิจารณา: ไม่ผ่านการอนุมัติ
+เนื่องจาก: ${rejectionReason}
+
+คำแนะนำ: กรุณาเตรียมเอกสารหรือข้อมูลให้ครบถ้วนและทำการส่งใบสมัครเข้ามาใหม่
+
+ขอแสดงความนับถือ,
+ทีมงาน Lawslane`);
+        window.location.href = `mailto:${lawyer.email}?subject=${subject}&body=${body}`;
+        setRejectionReason("");
+      }
+
     }).catch(err => {
       console.error(err);
       toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถเปลี่ยนสถานะได้' })
@@ -153,36 +183,55 @@ export default function AdminLawyerDetailPage() {
             <Link href={`/admin/lawyers/${id}/edit`}>
               <Button variant="outline" size="sm">แก้ไขข้อมูล</Button>
             </Link>
-            <AlertDialog>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">การดำเนินการ</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} disabled={lawyer.status === 'approved'}>อนุมัติ</DropdownMenuItem>
-                  </AlertDialogTrigger>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} disabled={lawyer.status === 'pending'}>ย้ายไปรอตรวจสอบ</DropdownMenuItem>
-                  </AlertDialogTrigger>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive" disabled={lawyer.status === 'rejected'}>ปฏิเสธ</DropdownMenuItem>
-                  </AlertDialogTrigger>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>ยืนยันการดำเนินการ</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    คุณแน่ใจหรือไม่ที่จะเปลี่ยนสถานะของทนายความท่านนี้ การกระทำนี้สามารถเปลี่ยนแปลงได้ในภายหลัง
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleStatusChange(lawyer.status !== 'approved' ? 'approved' : 'pending')}>ยืนยัน</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">การดำเนินการ</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleStatusChange('approved')} disabled={lawyer.status === 'approved'}>
+                  อนุมัติ
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusChange('pending')} disabled={lawyer.status === 'pending'}>
+                  ย้ายไปรอตรวจสอบ
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => { e.preventDefault(); setIsRejectDialogOpen(true); }}
+                  className="text-destructive"
+                  disabled={lawyer.status === 'rejected'}
+                >
+                  ปฏิเสธ
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Reject Dialog */}
+            <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>ปฏิเสธคำขอสมัครทนาย</DialogTitle>
+                  <DialogDescription>
+                    กรุณาระบุเหตุผลที่ปฏิเสธเพื่อแจ้งให้ผู้สมัครทราบ ระบบจะเตรียมอีเมลให้อัตโนมัติ
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="reason">เหตุผล</Label>
+                    <Textarea
+                      id="reason"
+                      placeholder="เช่น เอกสารใบอนุญาตว่าความไม่ชัดเจน หรือ ข้อมูลส่วนตัวไม่ตรงกับเอกสาร"
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>ยกเลิก</Button>
+                  <Button variant="destructive" onClick={() => handleStatusChange('rejected')} disabled={!rejectionReason}>ยืนยันการปฏิเสธ</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
           </div>
         </div>
         <Card>
