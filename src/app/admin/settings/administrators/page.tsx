@@ -38,18 +38,39 @@ import { useToast } from '@/hooks/use-toast';
 
 
 import { getAdmins } from '@/lib/data';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function AdminAdministratorsPage() {
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const { user } = useUser();
   const [admins, setAdmins] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !user) return;
+
+    // Fetch current user role
+    const fetchCurrentUserRole = async () => {
+      try {
+        const userDoc = await getDoc(doc(firestore, "users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          // Check for 'Super Admin' role or superAdmin boolean flag
+          const role = userData.role === 'Super Admin' || userData.superAdmin === true ? 'Super Admin' : userData.role;
+          setCurrentUserRole(role);
+        }
+      } catch (error) {
+        console.error("Error fetching current user role:", error);
+      }
+    };
+
+    fetchCurrentUserRole();
+
     getAdmins(firestore)
       .then(setAdmins)
       .catch(error => {
@@ -61,7 +82,7 @@ export default function AdminAdministratorsPage() {
         });
       })
       .finally(() => setIsLoading(false));
-  }, [firestore]);
+  }, [firestore, user]);
 
   const handleDelete = (adminName: string) => {
     toast({
@@ -70,6 +91,8 @@ export default function AdminAdministratorsPage() {
       variant: "destructive"
     })
   }
+
+  const isSuperAdmin = currentUserRole === 'Super Admin';
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -102,12 +125,14 @@ export default function AdminAdministratorsPage() {
                     เพิ่ม, ลบ, หรือแก้ไขสิทธิ์ของผู้ดูแลระบบ
                   </CardDescription>
                 </div>
-                <Button size="sm" className="gap-1" asChild>
-                  <Link href="/admin/settings/administrators/new">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    เพิ่มผู้ดูแลใหม่
-                  </Link>
-                </Button>
+                {isSuperAdmin && (
+                  <Button size="sm" className="gap-1" asChild>
+                    <Link href="/admin/settings/administrators/new">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      เพิ่มผู้ดูแลใหม่
+                    </Link>
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -149,45 +174,47 @@ export default function AdminAdministratorsPage() {
                           <Badge variant="secondary">{admin.role}</Badge>
                         </TableCell>
                         <TableCell>
-                          <AlertDialog>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">สลับเมนู</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin/settings/administrators/${admin.uid}/edit`}>แก้ไขสิทธิ์</Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                    ลบออกจากระบบ
+                          {isSuperAdmin && (
+                            <AlertDialog>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button aria-haspopup="true" size="icon" variant="ghost">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">สลับเมนู</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/admin/settings/administrators/${admin.uid}/edit`}>แก้ไขสิทธิ์</Link>
                                   </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>คุณแน่ใจหรือไม่?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  การกระทำนี้ไม่สามารถย้อนกลับได้ คุณกำลังจะลบผู้ดูแลระบบ "{admin.name}" ออกจากระบบอย่างถาวร
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                                  onClick={() => handleDelete(admin.name)}
-                                >
-                                  ยืนยันการลบ
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <DropdownMenuSeparator />
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                      ลบออกจากระบบ
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>คุณแน่ใจหรือไม่?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    การกระทำนี้ไม่สามารถย้อนกลับได้ คุณกำลังจะลบผู้ดูแลระบบ "{admin.name}" ออกจากระบบอย่างถาวร
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                                    onClick={() => handleDelete(admin.name)}
+                                  >
+                                    ยืนยันการลบ
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

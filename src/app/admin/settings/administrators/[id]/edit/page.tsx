@@ -19,12 +19,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-
-const mockAdmins = [
-  { id: 'admin-1', name: 'แอดมินหลัก', email: 'admin@lawslane.com', role: 'Super Admin' },
-  { id: 'admin-2', name: 'สมศรี มีชัย', email: 'somsri.m@lawslane.com', role: 'Content Manager' },
-  { id: 'admin-3', name: 'วิชัย รักดี', email: 'wichai.r@lawslane.com', role: 'Support Lead' },
-];
+import { useFirebase, useUser } from '@/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
 
 const permissionsConfig = [
   { id: 'customers', label: 'ลูกค้า', actions: ['view', 'create', 'edit', 'delete', 'download'] },
@@ -50,10 +47,16 @@ export default function AdminEditAdministratorPage() {
   const params = useParams();
   const { id } = params;
   const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const { user } = useUser();
 
-  const [admin, setAdmin] = React.useState<(typeof mockAdmins[0]) | null>(null);
+  const [admin, setAdmin] = React.useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isCheckingRole, setIsCheckingRole] = React.useState(true);
 
   // Mock permissions state for the selected admin
+  // In a real app, this would also be fetched from Firestore if stored separately
   const [permissions, setPermissions] = React.useState<Record<string, string[]>>({
     customers: ['view', 'edit'],
     lawyers: ['view'],
@@ -61,10 +64,70 @@ export default function AdminEditAdministratorPage() {
   });
 
   React.useEffect(() => {
-    const foundAdmin = mockAdmins.find(a => a.id === id);
-    // @ts-ignore
-    setAdmin(foundAdmin || null);
-  }, [id]);
+    if (!firestore || !user) return;
+
+    const checkRoleAndFetchAdmin = async () => {
+      setIsCheckingRole(true);
+      try {
+        // Check current user role
+        const currentUserDoc = await getDoc(doc(firestore, "users", user.uid));
+        if (currentUserDoc.exists()) {
+          const currentUserData = currentUserDoc.data();
+          const isSuperAdmin = currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
+
+          if (!isSuperAdmin) {
+            toast({
+              variant: "destructive",
+              title: "ไม่มีสิทธิ์เข้าถึง",
+              description: "คุณไม่มีสิทธิ์ในการแก้ไขผู้ดูแลระบบ"
+            });
+            router.push('/admin/settings/administrators');
+            return;
+          }
+        } else {
+          // Should not happen if logged in, but safe fallback
+          router.push('/admin/settings/administrators');
+          return;
+        }
+
+        // Fetch target admin
+        if (id) {
+          const userDocRef = doc(firestore, "users", id as string);
+          const userDoc = await getDoc(userDocRef);
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as UserProfile;
+            // Ensure we have the uid
+            setAdmin({ ...userData, uid: userDoc.id });
+
+            // Load permissions if they exist
+            if (userData.permissions) {
+              setPermissions(userData.permissions);
+            }
+          } else {
+            toast({
+              variant: "destructive",
+              title: "ไม่พบผู้ใช้",
+              description: "ไม่พบข้อมูลผู้ดูแลระบบที่ต้องการแก้ไข"
+            });
+            router.push('/admin/settings/administrators');
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching admin:", error);
+        toast({
+          variant: "destructive",
+          title: "เกิดข้อผิดพลาด",
+          description: "ไม่สามารถโหลดข้อมูลผู้ดูแลระบบได้"
+        });
+      } finally {
+        setIsLoading(false);
+        setIsCheckingRole(false);
+      }
+    };
+
+    checkRoleAndFetchAdmin();
+  }, [firestore, id, router, toast, user]);
 
   const handlePermissionChange = (menuId: string, action: string, checked: boolean) => {
     setPermissions(prev => {
@@ -77,18 +140,37 @@ export default function AdminEditAdministratorPage() {
     });
   }
 
-  const handleSaveChanges = () => {
-    if (!admin) return;
-    console.log("Saving permissions for", admin.email, permissions);
-    toast({
-      title: 'แก้ไขสิทธิ์สำเร็จ',
-      description: `สิทธิ์การเข้าถึงของ "${admin.name}" ได้รับการอัปเดตแล้ว`,
-    });
-    router.push('/admin/settings/administrators');
+  const handleSaveChanges = async () => {
+    if (!admin || !firestore) return;
+
+    setIsSaving(true);
+    try {
+      const userDocRef = doc(firestore, "users", admin.uid);
+      await updateDoc(userDocRef, { permissions });
+
+      toast({
+        title: 'แก้ไขสิทธิ์สำเร็จ',
+        description: `สิทธิ์การเข้าถึงของ "${admin.name || admin.email}" ได้รับการอัปเดตแล้ว`,
+      });
+      router.push('/admin/settings/administrators');
+    } catch (error) {
+      console.error("Error saving permissions:", error);
+      toast({
+        variant: "destructive",
+        title: "บันทึกไม่สำเร็จ",
+        description: "เกิดข้อผิดพลาดในการบันทึกข้อมูล"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  if (isLoading || isCheckingRole) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+
   if (!admin) {
-    return <div>Loading...</div>
+    return <div className="flex h-screen items-center justify-center">Admin not found</div>;
   }
 
   return (
@@ -110,8 +192,8 @@ export default function AdminEditAdministratorPage() {
                 ยกเลิก
               </Button>
             </Link>
-            <Button size="sm" onClick={handleSaveChanges}>
-              บันทึกการเปลี่ยนแปลง
+            <Button size="sm" onClick={handleSaveChanges} disabled={isSaving}>
+              {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
             </Button>
           </div>
         </div>
@@ -124,11 +206,11 @@ export default function AdminEditAdministratorPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-3">
                   <Label htmlFor="name">ชื่อ-นามสกุล</Label>
-                  <Input id="name" type="text" className="w-full" defaultValue={admin.name} />
+                  <Input id="name" type="text" className="w-full" defaultValue={admin.name || ''} disabled />
                 </div>
                 <div className="grid gap-3">
                   <Label htmlFor="email">อีเมล</Label>
-                  <Input id="email" type="email" className="w-full" defaultValue={admin.email} disabled />
+                  <Input id="email" type="email" className="w-full" defaultValue={admin.email || ''} disabled />
                 </div>
               </div>
             </CardContent>
@@ -138,7 +220,7 @@ export default function AdminEditAdministratorPage() {
             <CardHeader>
               <CardTitle>กำหนดสิทธิ์การเข้าถึง</CardTitle>
               <CardDescription>
-                เลือกเมนูและกำหนดการกระทำที่ <span className="font-semibold">{admin.name}</span> สามารถทำได้
+                เลือกเมนูและกำหนดการกระทำที่ <span className="font-semibold">{admin.name || admin.email}</span> สามารถทำได้
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -175,8 +257,8 @@ export default function AdminEditAdministratorPage() {
               ยกเลิก
             </Button>
           </Link>
-          <Button size="sm" onClick={handleSaveChanges}>
-            บันทึกการเปลี่ยนแปลง
+          <Button size="sm" onClick={handleSaveChanges} disabled={isSaving}>
+            {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
           </Button>
         </div>
       </div>

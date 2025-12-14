@@ -18,11 +18,11 @@ export default function NotFound() {
             </h1>
 
             <h2 className="mb-4 text-2xl font-bold text-gray-800 md:text-3xl">
-                คัดค้าน! ไม่พบหน้าที่คุณต้องการ
+                ไม่พบหน้าที่คุณต้องการ
             </h2>
 
             <p className="mb-8 max-w-[500px] text-gray-500 md:text-lg">
-                ดูเหมือนว่าหลักฐาน (หน้าเว็บ) ที่คุณกำลังตามหาจะหายสาบสูญไป หรือถูกย้ายไปที่อื่นแล้ว
+                ดูเหมือนว่าหน้าที่คุณกำลังตามหาจะหายไป หรือถูกย้ายไปที่อื่นแล้ว
             </p>
 
             <div className="flex flex-col gap-4 sm:flex-row">

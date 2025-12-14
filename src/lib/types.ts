@@ -12,6 +12,8 @@ export interface UserProfile {
   registeredAt: any;
   status: 'active' | 'suspended';
   avatar?: string;
+  permissions?: Record<string, string[]>;
+  superAdmin?: boolean;
 }
 
 export interface LawyerProfile {

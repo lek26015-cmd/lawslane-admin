@@ -171,6 +171,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return () => unsubscribe();
     }, [areServicesAvailable, auth, firestore, router, pathname]);
 
+    // Redirect if already admin and on login page
+    useEffect(() => {
+        if (isAdmin && pathname === '/admin/login') {
+            router.push('/admin');
+        }
+    }, [isAdmin, pathname, router]);
+
     const handleLogout = async () => {
         if (auth) {
             await signOut(auth);
