@@ -214,6 +214,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return pathname.startsWith(href);
     }
 
+    const getMainLink = () => {
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
+        const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+        const host = process.env.NODE_ENV === 'development' ? 'localhost:3000' : rootDomain;
+        return `${protocol}://${host}`;
+    };
+
     if (isCheckingAuth) {
         return <div className="flex h-screen items-center justify-center">Loading...</div>;
     }
@@ -252,7 +259,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                             <div className="my-2 border-t border-border/50" />
                             <Link
-                                href="/"
+                                href={getMainLink()}
                                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
                             >
                                 <ArrowLeftCircle className="h-4 w-4" />
@@ -298,7 +305,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/">
+                                        <Link href={getMainLink()}>
                                             <ArrowLeftCircle className="mr-2 h-4 w-4" />
                                             <span>กลับไปหน้าเว็บไซต์</span>
                                         </Link>
@@ -345,7 +352,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                                 <div className="my-2 border-t border-border/50" />
                                 <Link
-                                    href="/"
+                                    href={getMainLink()}
                                     className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
                                 >
                                     <ArrowLeftCircle className="h-5 w-5" />
