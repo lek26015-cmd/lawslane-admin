@@ -139,7 +139,7 @@ export default async function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   {stats.map((stat, index) => (
                     <FadeIn key={index} delay={index * 100} direction="up">
-                      <Card className="p-4 bg-gray-100 border-none text-center h-full flex flex-col justify-center">
+                      <Card className="p-4 bg-gray-100 border-none text-center h-full flex flex-col justify-center rounded-3xl shadow-sm hover:shadow-md transition-all">
                         <p className="text-4xl font-bold text-primary">{stat.value}</p>
                         <p className="text-sm text-muted-foreground">{stat.label}</p>
                       </Card>
