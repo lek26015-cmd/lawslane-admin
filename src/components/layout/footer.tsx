@@ -50,7 +50,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
       <div className="container mx-auto px-4 md:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="flex flex-col">
-            <Logo href="/" className="text-white mb-4" />
+            <Logo href="/" variant="white" className="text-white mb-4" />
             <p className="text-sm text-gray-400 max-w-xs">
               ตลาดกลางทนายความออนไลน์ เชื่อมต่อคุณกับผู้เชี่ยวชาญกฎหมาย
             </p>

@@ -202,7 +202,7 @@ export default function LoginPage() {
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
-              <Logo href="/" />
+              <Logo href="/" variant="color" />
             </div>
             <Tabs defaultValue="customer" className="w-full">
               <TabsList className="grid w-full grid-cols-2">

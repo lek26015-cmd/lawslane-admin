@@ -156,7 +156,7 @@ export default function Header({ setUserRole }: { setUserRole: (role: string | n
   return (
     <header className={headerClasses}>
       <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
-        <Logo href="/" className={cn(useTransparentHeader ? '' : 'text-background')} />
+        <Logo href="/" variant={useTransparentHeader ? 'color' : 'white'} className={cn(useTransparentHeader ? '' : 'text-background')} />
 
         <div className="hidden md:flex flex-1 justify-center px-8 lg:px-16">
           <div className="relative w-full max-w-lg">
@@ -260,7 +260,7 @@ export default function Header({ setUserRole }: { setUserRole: (role: string | n
             <SheetContent side="left" className="p-0">
               <SheetHeader className="p-6 pb-0">
                 <SheetTitle>
-                  <Logo href="/" />
+                  <Logo href="/" variant="color" />
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-6 p-6">

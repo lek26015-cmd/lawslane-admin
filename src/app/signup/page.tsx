@@ -167,7 +167,7 @@ export default function SignupPage() {
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
-              <Logo href="/" />
+              <Logo href="/" variant="color" />
             </div>
             <CardTitle className="text-2xl font-bold font-headline">
               สร้างบัญชีใหม่
