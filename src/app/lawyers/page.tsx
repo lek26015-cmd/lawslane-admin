@@ -46,10 +46,15 @@ function LawyersPageContent() {
   useEffect(() => {
     if (isLoading || !specialties) return;
 
+    let isMounted = true;
     setIsSorting(true);
     setProgress(30);
 
-    const timer = setTimeout(() => {
+    const runSorting = async () => {
+      // Simulate delay for analysis
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!isMounted) return;
+
       const recommended = allLawyers.filter(lawyer =>
         lawyer.specialty.some(spec => specialtyArray.includes(spec))
       );
@@ -60,14 +65,24 @@ function LawyersPageContent() {
       setRecommendedLawyerIds(recommended.map(l => l.id));
       setProgress(70);
 
-      setTimeout(() => {
-        setFilteredLawyers([...recommended, ...remaining]);
-        setProgress(100);
-        setTimeout(() => setIsSorting(false), 500);
-      }, 500);
-    }, 1000);
+      // Simulate delay for sorting
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!isMounted) return;
 
-    return () => clearTimeout(timer);
+      setFilteredLawyers([...recommended, ...remaining]);
+      setProgress(100);
+
+      // Final delay before hiding progress
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!isMounted) return;
+      setIsSorting(false);
+    };
+
+    runSorting();
+
+    return () => {
+      isMounted = false;
+    };
 
   }, [specialties, allLawyers, isLoading, specialtyArray]);
 
@@ -91,7 +106,7 @@ function LawyersPageContent() {
         ) : (
           <div className="flex justify-center mb-4">
             <img
-              src="/_next/image?url=%2Fpic%2Flawyers-center-lawslane.jpg&w=1080&q=75"
+              src="/pic/lawyers-center-lawslane.jpg"
               alt="ศูนย์รวมทนายความมืออาชีพ"
               className="w-full max-w-lg h-auto object-contain"
             />
