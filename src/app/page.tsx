@@ -221,7 +221,7 @@ export default async function Home() {
                 </FadeIn>
                 <FadeIn direction="left">
                   <div className="relative">
-                    <div className="aspect-video overflow-hidden rounded-2xl shadow-lg">
+                    <div className="aspect-video overflow-hidden rounded-3xl shadow-lg">
                       <Image
                         src={getImageUrl('lawyer-team-working')}
                         alt="Man in a suit holding a gavel"
