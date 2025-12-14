@@ -64,12 +64,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 getDoc(userDocRef).then(userDoc => {
                     if (!userDoc.exists()) {
                         const designatedSuperAdminUID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+                        const designatedSuperAdminEmail = 'lek.26015@gmail.com';
 
                         const allowedDomain = '@lawslane.com';
-                        const exceptionEmail = 'lek.26015@gmail.com';
                         const userEmail = user.email || '';
 
-                        if (!userEmail.endsWith(allowedDomain) && userEmail !== exceptionEmail) {
+                        // Allow basic access if domain is allowed OR if it's the specific super admin email
+                        if (!userEmail.endsWith(allowedDomain) && userEmail !== designatedSuperAdminEmail) {
                             // Invalid domain, sign out
                             setIsAdmin(false);
                             setCurrentUser(null);
@@ -79,7 +80,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             return;
                         }
 
-                        if (user.uid === designatedSuperAdminUID) {
+                        // Check UID OR Email for Super Admin stats
+                        if (user.uid === designatedSuperAdminUID || userEmail === designatedSuperAdminEmail) {
                             const newAdminData = {
                                 uid: user.uid,
                                 name: user.displayName || 'Admin',
@@ -116,8 +118,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     } else if (userDoc.exists()) {
                         const userData = userDoc.data();
                         const designatedSuperAdminUID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+                        const designatedSuperAdminEmail = 'lek.26015@gmail.com';
+                        const userEmail = user.email || '';
 
-                        if (user.uid === designatedSuperAdminUID && userData.role !== 'admin') {
+                        // Check if it's super admin by UID OR Email
+                        const isSuperAdminUser = (user.uid === designatedSuperAdminUID) || (userEmail === designatedSuperAdminEmail);
+
+                        if (isSuperAdminUser && userData.role !== 'admin') {
                             // Auto-promote if it's the super admin but has wrong role
                             const newAdminData = {
                                 ...userData,
@@ -136,10 +143,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             setCurrentUser(user);
                             setUserRole(role);
                         } else {
-                            // User exists but is not an admin and not the super admin UID
+                            // User exists but is not an admin and not the super admin
+                            // Double check if they should be allowed (e.g. maybe domain logic?)
+                            // But generally if role != admin, they shouldn't be here.
+
                             setIsAdmin(false);
                             setCurrentUser(null);
                             setUserRole(null);
+
+                            // Prevent redirect loops
                             if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
                                 router.push('/admin/login');
                             }
