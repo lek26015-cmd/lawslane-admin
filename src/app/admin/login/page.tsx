@@ -28,7 +28,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Gavel } from 'lucide-react';
+import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
+import logoLawslane from '@/pic/logo-lawslane.jpg';
 import Logo from '@/components/logo';
 
 const formSchema = z.object({
@@ -92,7 +94,13 @@ export default function AdminLoginPage() {
         <Card className="w-full max-w-md shadow-xl bg-gray-800/50 border-gray-700">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center text-white">
-              <Gavel className="h-8 w-8" />
+              <Image
+                src={logoLawslane}
+                alt="Lawslane Logo"
+                width={100}
+                height={100}
+                className="h-20 w-auto rounded-full"
+              />
             </div>
             <CardTitle className="text-2xl font-bold font-headline pt-4">
               Administrator Login
@@ -113,7 +121,7 @@ export default function AdminLoginPage() {
                       <FormLabel className="text-gray-300">อีเมล</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="admin@lawslane.com"
+                          placeholder="name@example.com"
                           {...field}
                           disabled={isLoading}
                           className="bg-gray-700 border-gray-600 text-white"
