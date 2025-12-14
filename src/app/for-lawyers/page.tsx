@@ -270,7 +270,7 @@ export default function ForLawyersPage() {
       });
 
       await signOut(auth);
-      router.push(`/login`);
+      router.push(`/registration-success`);
 
     } catch (error: any) {
       console.error(error);
