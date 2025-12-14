@@ -104,19 +104,29 @@ function LawyersPageContent() {
             ทนายที่แนะนำสำหรับคุณ
           </h1>
         ) : (
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-4 flex-col">
+            {/* Desktop Image */}
             <img
-              src="/pic/lawyers-center-lawslane.jpg"
+              src="/images/lawyers-center-lawslane.jpg"
               alt="ศูนย์รวมทนายความมืออาชีพ"
-              className="w-full max-w-lg h-auto object-contain"
+              className="hidden md:block w-full h-auto object-cover"
             />
+
+            {/* Mobile View: Image Only - Full Width */}
+            <div className="block md:hidden w-screen -ml-4 mr-0">
+              <img
+                src="/images/lawyers-center-lawslane-mobile.jpg"
+                alt="ศูนย์รวมทนายความมืออาชีพ"
+                className="w-full h-auto object-cover"
+              />
+            </div>
           </div>
         )}
-        <p className="max-w-2xl mx-auto mt-4 text-muted-foreground md:text-xl">
-          {specialties
-            ? 'นี่คือรายชื่อทนายที่ AI แนะนำจากปัญหาของคุณ พร้อมรายชื่อทนายทั้งหมด'
-            : 'ค้นหาและเชื่อมต่อกับทนายความที่เชี่ยวชาญคดีแพ่งและคดีฉ้อโกงสำหรับธุรกิจ SME'}
-        </p>
+        {specialties && (
+          <p className="max-w-2xl mx-auto mt-4 text-muted-foreground md:text-xl">
+            นี่คือรายชื่อทนายที่ AI แนะนำจากปัญหาของคุณ พร้อมรายชื่อทนายทั้งหมด
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
