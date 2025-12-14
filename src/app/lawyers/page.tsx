@@ -84,9 +84,19 @@ function LawyersPageContent() {
   return (
     <div className="container mx-auto px-4 md:px-6 py-12">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl font-headline">
-          {specialties ? 'ทนายที่แนะนำสำหรับคุณ' : 'ศูนย์รวมทนายความมืออาชีพ'}
-        </h1>
+        {specialties ? (
+          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl font-headline">
+            ทนายที่แนะนำสำหรับคุณ
+          </h1>
+        ) : (
+          <div className="flex justify-center mb-4">
+            <img
+              src="/_next/image?url=%2Fpic%2Flawyers-center-lawslane.jpg&w=1080&q=75"
+              alt="ศูนย์รวมทนายความมืออาชีพ"
+              className="w-full max-w-lg h-auto object-contain"
+            />
+          </div>
+        )}
         <p className="max-w-2xl mx-auto mt-4 text-muted-foreground md:text-xl">
           {specialties
             ? 'นี่คือรายชื่อทนายที่ AI แนะนำจากปัญหาของคุณ พร้อมรายชื่อทนายทั้งหมด'

@@ -101,13 +101,9 @@ export default async function Home() {
               <FadeIn direction="up">
                 <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-6">
 
-                  <div className="w-full max-w-lg mb-4">
-                    <img
-                      src="/_next/image?url=%2Fpic%2Flawyers-center-lawslane.jpg&w=1080&q=75"
-                      alt="ศูนย์รวมทนายความมืออาชีพ"
-                      className="w-full h-auto object-contain"
-                    />
-                  </div>
+                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline leading-tight">
+                    ปรึกษาปัญหากฎหมายกับ<br />ทนายความมืออาชีพ
+                  </h1>
                   <p className="max-w-[600px] text-gray-200 md:text-xl">
                     แพลตฟอร์มที่เชื่อมโยงคุณกับทนายความผู้เชี่ยวชาญ ค้นหาทนายที่ใช่ หรือปรึกษา AI ทนายความอัจฉริยะได้ทันที
                   </p>
