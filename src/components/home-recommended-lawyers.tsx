@@ -47,24 +47,37 @@ export function HomeRecommendedLawyers() {
     }
 
     return (
-        <section className="relative w-full bg-gradient-to-b from-white to-slate-50 py-12 md:py-24 lg:py-32 overflow-hidden">
-            {/* Decorative Elements */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-blue-100/30 blur-3xl" />
-                <div className="absolute top-[20%] -left-[10%] w-[40%] h-[40%] rounded-full bg-indigo-100/30 blur-3xl" />
+        <section className="relative w-full py-16 md:py-24 lg:py-32 overflow-hidden">
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 bg-white/90 z-10" />
+                <div className="absolute inset-0 bg-gradient-to-b from-orange-50/50 to-orange-100/50 z-10" />
+                <img
+                    src="/_next/image?url=%2Fpic%2FLawlanes-Hero-cover.jpg&w=1920&q=75"
+                    alt="Background"
+                    className="w-full h-full object-cover opacity-20"
+                />
             </div>
 
-            <div className="container mx-auto px-4 md:px-6 relative z-10">
+            {/* Decorative Elements - Orange Theme */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-10">
+                <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] rounded-full bg-orange-200/20 blur-3xl animate-pulse" />
+                <div className="absolute top-[30%] -left-[10%] w-[30%] h-[30%] rounded-full bg-amber-200/20 blur-3xl" />
+            </div>
+
+            <div className="container mx-auto px-4 md:px-6 relative z-20">
                 <FadeIn direction="up">
-                    <div className='text-center mb-12'>
-                        <h2 className='text-3xl font-bold tracking-tight text-slate-800 font-headline sm:text-4xl drop-shadow-sm'>ทนายความแนะนำ</h2>
-                        <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">ทนายความที่มีประสบการณ์และความเชี่ยวชาญเฉพาะด้าน พร้อมให้คำปรึกษาและดูแลคดีของคุณอย่างใกล้ชิด</p>
-                        <Separator className='w-24 mx-auto mt-6 bg-primary/20 h-1 rounded-full' />
+                    <div className='text-center mb-16'>
+                        <h2 className='text-3xl font-bold tracking-tight text-[#0B3979] font-headline sm:text-5xl drop-shadow-sm'>ทนายความแนะนำ</h2>
+                        <p className="mt-4 text-slate-600 max-w-2xl mx-auto text-lg">ทนายความที่มีประสบการณ์และความเชี่ยวชาญเฉพาะด้าน พร้อมให้คำปรึกษาและดูแลคดีของคุณอย่างใกล้ชิด</p>
+                        <div className="flex justify-center mt-6">
+                            <div className="w-24 h-1.5 bg-orange-400 rounded-full" />
+                        </div>
                     </div>
                 </FadeIn>
 
                 {lawyers.length > 0 ? (
-                    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+                    <div className="max-w-5xl mx-auto flex flex-col gap-8">
                         {lawyers.map((lawyer, index) => (
                             <FadeIn key={lawyer.id} delay={index * 150} direction="up">
                                 <LawyerCard lawyer={lawyer} />
@@ -80,9 +93,9 @@ export function HomeRecommendedLawyers() {
                     </FadeIn>
                 )}
 
-                <div className="mt-16 text-center">
+                <div className="mt-20 text-center">
                     <FadeIn delay={400} direction="up">
-                        <Button asChild size="lg" variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 shadow-sm hover:shadow transition-all px-8 rounded-full">
+                        <Button asChild size="lg" variant="outline" className="bg-white hover:bg-orange-50 border-orange-200 text-orange-700 shadow-md hover:shadow-lg transition-all px-10 py-6 rounded-full text-lg font-medium">
                             <Link href={`/lawyers`}>ดูทนายความทั้งหมด</Link>
                         </Button>
                     </FadeIn>
