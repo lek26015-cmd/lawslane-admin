@@ -6,7 +6,7 @@ import { ClientProviders } from './client-providers';
 
 
 export const metadata: Metadata = {
-  title: 'Lawslane',
+  title: 'Lawslane - ค้นหาทนายมืออาชีพ',
   description: 'ปรึกษาปัญหากฎหมายกับทนายความมืออาชีพ',
   icons: {
     icon: '/icon.jpg',
