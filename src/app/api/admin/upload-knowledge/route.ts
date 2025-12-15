@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
         const text = await parsePdfFromBuffer(buffer);
 
         if (!text || text.trim().length === 0) {
-            return NextResponse.json({ error: 'Could not extract text from PDF' }, { status: 400 });
+            return NextResponse.json({
+                error: 'Could not extract text from PDF. If this is a scanned document (image-only), please convert it to a text-based PDF or upload images directly.'
+            }, { status: 400 });
         }
 
         const chunks = chunkText(text);

@@ -1,65 +1,53 @@
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-// const pdfRequire = require('pdf-parse'); // Lazy load instead
 import { callTyphoonOCR } from './typhoon';
 
-function getAllPdfFiles(dirPath: string, arrayOfFiles: string[] = []) {
-    const files = fs.readdirSync(dirPath);
+const require = createRequire(import.meta.url);
 
-    files.forEach(function (file) {
-        const fullPath = path.join(dirPath, file);
-        if (fs.statSync(fullPath).isDirectory()) {
-            arrayOfFiles = getAllPdfFiles(fullPath, arrayOfFiles);
-        } else {
-            if (file.toLowerCase().endsWith('.pdf')) {
-                arrayOfFiles.push(fullPath);
-            }
-        }
-    });
-
-    return arrayOfFiles;
-}
-
-export async function loadPdfsFromDirectory(directoryPath: string): Promise<string> {
+async function tryOcrFallback(buffer: Buffer): Promise<string> {
     try {
-        if (!fs.existsSync(directoryPath)) {
-            console.warn(`Directory not found: ${directoryPath}`);
-            return '';
-        }
+        const pdfRequire = require('pdf-parse');
+        // @ts-ignore
+        const parser = new pdfRequire.PDFParse(new Uint8Array(buffer));
 
-        const pdfFiles = getAllPdfFiles(directoryPath);
-        let allText = '';
+        // Extract images
+        // @ts-ignore
+        const imageResult = await parser.getImage({ imageBuffer: true, imageThreshold: 50 });
 
-        for (const filePath of pdfFiles) {
-            try {
-                const dataBuffer = fs.readFileSync(filePath);
-                const pdfRequire = require('pdf-parse');
-                // @ts-ignore
-                const parser = new pdfRequire.PDFParse(new Uint8Array(dataBuffer));
-                // @ts-ignore
-                const data = await parser.getText();
-                const fileName = path.basename(filePath);
+        let ocrText = "";
+        let imagesFound = 0;
 
-                allText += `\n\n--- Document: ${fileName} ---\n\n`;
-                allText += data?.text || '';
-            } catch (err) {
-                console.error(`Error parsing file ${filePath}:`, err);
+        if (imageResult && imageResult.pages) {
+            for (const page of imageResult.pages) {
+                if (page.images) {
+                    for (const img of page.images) {
+                        if (img.data) {
+                            imagesFound++;
+                            console.log(`OCR: Processing image ${img.name} (${img.width}x${img.height})...`);
+                            // Assuming callTyphoonOCR is defined elsewhere or imported
+                            const imgBuffer = Buffer.from(img.data);
+                            const text = await callTyphoonOCR(imgBuffer);
+                            if (text) {
+                                ocrText += `\n\n--- [OCR Image ${imagesFound}] ---\n${text}`;
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        return allText;
-    } catch (error) {
-        console.error('Error loading PDFs:', error);
-        return '';
-    }
-}
+        if (imagesFound === 0) {
+            console.warn("OCR Fallback: No embedded images found in PDF.");
+            return "";
+        }
 
-export interface PdfDocument {
-    source: string;
-    content: string;
+        return ocrText;
+
+    } catch (e) {
+        console.error("OCR Fallback failed:", e);
+        return "";
+    }
 }
 
 export async function parsePdfFromBuffer(buffer: Buffer): Promise<string> {
@@ -72,8 +60,6 @@ export async function parsePdfFromBuffer(buffer: Buffer): Promise<string> {
         let text = data?.text || '';
 
         // Check for "Mojibake" (garbled text) or empty content
-        // Heuristic: If text length > 50 but Thai character ratio is very low (< 5%), it's likely garbage encoding.
-        // Valid Thai PDF should have a good mix of Thai chars.
         const totalChars = text.length;
         const thaiChars = text.match(/[\u0E00-\u0E7F]/g)?.length || 0;
         const thaiRatio = totalChars > 0 ? thaiChars / totalChars : 0;
@@ -82,13 +68,17 @@ export async function parsePdfFromBuffer(buffer: Buffer): Promise<string> {
         const isTooShort = text.trim().length < 50;
 
         if (isTooShort || isGarbage) {
-            console.log(`Text extraction problematic (Length: ${totalChars}, Thai Ratio: ${thaiRatio.toFixed(2)}). Attempting Typhoon OCR...`);
-            const ocrText = await callTyphoonOCR(buffer);
+            console.log(`Text extraction problematic (Length: ${totalChars}, Thai Ratio: ${thaiRatio.toFixed(2)}). Attempting Typhoon OCR (Auto-Extraction)...`);
+
+            const ocrText = await tryOcrFallback(buffer);
+
             if (ocrText && ocrText.length > 50) {
-                console.log("Typhoon OCR successful.");
+                console.log("Typhoon OCR successful via Image Extraction.");
                 text = ocrText;
             } else {
                 console.warn("Typhoon OCR failed or returned empty.");
+                // If OCR also fails, we return empty so the API can show the explicit error message about scanned docs
+                text = "";
             }
         }
 
@@ -98,35 +88,4 @@ export async function parsePdfFromBuffer(buffer: Buffer): Promise<string> {
         return '';
     }
 }
-
-export async function loadPdfDocuments(directoryPath: string): Promise<PdfDocument[]> {
-    try {
-        if (!fs.existsSync(directoryPath)) {
-            console.warn(`Directory not found: ${directoryPath}`);
-            return [];
-        }
-
-        const pdfFiles = getAllPdfFiles(directoryPath);
-        const documents: PdfDocument[] = [];
-
-        for (const filePath of pdfFiles) {
-            try {
-                const dataBuffer = fs.readFileSync(filePath);
-                const content = await parsePdfFromBuffer(dataBuffer);
-                const fileName = path.basename(filePath);
-
-                documents.push({
-                    source: fileName,
-                    content
-                });
-            } catch (err) {
-                console.error(`Error parsing file ${filePath}:`, err);
-            }
-        }
-
-        return documents;
-    } catch (error) {
-        console.error('Error loading PDFs:', error);
-        return [];
-    }
-}
+// ... rest of file

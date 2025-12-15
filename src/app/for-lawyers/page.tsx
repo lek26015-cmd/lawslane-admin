@@ -274,9 +274,24 @@ export default function ForLawyersPage() {
 
     } catch (error: any) {
       console.error(error);
+
+      // Rollback: If user was created but subsequent steps failed, delete the user to prevent "Email already in use" on retry
+      if (auth.currentUser && error.code !== 'auth/email-already-in-use') {
+        try {
+          await auth.currentUser.delete();
+          console.log("Rolled back: Deleted zombie auth user due to registration failure.");
+        } catch (deleteErr) {
+          console.error("Failed to rollback auth user:", deleteErr);
+        }
+      }
+
       let errorMessage = 'เกิดข้อผิดพลาดที่ไม่รู้จัก';
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น';
+        errorMessage = 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบ';
+      } else if (error.message) {
+        // Translate common errors
+        if (error.message.includes("File too large")) errorMessage = "ไฟล์มีขนาดใหญ่เกินไป";
+        else errorMessage = error.message;
       }
       toast({
         variant: 'destructive',
@@ -602,7 +617,7 @@ export default function ForLawyersPage() {
                         <div className="flex items-center gap-2 p-2 border rounded-full bg-gray-50 px-4">
                           <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
                           <span className="text-sm text-gray-600 truncate flex-grow">{idCardFile ? idCardFile.name : 'ยังไม่ได้เลือกไฟล์'}</span>
-                          <Input id="id-card-upload" type="file" className="hidden" onChange={handleFileChange(setIdCardFile)} />
+                          <Input id="id-card-upload" type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileChange(setIdCardFile)} />
                           <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('id-card-upload')?.click()} className="rounded-full">เลือกไฟล์</Button>
                         </div>
                       </div>
@@ -611,7 +626,7 @@ export default function ForLawyersPage() {
                         <div className="flex items-center gap-2 p-2 border rounded-full bg-gray-50 px-4">
                           <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
                           <span className="text-sm text-gray-600 truncate flex-grow">{licenseFile ? licenseFile.name : 'ยังไม่ได้เลือกไฟล์'}</span>
-                          <Input id="license-upload" type="file" className="hidden" onChange={handleFileChange(setLicenseFile)} />
+                          <Input id="license-upload" type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileChange(setLicenseFile)} />
                           <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('license-upload')?.click()} className="rounded-full">เลือกไฟล์</Button>
                         </div>
                       </div>

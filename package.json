@@ -57,6 +57,7 @@
     "negotiator": "^0.6.3",
     "next": "latest",
     "patch-package": "^8.0.0",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "promptpay-qr": "^0.5.0",
     "qrcode.react": "^3.1.0",
