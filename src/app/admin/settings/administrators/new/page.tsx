@@ -61,7 +61,7 @@ export default function NewAdminPage() {
         const currentUserDoc = await getDoc(doc(firestore, "users", user.uid));
         if (currentUserDoc.exists()) {
           const currentUserData = currentUserDoc.data();
-          const isSuperAdmin = currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
+          const isSuperAdmin = currentUserDoc.id === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || currentUserData.email === 'lek26015@gmail.com' || currentUserData.email === 'lek.26015@gmail.com' || currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
 
           if (!isSuperAdmin) {
             toast({
@@ -198,7 +198,7 @@ export default function NewAdminPage() {
                 <ShieldAlert className="h-5 w-5 text-yellow-600" />
                 <div className="text-sm text-yellow-700">
                   <p className="font-semibold">ข้อจำกัดความปลอดภัย</p>
-                  <p>อีเมลต้องลงท้ายด้วย <strong>@lawslane.com</strong> เท่านั้น (ยกเว้น lek.26015@gmail.com)</p>
+                  <p>อีเมลต้องลงท้ายด้วย <strong>@lawslane.com</strong> เท่านั้น</p>
                 </div>
               </div>
 
