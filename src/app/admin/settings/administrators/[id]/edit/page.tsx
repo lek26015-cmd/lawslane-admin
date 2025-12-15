@@ -73,7 +73,7 @@ export default function AdminEditAdministratorPage() {
         const currentUserDoc = await getDoc(doc(firestore, "users", user.uid));
         if (currentUserDoc.exists()) {
           const currentUserData = currentUserDoc.data();
-          const isSuperAdmin = currentUserDoc.id === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || currentUserData.email === 'lek26015@gmail.com' || currentUserData.email === 'lek.26015@gmail.com' || currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
+          const isSuperAdmin = user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || currentUserDoc.id === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || currentUserData.email === 'lek26015@gmail.com' || currentUserData.email === 'lek.26015@gmail.com' || currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
 
           if (!isSuperAdmin) {
             toast({
