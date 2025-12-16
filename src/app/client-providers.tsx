@@ -9,7 +9,7 @@ import { Toaster } from '@/components/ui/toaster';
 
 export function ClientProviders({ children, domainType = 'main' }: { children: React.ReactNode; domainType?: string }) {
   React.useEffect(() => {
-    console.log('Lawslane Build Version: 2025-12-16 22:15 (Debug)');
+    console.log('Lawslane Build Version: 2025-12-16 22:35 (Debug)');
   }, []);
 
   return (

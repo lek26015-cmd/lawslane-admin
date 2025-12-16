@@ -48,7 +48,22 @@ async function tryOcrFallback(buffer: Buffer): Promise<string> {
 
 export async function parsePdfFromBuffer(buffer: Buffer): Promise<string> {
     try {
-        const pdf = require('pdf-parse');
+        let pdf = require('pdf-parse');
+
+        // Debug logging to understand what we are getting
+        console.log("PDF-Parse Import Type:", typeof pdf);
+
+        // Handle CJS/ESM interop issues where the module might be inside .default
+        if (typeof pdf !== 'function' && typeof pdf.default === 'function') {
+            console.log("Using pdf.default as the function");
+            pdf = pdf.default;
+        }
+
+        if (typeof pdf !== 'function') {
+            console.error("PDF-Parse is not a function:", pdf);
+            throw new Error(`pdf-parse import is not a function. It is: ${typeof pdf}`);
+        }
+
         // Use standard API
         const data = await pdf(buffer);
         let text = data.text || '';
