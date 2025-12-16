@@ -5,28 +5,7 @@ import { callTyphoonOCR } from './typhoon';
 
 const require = createRequire(import.meta.url);
 
-// Polyfills for PDF.js in serverless environment (Vercel)
-// This prevents "ReferenceError: DOMMatrix is not defined"
-if (!global.DOMMatrix) {
-    // @ts-ignore
-    global.DOMMatrix = class DOMMatrix {
-        a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-        constructor() { }
-    };
-}
-if (!global.ImageData) {
-    // @ts-ignore
-    global.ImageData = class ImageData {
-        width = 0; height = 0; data = null;
-        constructor() { }
-    };
-}
-if (!global.Path2D) {
-    // @ts-ignore
-    global.Path2D = class Path2D {
-        constructor() { }
-    };
-}
+// Polyfills removed as we downgraded to pdf-parse v1.1.1 which doesn't need them
 
 async function tryOcrFallback(buffer: Buffer): Promise<string> {
     try {
@@ -48,32 +27,12 @@ async function tryOcrFallback(buffer: Buffer): Promise<string> {
 
 export async function parsePdfFromBuffer(buffer: Buffer): Promise<string> {
     try {
-        const pdfModule = require('pdf-parse');
+        // pdf-parse v1.1.1 is a simple function
+        const pdf = require('pdf-parse');
 
-        // Debug logging
-        console.log("PDF-Parse Import Keys:", Object.keys(pdfModule));
-
-        let PDFParseClass = pdfModule.PDFParse;
-
-        // Handle case where it might be nested in default
-        if (!PDFParseClass && pdfModule.default && pdfModule.default.PDFParse) {
-            PDFParseClass = pdfModule.default.PDFParse;
-        }
-
-        if (!PDFParseClass) {
-            // Fallback: maybe the module itself is the class? (Unlikely based on logs, but good to be safe)
-            if (typeof pdfModule === 'function') {
-                PDFParseClass = pdfModule;
-            } else {
-                throw new Error("Could not find PDFParse class in import");
-            }
-        }
-
-        // @ts-ignore
-        const parser = new PDFParseClass(new Uint8Array(buffer));
-        // @ts-ignore
-        const data = await parser.getText();
-        let text = data?.text || '';
+        // Use standard API
+        const data = await pdf(buffer);
+        let text = data.text || '';
 
         // Check for "Mojibake" (garbled text) or empty content
         const totalChars = text.length;
