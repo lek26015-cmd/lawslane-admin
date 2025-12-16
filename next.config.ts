@@ -39,6 +39,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    serverComponentsExternalPackages: ['pdf-parse'],
   },
 };
 
