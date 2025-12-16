@@ -102,6 +102,8 @@ const formSchema = z.object({
   path: ["bankAccountName"],
 });
 
+import { useRef } from 'react';
+
 export default function ForLawyersPage() {
   const router = useRouter();
   const { auth, firestore } = useFirebase();
@@ -110,6 +112,7 @@ export default function ForLawyersPage() {
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const isSubmittingRef = useRef(false);
 
   const benefits = [
     {
@@ -175,16 +178,21 @@ export default function ForLawyersPage() {
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     if (!auth || !firestore) {
       toast({
         variant: 'destructive',
         title: 'ระบบยังไม่พร้อม',
         description: 'กำลังเชื่อมต่อกับ Firebase กรุณารอสักครู่แล้วลองใหม่',
       });
+      isSubmittingRef.current = false;
       return;
     }
     if (!idCardFile || !licenseFile) {
       toast({ variant: 'destructive', title: 'ข้อมูลไม่ครบ', description: 'กรุณาอัปโหลดไฟล์ให้ครบถ้วน' });
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -337,6 +345,7 @@ export default function ForLawyersPage() {
       });
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   }
 

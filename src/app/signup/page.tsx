@@ -33,6 +33,8 @@ const formSchema = z.object({
   }),
 });
 
+import { useRef } from 'react';
+
 export default function SignupPage() {
   const router = useRouter();
   // const params = useParams(); // Removed lang param
@@ -42,6 +44,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const isSubmittingRef = useRef(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,7 +57,13 @@ export default function SignupPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth || !firestore) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
+    if (!auth || !firestore) {
+      isSubmittingRef.current = false;
+      return;
+    }
     setIsLoading(true);
     try {
       if (!turnstileToken) {
@@ -116,6 +125,7 @@ export default function SignupPage() {
       });
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   }
 
