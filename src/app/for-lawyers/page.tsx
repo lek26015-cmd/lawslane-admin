@@ -47,6 +47,7 @@ import kkpLogo from '@/pic/logo-bank/เกียรตินาคิน.png';
 import lhLogo from '@/pic/logo-bank/แลนด์แลนด์เฮ้าท์ .png';
 import icbcLogo from '@/pic/logo-bank/ICBC.png';
 import bocLogo from '@/pic/logo-bank/ธนาคารแห่งประเทศจีน.png';
+import lawyerCoverImg from '@/pic/lawyer-cover.jpg';
 
 const specialties = [
   'คดีฉ้อโกง SMEs',
@@ -85,6 +86,8 @@ const formSchema = z.object({
   dob: z.date({ required_error: 'กรุณาเลือกวันเกิด' }),
   gender: z.string({ required_error: 'กรุณาเลือกเพศ' }),
   licenseNumber: z.string().min(1, { message: 'กรุณากรอกเลขใบอนุญาต' }),
+  education: z.string().min(1, { message: 'กรุณากรอกข้อมูลการศึกษา' }),
+  experience: z.string().min(1, { message: 'กรุณากรอกประสบการณ์ทำงาน' }),
   address: z.string().min(1, { message: 'กรุณากรอกที่อยู่' }),
   serviceProvinces: z.string().min(1, { message: 'กรุณากรอกจังหวัดที่ให้บริการ' }),
   bankName: z.string({ required_error: 'กรุณาเลือกธนาคาร' }),
@@ -112,7 +115,25 @@ export default function ForLawyersPage() {
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [customSpecialty, setCustomSpecialty] = useState('');
+  const [customOptions, setCustomOptions] = useState<string[]>([]);
   const isSubmittingRef = useRef(false);
+
+  const handleAddCustomSpecialty = (field: any) => {
+    if (!customSpecialty.trim()) return;
+    if (specialties.includes(customSpecialty) || customOptions.includes(customSpecialty)) {
+      toast({
+        title: "มีข้อมูลนี้อยู่แล้ว",
+        description: "ความเชี่ยวชาญนี้มีอยู่ในรายการแล้ว",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCustomOptions([...customOptions, customSpecialty]);
+    field.onChange([...(field.value || []), customSpecialty]);
+    setCustomSpecialty('');
+  };
 
   const benefits = [
     {
@@ -141,6 +162,8 @@ export default function ForLawyersPage() {
       password: '',
       phone: '',
       gender: undefined,
+      education: '',
+      experience: '',
       licenseNumber: '',
       address: '',
       serviceProvinces: '',
@@ -256,6 +279,8 @@ export default function ForLawyersPage() {
         phone: values.phone,
         dob: values.dob,
         gender: values.gender,
+        education: values.education,
+        experience: values.experience,
         licenseNumber: values.licenseNumber,
         address: values.address,
         serviceProvinces: values.serviceProvinces.split(',').map(s => s.trim()),
@@ -364,6 +389,14 @@ export default function ForLawyersPage() {
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Left Column: Marketing Content */}
           <div className="space-y-6 lg:sticky lg:top-24">
+            <div className="relative h-64 w-full rounded-3xl overflow-hidden mb-6">
+              <Image
+                src={lawyerCoverImg}
+                alt="Thai Lawyer"
+                fill
+                className="object-cover"
+              />
+            </div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground font-headline">
               เข้าร่วมเป็นส่วนหนึ่งของ Lawslane
             </h1>
@@ -380,10 +413,11 @@ export default function ForLawyersPage() {
               ))}
             </div>
             <div className="pt-6">
-              <Button asChild size="lg" variant="outline" className="w-full md:w-auto">
+              <Button asChild size="lg" variant="outline" className="w-full md:w-auto rounded-full">
                 <Link href="/lawyer-login">เข้าสู่ระบบสำหรับทนายที่มีบัญชีแล้ว</Link>
               </Button>
             </div>
+
           </div>
 
           {/* Right Column: Signup Form */}
@@ -535,6 +569,12 @@ export default function ForLawyersPage() {
 
                     <h3 className="text-lg font-semibold border-b pb-2 pt-4">ข้อมูลสำหรับวิชาชีพ</h3>
                     <div className="grid grid-cols-1 gap-4">
+                      <FormField control={form.control} name="education" render={({ field }) => (
+                        <FormItem><FormLabel>การศึกษา (เช่น น.บ. จุฬาลงกรณ์มหาวิทยาลัย)</FormLabel><FormControl><Input {...field} className="rounded-full px-4" /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="experience" render={({ field }) => (
+                        <FormItem><FormLabel>ประสบการณ์ทำงาน (เช่น ว่าความมาแล้ว 5 ปี, เชี่ยวชาญคดีแพ่ง)</FormLabel><FormControl><Input {...field} className="rounded-full px-4" /></FormControl><FormMessage /></FormItem>
+                      )} />
                       <FormField control={form.control} name="licenseNumber" render={({ field }) => (
                         <FormItem><FormLabel>เลขที่ใบอนุญาตว่าความ</FormLabel><FormControl><Input {...field} className="rounded-full px-4" /></FormControl><FormMessage /></FormItem>
                       )} />
@@ -615,6 +655,78 @@ export default function ForLawyersPage() {
                                 )}
                               />
                             ))}
+                          </div>
+
+                          {/* Custom Specialties */}
+                          {customOptions.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              {customOptions.map((item) => (
+                                <FormField key={item} control={form.control} name="specialties"
+                                  render={({ field }) => (
+                                    <FormItem key={item} className="flex flex-row items-center space-x-3 space-y-0 p-3 bg-blue-50 border border-blue-100 rounded-xl relative group">
+                                      <FormControl><Checkbox checked={field.value?.includes(item)} onCheckedChange={(checked) => {
+                                        return checked ? field.onChange([...field.value, item]) : field.onChange(field.value?.filter((value: string) => value !== item))
+                                      }} /></FormControl>
+                                      <FormLabel className="font-normal text-sm flex-grow">{item}</FormLabel>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCustomOptions(customOptions.filter(opt => opt !== item));
+                                          field.onChange(field.value?.filter((value: string) => value !== item));
+                                        }}
+                                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 mt-4">
+                            <Input
+                              placeholder="ระบุความเชี่ยวชาญอื่นๆ"
+                              value={customSpecialty}
+                              onChange={(e) => setCustomSpecialty(e.target.value)}
+                              className="rounded-full px-4"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  // We need to access the field object here, but we are outside the render prop.
+                                  // A workaround is to trigger the button click or pass the field from the parent scope if possible.
+                                  // Since we are inside the FormField render, we actually HAVE 'field' in scope if we move this inside.
+                                  // Let's check the structure. We are inside render={() => ( ... )} so we don't have 'field' directly available for the input unless we wrap it.
+                                  // But we can use form.getValues and form.setValue.
+                                  const currentValues = form.getValues('specialties') || [];
+                                  if (!customSpecialty.trim()) return;
+                                  if (specialties.includes(customSpecialty) || customOptions.includes(customSpecialty)) return;
+
+                                  setCustomOptions([...customOptions, customSpecialty]);
+                                  form.setValue('specialties', [...currentValues, customSpecialty]);
+                                  setCustomSpecialty('');
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                const currentValues = form.getValues('specialties') || [];
+                                if (!customSpecialty.trim()) return;
+                                if (specialties.includes(customSpecialty) || customOptions.includes(customSpecialty)) {
+                                  toast({ title: "มีข้อมูลนี้อยู่แล้ว", description: "ความเชี่ยวชาญนี้มีอยู่ในรายการแล้ว", variant: "destructive" });
+                                  return;
+                                }
+                                setCustomOptions([...customOptions, customSpecialty]);
+                                form.setValue('specialties', [...currentValues, customSpecialty]);
+                                setCustomSpecialty('');
+                              }}
+                              className="rounded-full"
+                            >
+                              เพิ่ม
+                            </Button>
                           </div>
                           <FormMessage />
                         </FormItem>

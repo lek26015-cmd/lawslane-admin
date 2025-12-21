@@ -42,7 +42,7 @@ export function LawyerPageSidebarAds() {
                 <div key={ad.id}>
                     {ad.href ? (
                         <a href={ad.href} target="_blank" rel="noopener noreferrer" className="block group">
-                            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow">
+                            <Card className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-shadow rounded-3xl">
                                 <CardContent className="p-0 relative aspect-[4/5]">
                                     <Image
                                         src={ad.imageUrl}
@@ -58,7 +58,7 @@ export function LawyerPageSidebarAds() {
                             </Card>
                         </a>
                     ) : (
-                        <Card className="overflow-hidden border-0 shadow-md">
+                        <Card className="overflow-hidden border-0 shadow-md rounded-3xl">
                             <CardContent className="p-0 relative aspect-[4/5]">
                                 <Image
                                     src={ad.imageUrl}

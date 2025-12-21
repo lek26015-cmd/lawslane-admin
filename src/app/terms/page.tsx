@@ -72,29 +72,46 @@ export default function TermsOfServicePage() {
   `;
 
   return (
-    <div className="bg-white">
-      <div className="container mx-auto px-4 md:px-6 py-12 md:py-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-4 mb-8">
-            <FileText className="w-10 h-10 text-foreground" />
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-foreground font-headline">
-                ข้อกำหนดและเงื่อนไขการใช้บริการ (Terms of Service)
-              </h1>
-              <p className="text-muted-foreground">ปรับปรุงล่าสุด: 25 กรกฎาคม 2567</p>
+    <div className="min-h-screen bg-gray-50/50">
+      {/* Header Section */}
+      <div className="bg-gradient-to-b from-primary/10 to-transparent pb-20 pt-16 md:pt-24">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm mb-6 animate-in fade-in zoom-in duration-500">
+              <FileText className="w-8 h-8 text-primary" />
             </div>
+            <h1 className="text-3xl md:text-5xl font-bold text-foreground font-headline mb-4 tracking-tight">
+              ข้อกำหนดและเงื่อนไขการใช้บริการ
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              ปรับปรุงล่าสุด: 25 กรกฎาคม 2567
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Section */}
+      <div className="container mx-auto px-4 md:px-6 -mt-12 pb-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 p-8 md:p-12 border border-gray-100">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <p className="text-muted-foreground">กำลังโหลดข้อมูล...</p>
+              </div>
+            ) : (
+              <div
+                className="prose prose-lg max-w-none prose-headings:font-bold prose-headings:text-foreground prose-p:text-muted-foreground prose-li:text-muted-foreground prose-strong:text-foreground prose-a:text-primary hover:prose-a:text-primary/80 transition-colors"
+                dangerouslySetInnerHTML={{ __html: content || defaultContent }}
+              />
+            )}
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div
-              className="prose prose-lg max-w-none text-foreground/90 space-y-6"
-              dangerouslySetInnerHTML={{ __html: content || defaultContent }}
-            />
-          )}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              หากมีข้อสงสัยเพิ่มเติม สามารถติดต่อเราได้ที่ <a href="mailto:support@lawslane.demo" className="text-primary font-medium hover:underline">support@lawslane.demo</a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

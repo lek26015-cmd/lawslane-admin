@@ -4,14 +4,17 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Briefcase, CheckCircle, Clock, DollarSign, FileText, Inbox, Percent, Star, User, Settings, BarChart, CalendarPlus, FileUp, Loader2, ShieldX, AlertCircle } from 'lucide-react';
-import { getLawyerDashboardData, getLawyerStats, getLawyerById } from '@/lib/data';
+import { getLawyerDashboardData, getLawyerStats, getLawyerById, getAdminLawyerDashboardData } from '@/lib/data';
 import type { LawyerCase, LawyerAppointmentRequest, LawyerProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import profileLawyerImg from '@/pic/profile-lawyer.jpg';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +45,28 @@ export default function LawyerDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // Pricing state
+  const [appointmentFee, setAppointmentFee] = useState<string>('3500');
+  const [chatFee, setChatFee] = useState<string>('500');
+  const [isSavingPricing, setIsSavingPricing] = useState(false);
+  const [platformGPRate, setPlatformGPRate] = useState<number>(0.15); // Default 15%
+
+  // Fetch platform GP rate
+  useEffect(() => {
+    if (!firestore) return;
+    const fetchGPRate = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(firestore, 'settings', 'platform'));
+        if (settingsDoc.exists()) {
+          setPlatformGPRate(settingsDoc.data().platformFeeRate || 0.15);
+        }
+      } catch (error) {
+        console.error('Error fetching GP rate:', error);
+      }
+    };
+    fetchGPRate();
+  }, [firestore]);
+
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -54,15 +79,64 @@ export default function LawyerDashboardPage() {
     async function fetchData() {
       setIsLoading(true);
       try {
-        const data = await getLawyerDashboardData(firestore!, user!.uid);
-        const statsData = await getLawyerStats(firestore!, user!.uid);
-        const profile = await getLawyerById(firestore!, user!.uid);
+        // Check if user is admin
+        const userDocRef = doc(firestore!, 'users', user!.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        const userData = userDocSnap.data();
+        const isAdmin = userData?.role === 'admin';
 
-        setRequests(data.newRequests);
-        setActiveCases(data.activeCases);
-        setCompletedCases(data.completedCases);
-        setStats(statsData);
-        setLawyerProfile(profile || null);
+        if (isAdmin) {
+          const data = await getAdminLawyerDashboardData(firestore!);
+          // Mock stats for admin
+          const statsData = { incomeThisMonth: 0, totalIncome: 0, completedCases: data.completedCases.length, rating: 5.0, responseRate: 100 };
+
+          setRequests(data.newRequests);
+          setActiveCases(data.activeCases);
+          setCompletedCases(data.completedCases);
+          setStats(statsData);
+          setLawyerProfile({
+            id: user!.uid,
+            userId: user!.uid,
+            name: userData?.name || 'Administrator',
+            email: userData?.email || user!.email || '',
+            phone: '',
+            licenseNumber: 'ADMIN',
+            status: 'approved',
+            imageUrl: userData?.photoURL || '',
+            dob: new Date(),
+            gender: 'อื่นๆ',
+            address: 'Headquarters',
+            description: 'System Administrator',
+            education: '',
+            experience: '',
+            bankName: '',
+            bankAccountName: '',
+            bankAccountNumber: '',
+            serviceProvinces: ['All'],
+            specialty: ['System Admin'],
+            imageHint: '',
+            idCardUrl: '',
+            lawyerLicenseUrl: '',
+            createdAt: new Date(),
+            licenseUrl: '',
+            joinedAt: new Date().toISOString(),
+          } as LawyerProfile);
+        } else {
+          const data = await getLawyerDashboardData(firestore!, user!.uid);
+          const statsData = await getLawyerStats(firestore!, user!.uid);
+          const profile = await getLawyerById(firestore!, user!.uid);
+
+          setRequests(data.newRequests);
+          setActiveCases(data.activeCases);
+          setCompletedCases(data.completedCases);
+          setStats(statsData);
+          setLawyerProfile(profile || null);
+          // Load pricing
+          if (profile?.pricing) {
+            setAppointmentFee(profile.pricing.appointmentFee.toString());
+            setChatFee(profile.pricing.chatFee.toString());
+          }
+        }
       } catch (error) {
         console.error("Error fetching lawyer dashboard data:", error);
         toast({
@@ -94,7 +168,15 @@ export default function LawyerDashboardPage() {
     router.push(`/chat/${newChatId}?lawyerId=${user.uid}&clientId=...&view=lawyer`);
   };
 
-  const incomeStat = { icon: <DollarSign className="w-10 h-10" />, label: 'รายได้เดือนนี้', value: `฿${stats.incomeThisMonth.toLocaleString()}`, color: 'text-green-500', href: '/financials' };
+  const isMockAdmin = lawyerProfile?.licenseNumber === 'ADMIN';
+  const scheduleLink = isMockAdmin ? '/lawyer-schedule?view=admin' : '/lawyer-schedule';
+  const incomeStat = {
+    icon: <DollarSign className="w-10 h-10" />,
+    label: 'รายได้เดือนนี้',
+    value: `฿${stats.incomeThisMonth.toLocaleString()}`,
+    color: 'text-green-500',
+    href: isMockAdmin ? '/lawyer-dashboard/financials?view=admin' : '/lawyer-dashboard/financials'
+  };
   const otherStats = [
     { icon: <Star />, label: 'คะแนนเฉลี่ย', value: `${lawyerProfile?.averageRating ? lawyerProfile.averageRating.toFixed(1) : stats.rating}/5`, color: 'text-yellow-500', href: '#' },
     { icon: <Percent />, label: 'อัตราการตอบรับ', value: `${stats.responseRate}%`, color: 'text-blue-500', href: '#' },
@@ -107,7 +189,7 @@ export default function LawyerDashboardPage() {
 
         {/* Status Alerts */}
         {lawyerProfile?.status === 'suspended' && (
-          <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-800">
+          <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-800 rounded-3xl">
             <ShieldX className="h-5 w-5" />
             <AlertTitle className="text-lg font-bold">บัญชีของคุณถูกระงับ</AlertTitle>
             <AlertDescription>
@@ -117,7 +199,7 @@ export default function LawyerDashboardPage() {
         )}
 
         {lawyerProfile?.status === 'rejected' && (
-          <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-800">
+          <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-800 rounded-3xl">
             <AlertCircle className="h-5 w-5" />
             <AlertTitle className="text-lg font-bold">การสมัครของคุณไม่ผ่านการอนุมัติ</AlertTitle>
             <AlertDescription className="mt-2 text-sm leading-relaxed">
@@ -129,7 +211,7 @@ export default function LawyerDashboardPage() {
         )}
 
         {lawyerProfile?.status === 'pending' && (
-          <Alert className="mb-6 bg-yellow-50 border-yellow-200 text-yellow-800">
+          <Alert className="mb-6 bg-yellow-50 border-yellow-200 text-yellow-800 rounded-3xl">
             <Clock className="h-5 w-5 text-yellow-600" />
             <AlertTitle className="text-lg font-bold text-yellow-800">อยู่ระหว่างการตรวจสอบ</AlertTitle>
             <AlertDescription className="text-yellow-700">
@@ -148,7 +230,7 @@ export default function LawyerDashboardPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* New Requests */}
-            <Card>
+            <Card className="rounded-3xl shadow-sm border-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-bold">
                   <Inbox className="w-5 h-5 text-primary" />
@@ -159,7 +241,7 @@ export default function LawyerDashboardPage() {
                 {requests.length > 0 ? (
                   <div className="space-y-4">
                     {requests.map((req) => (
-                      <div key={req.id} className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                      <div key={req.id} className="p-4 rounded-3xl bg-primary/5 border border-primary/20">
                         <div className="flex flex-col sm:flex-row justify-between">
                           <div>
                             <p className="font-semibold text-foreground">{req.caseTitle}</p>
@@ -168,12 +250,12 @@ export default function LawyerDashboardPage() {
                             </p>
                           </div>
                           <div className="flex gap-2 mt-3 sm:mt-0">
-                            <Button size="sm" variant="outline" asChild>
+                            <Button size="sm" variant="outline" asChild className="rounded-full">
                               <Link href={`/request/${req.id}`}>ดูรายละเอียด</Link>
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="sm" className="bg-green-600 hover:bg-green-700">รับเคสนี้</Button>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 rounded-full">รับเคสนี้</Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
@@ -211,7 +293,7 @@ export default function LawyerDashboardPage() {
             </Card>
 
             {/* Active Cases */}
-            <Card>
+            <Card className="rounded-3xl shadow-sm border-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-bold">
                   <Briefcase className="w-5 h-5" />
@@ -221,7 +303,7 @@ export default function LawyerDashboardPage() {
               <CardContent>
                 {activeCases.map((caseItem) => (
                   <Link href={`/chat/${caseItem.id}?lawyerId=${user.uid}&clientId=${caseItem.clientId}&view=lawyer`} key={caseItem.id}>
-                    <div className="flex items-center justify-between p-4 rounded-lg hover:bg-gray-200/50 transition-colors">
+                    <div className="flex items-center justify-between p-4 rounded-3xl hover:bg-gray-200/50 transition-colors">
                       <div>
                         <p className="font-semibold">{caseItem.title}</p>
                         <p className="text-sm text-muted-foreground">ลูกค้า: {caseItem.clientName} | อัปเดตล่าสุด: {caseItem.lastUpdate}</p>
@@ -238,7 +320,7 @@ export default function LawyerDashboardPage() {
                             </Badge>
                           )
                         )}
-                        <Button size="sm">เข้าสู่ห้องแชท</Button>
+                        <Button size="sm" className="rounded-full">เข้าสู่ห้องแชท</Button>
                       </div>
                     </div>
                   </Link>
@@ -247,7 +329,7 @@ export default function LawyerDashboardPage() {
             </Card>
 
             {/* Completed Cases */}
-            <Card>
+            <Card className="rounded-3xl shadow-sm border-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-bold">
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -257,7 +339,7 @@ export default function LawyerDashboardPage() {
               <CardContent>
                 {completedCases.map((caseItem) => (
                   <Link href={`/chat/${caseItem.id}?lawyerId=${user.uid}&clientId=${caseItem.clientId}&view=lawyer&status=closed`} key={caseItem.id}>
-                    <div className="flex items-center justify-between p-4 rounded-lg hover:bg-gray-200/50 transition-colors">
+                    <div className="flex items-center justify-between p-4 rounded-3xl hover:bg-gray-200/50 transition-colors">
                       <div>
                         <p className="font-semibold">{caseItem.title}</p>
                         <p className="text-sm text-muted-foreground">ลูกค้า: {caseItem.clientName} | วันที่เสร็จสิ้น: {caseItem.lastUpdate}</p>
@@ -272,7 +354,7 @@ export default function LawyerDashboardPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            <Card>
+            <Card className="rounded-3xl shadow-sm border-none">
               <CardContent className="pt-6 flex flex-col items-center text-center">
                 <Avatar className="w-24 h-24 mb-4">
                   <AvatarImage src={lawyerProfile?.imageUrl || user.photoURL || profileLawyerImg.src} />
@@ -303,17 +385,115 @@ export default function LawyerDashboardPage() {
                   )}
                 </div>
                 <div className="flex mt-4 gap-2">
-                  <Link href={user.uid ? `/lawyers/${user.uid}` : '#'} passHref>
-                    <Button variant="outline"><User className="mr-2" /> โปรไฟล์สาธารณะ</Button>
-                  </Link>
-                  <Link href="/schedule" passHref>
-                    <Button variant="outline"><Settings className="mr-2" /> จัดการตาราง</Button>
+                  {isMockAdmin ? (
+                    <Button variant="outline" className="rounded-full opacity-50 cursor-not-allowed" disabled><User className="mr-2" /> โปรไฟล์สาธารณะ</Button>
+                  ) : (
+                    <Link href={user.uid ? `/lawyers/${user.uid}` : '#'} passHref>
+                      <Button variant="outline" className="rounded-full"><User className="mr-2" /> โปรไฟล์สาธารณะ</Button>
+                    </Link>
+                  )}
+                  <Link href={scheduleLink} passHref>
+                    <Button variant="outline" className="rounded-full"><Settings className="mr-2" /> จัดการตาราง</Button>
                   </Link>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-green-600 text-white shadow-lg">
+            {/* Pricing Settings */}
+            <Card className="rounded-3xl shadow-sm border-none">
+              <CardHeader>
+                <CardTitle className="font-bold flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                  ตั้งค่าค่าบริการ
+                </CardTitle>
+                <CardDescription>
+                  {isMockAdmin ? 'ตัวอย่างการตั้งค่าสำหรับทนาย' : 'กำหนดค่าใช้จ่ายของคุณเอง'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="appointment-fee">ค่านัดหมายปรึกษา (฿)</Label>
+                  <Input
+                    id="appointment-fee"
+                    type="number"
+                    value={appointmentFee}
+                    onChange={(e) => setAppointmentFee(e.target.value)}
+                    className="rounded-2xl"
+                    min="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    คุณจะได้รับ: ฿{(parseFloat(appointmentFee || '0') * (1 - platformGPRate)).toLocaleString()} (หัก GP {(platformGPRate * 100).toFixed(1)}%)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="chat-fee">ค่าปรึกษาผ่านแชท (฿)</Label>
+                  <Input
+                    id="chat-fee"
+                    type="number"
+                    value={chatFee}
+                    onChange={(e) => setChatFee(e.target.value)}
+                    className="rounded-2xl"
+                    min="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    คุณจะได้รับ: ฿{(parseFloat(chatFee || '0') * (1 - platformGPRate)).toLocaleString()} (หัก GP {(platformGPRate * 100).toFixed(1)}%)
+                  </p>
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                  <p className="text-xs text-blue-800 font-medium">💡 ค่า Platform Fee (GP)</p>
+                  <p className="text-xs text-blue-600 mt-1">แพลตฟอร์มหัก {(platformGPRate * 100).toFixed(1)}% จากค่าบริการทั้งหมด</p>
+                </div>
+
+                {isMockAdmin && (
+                  <div className="p-3 bg-yellow-50 rounded-2xl border border-yellow-200">
+                    <p className="text-xs text-yellow-800">
+                      ℹ️ <strong>โหมดตัวอย่าง:</strong> นี่คือการ์ดที่ทนายจะเห็น คุณไม่สามารถบันทึกได้ในโหมด Admin
+                    </p>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full rounded-full"
+                  onClick={async () => {
+                    if (!firestore || !user || isMockAdmin) return;
+                    setIsSavingPricing(true);
+                    try {
+                      const apptFee = parseFloat(appointmentFee || '0');
+                      const chtFee = parseFloat(chatFee || '0');
+
+                      if (apptFee < 0 || chtFee < 0) {
+                        toast({ variant: 'destructive', title: 'ค่าบริการต้องมากกว่า 0' });
+                        return;
+                      }
+
+                      const { doc, updateDoc } = await import('firebase/firestore');
+                      await updateDoc(doc(firestore, 'lawyerProfiles', user.uid), {
+                        pricing: {
+                          appointmentFee: apptFee,
+                          chatFee: chtFee,
+                          platformFeeRate: platformGPRate
+                        }
+                      });
+
+                      toast({ title: 'บันทึกค่าบริการสำเร็จ' });
+                    } catch (error) {
+                      console.error('Error saving pricing:', error);
+                      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถบันทึกได้' });
+                    } finally {
+                      setIsSavingPricing(false);
+                    }
+                  }}
+                  disabled={isSavingPricing || isMockAdmin}
+                >
+                  {isSavingPricing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isMockAdmin ? 'โหมดดูตัวอย่าง (บันทึกไม่ได้)' : 'บันทึกค่าบริการ'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-green-600 text-white shadow-lg rounded-3xl border-none">
               <Link href={incomeStat.href} className="block p-6 hover:bg-green-700/50 rounded-lg transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="flex-shrink-0">
@@ -328,13 +508,13 @@ export default function LawyerDashboardPage() {
               </Link>
             </Card>
 
-            <Card>
+            <Card className="rounded-3xl shadow-sm border-none">
               <CardHeader>
                 <CardTitle className="font-bold text-base">สถิติ</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-3 gap-2">
                 {otherStats.map(stat => (
-                  <Link href={stat.href} key={stat.label} className="block p-2 bg-gray-100 rounded-lg text-center hover:bg-gray-200 hover:shadow-sm transition-all">
+                  <Link href={stat.href} key={stat.label} className="block p-2 bg-gray-100 rounded-3xl text-center hover:bg-gray-200 hover:shadow-sm transition-all">
                     <div className={`mx-auto h-6 w-6 flex items-center justify-center ${stat.color}`}>{stat.icon}</div>
                     <p className="text-lg font-bold mt-1">{stat.value}</p>
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
@@ -343,15 +523,17 @@ export default function LawyerDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-3xl shadow-sm border-none">
               <CardHeader>
                 <CardTitle className="font-bold">เครื่องมือ</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Link href="/schedule" passHref>
-                  <Button variant="ghost" className="w-full justify-start"><CalendarPlus className="mr-2" /> จัดการตารางนัดหมาย</Button>
+                <Link href={scheduleLink} passHref>
+                  <Button variant="ghost" className="w-full justify-start rounded-full"><CalendarPlus className="mr-2" /> จัดการตารางนัดหมาย</Button>
                 </Link>
-                <Button variant="ghost" className="w-full justify-start"><BarChart className="mr-2" /> ดูรายงานสรุป</Button>
+                <Link href={incomeStat.href} passHref>
+                  <Button variant="ghost" className="w-full justify-start rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"><BarChart className="mr-2" /> ดูรายงานสรุป</Button>
+                </Link>
               </CardContent>
             </Card>
           </div>

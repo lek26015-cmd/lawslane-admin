@@ -26,6 +26,10 @@ export function middleware(request: NextRequest) {
         // Generic rewrite: /some-page -> /admin/some-page
         // But only if it doesn't already start with /admin
         if (!pathname.startsWith('/admin')) {
+            // Allow /lawyer-dashboard to pass through without /admin prefix
+            if (pathname.startsWith('/lawyer-dashboard')) {
+                return NextResponse.rewrite(new URL(pathname, request.url));
+            }
             return NextResponse.rewrite(new URL(`/admin${pathname}`, request.url));
         }
 
@@ -84,6 +88,11 @@ export function middleware(request: NextRequest) {
 
     // Redirect /lawyer-dashboard -> lawyer.lawslane.com
     if (pathname.startsWith('/lawyer-dashboard')) {
+        // Skip redirect if view=admin (for admin access on main domain/localhost)
+        if (request.nextUrl.searchParams.get('view') === 'admin') {
+            return NextResponse.next();
+        }
+
         const newUrl = new URL(request.url);
         let newHost = '';
         if (hostname.includes('localhost')) {

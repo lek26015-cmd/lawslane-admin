@@ -34,6 +34,8 @@ export interface LawyerProfile {
   status: 'approved' | 'pending' | 'rejected' | 'suspended';
   rejectionReason?: string;
   description: string;
+  education?: string;
+  experience?: string;
   specialty: string[];
   imageUrl: string;
   imageHint: string;
@@ -43,6 +45,11 @@ export interface LawyerProfile {
   averageRating?: number;
   reviewCount?: number;
   firmId?: string;
+  pricing?: {
+    appointmentFee: number;     // Fee for in-person/video appointments
+    chatFee: number;             // Fee for chat consultations
+    platformFeeRate: number;     // GP rate (default 0.15 = 15%)
+  };
 }
 
 export interface ChatMessage {

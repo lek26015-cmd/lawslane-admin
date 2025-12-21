@@ -194,7 +194,7 @@ export default async function Home() {
 
         <section className="w-full py-12 md:py-24 lg:py-32">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="bg-white rounded-[3rem] shadow-2xl p-8 md:p-12 lg:p-16 overflow-hidden">
+            <div className="bg-white rounded-3xl md:rounded-[3rem] shadow-2xl p-8 md:p-12 lg:p-16 overflow-hidden">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <FadeIn direction="right">
                   <div className="space-y-4">
@@ -222,7 +222,7 @@ export default async function Home() {
                 </FadeIn>
                 <FadeIn direction="left">
                   <div className="relative">
-                    <div className="aspect-video overflow-hidden rounded-3xl shadow-lg">
+                    <div className="aspect-video relative overflow-hidden rounded-3xl md:rounded-[3rem] shadow-lg">
                       <Image
                         src={getImageUrl('lawyer-team-working')}
                         alt="Man in a suit holding a gavel"

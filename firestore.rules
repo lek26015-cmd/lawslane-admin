@@ -148,5 +148,12 @@ service cloud.firestore {
         allow create: if true;
         allow read, update, delete: if isAdmin();
     }
+
+    match /settings/{docId} {
+        // Allow all authenticated users to read settings (for GP rate)
+        allow read: if isSignedIn();
+        // Only admins can write settings
+        allow write: if isAdmin();
+    }
   }
 }

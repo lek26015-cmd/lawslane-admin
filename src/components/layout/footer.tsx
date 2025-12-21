@@ -31,6 +31,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
 
   if (userRole === 'admin') {
     forLawyersLinks.push({ href: `/admin`, label: 'แดชบอร์ดผู้ดูแล' });
+    forLawyersLinks.push({ href: `/lawyer-dashboard?view=admin`, label: 'แดชบอร์ดทนาย (Admin View)' });
   }
 
 

@@ -289,6 +289,90 @@ export async function getLawyerDashboardData(db: Firestore, lawyerId: string): P
   };
 }
 
+export async function getAdminLawyerDashboardData(db: Firestore): Promise<{ newRequests: LawyerAppointmentRequest[], activeCases: LawyerCase[], completedCases: LawyerCase[] }> {
+  if (!db) return { newRequests: [], activeCases: [], completedCases: [] };
+
+  let newRequests: LawyerAppointmentRequest[] = [];
+  let lawyerCases: LawyerCase[] = [];
+
+  try {
+    // Fetch ALL pending appointment requests
+    const appointmentsRef = collection(db, 'appointments');
+    const requestsQuery = query(appointmentsRef, where('status', '==', 'pending'));
+    const requestsSnapshot = await getDocs(requestsQuery);
+    newRequests = await Promise.all(requestsSnapshot.docs.map(async d => {
+      const data = d.data();
+      let clientName = 'ลูกค้า';
+      try {
+        if (data.userId) {
+          const userDoc = await getDoc(doc(db, 'users', data.userId));
+          if (userDoc.exists()) clientName = userDoc.data().name || 'ลูกค้า';
+        }
+      } catch (e) {
+        console.warn("Error fetching client details for request:", e);
+      }
+      return {
+        id: d.id,
+        clientName: clientName,
+        userId: data.userId || '',
+        caseTitle: data.description,
+        description: data.description,
+        requestedAt: data.createdAt?.toDate() || new Date(),
+      }
+    }));
+  } catch (error) {
+    console.error("Error fetching admin lawyer requests:", error);
+  }
+
+  try {
+    // Fetch ALL cases (chats)
+    const chatsRef = collection(db, 'chats');
+    const casesSnapshot = await getDocs(chatsRef);
+    lawyerCases = await Promise.all(casesSnapshot.docs.map(async (d) => {
+      const chatData = d.data();
+      // For admin view, maybe show both lawyer and client? 
+      // For now, let's just try to find the client.
+      // Participants usually has 2 IDs. One is lawyer, one is client.
+      // It's hard to know which is which without checking roles.
+      // But usually the one that is NOT the current user is the "other".
+      // Here we are admin, so neither might be us.
+
+      // Let's just take the first participant as "Client" for display purposes if we can't distinguish easily,
+      // or try to fetch both names.
+
+      let clientName = 'Unknown';
+      let clientId = '';
+
+      if (chatData.participants && chatData.participants.length > 0) {
+        // Try to find the one that is a 'user' role, but we don't know roles here easily.
+        // Let's just pick the first one for now or try to fetch names.
+        clientId = chatData.participants[0];
+        try {
+          const userDoc = await getDoc(doc(db, 'users', clientId));
+          if (userDoc.exists()) clientName = userDoc.data().name || 'Unknown';
+        } catch (e) { }
+      }
+
+      return {
+        id: d.id,
+        title: chatData.caseTitle || 'Unknown Case',
+        clientName: clientName, // This might be the lawyer's name in some cases, but acceptable for admin overview
+        clientId: clientId,
+        status: chatData.status,
+        lastUpdate: chatData.lastMessageAt?.toDate().toLocaleDateString('th-TH') || 'N/A',
+      };
+    }));
+  } catch (error) {
+    console.error("Error fetching admin lawyer cases:", error);
+  }
+
+  return {
+    newRequests,
+    activeCases: lawyerCases.filter(c => c.status === 'active'),
+    completedCases: lawyerCases.filter(c => c.status === 'closed'),
+  };
+}
+
 
 export async function getLawyerAppointmentRequestById(db: Firestore, id: string): Promise<LawyerAppointmentRequest | undefined> {
   if (!db) return undefined;

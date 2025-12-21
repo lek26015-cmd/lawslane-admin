@@ -67,7 +67,7 @@ export default function AdminEmailPage() {
         if (!firestore) return;
         setIsLoadingInbox(true);
         try {
-            const q = query(collection(firestore, 'sme_inquiries'), orderBy('createdAt', 'desc'), limit(50));
+            const q = query(collection(firestore, 'smeRequests'), orderBy('createdAt', 'desc'), limit(50));
             const snapshot = await getDocs(q);
             const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setInboxMessages(messages);
@@ -76,6 +76,17 @@ export default function AdminEmailPage() {
             toast({ variant: 'destructive', title: 'โหลดข้อมูลไม่สำเร็จ', description: 'ไม่สามารถดึงข้อมูลกล่องข้อความได้' });
         } finally {
             setIsLoadingInbox(false);
+        }
+    };
+
+    const getServiceLabel = (type: string) => {
+        switch (type) {
+            case 'contract': return 'ร่างและตรวจสัญญาธุรกิจ';
+            case 'advisor': return 'ที่ปรึกษากฎหมายประจำบริษัท';
+            case 'registration': return 'จดทะเบียนและใบอนุญาต';
+            case 'dispute': return 'ระงับข้อพิพาททางธุรกิจ';
+            case 'other': return 'อื่นๆ';
+            default: return type;
         }
     };
 
@@ -221,14 +232,16 @@ export default function AdminEmailPage() {
                                             <div key={msg.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <h4 className="font-semibold">{msg.name} {msg.company ? `(${msg.company})` : ''}</h4>
-                                                        <p className="text-sm text-muted-foreground">{msg.email} • {msg.tel}</p>
+                                                        <h4 className="font-semibold">{msg.name}</h4>
+                                                        <p className="text-sm text-muted-foreground">{msg.email} • {msg.phone}</p>
                                                     </div>
                                                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                                                         {msg.createdAt?.toDate ? format(msg.createdAt.toDate(), 'd MMM yyyy HH:mm', { locale: th }) : 'เมื่อสักครู่'}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm bg-gray-100 p-3 rounded-md mt-2">{msg.message}</p>
+                                                <p className="text-sm bg-gray-100 p-3 rounded-md mt-2">
+                                                    <span className="font-semibold">บริการที่สนใจ:</span> {getServiceLabel(msg.serviceType)}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>

@@ -141,7 +141,7 @@ export default function ArticlesPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="flex flex-col">
+              <Card key={i} className="flex flex-col rounded-3xl shadow-sm border-none">
                 <div className="animate-pulse bg-gray-200 h-48 w-full"></div>
                 <CardHeader>
                   <div className="animate-pulse bg-gray-200 h-6 w-3/4 rounded"></div>
@@ -159,7 +159,7 @@ export default function ArticlesPage() {
         ) : filteredArticles.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredArticles.map((article) => (
-              <Card key={article.id} className="overflow-hidden h-full flex flex-col group">
+              <Card key={article.id} className="overflow-hidden h-full flex flex-col group rounded-3xl shadow-sm border-none">
                 <Link href={`/articles/${article.slug}`} className="block">
                   <div className="relative h-48 w-full">
                     <Image

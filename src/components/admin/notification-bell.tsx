@@ -31,8 +31,7 @@ export function NotificationBell({ recipientId = 'admin' }: { recipientId?: stri
         const q = query(
             notificationsRef,
             where('recipient', '==', recipientId),
-            orderBy('createdAt', 'desc'),
-            limit(20)
+            orderBy('createdAt', 'desc')
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -54,6 +53,8 @@ export function NotificationBell({ recipientId = 'admin' }: { recipientId?: stri
 
             setNotifications(notifs);
             setUnreadCount(unread);
+        }, (error) => {
+            console.error("Notification snapshot error:", error);
         });
 
         return () => unsubscribe();

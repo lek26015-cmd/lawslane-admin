@@ -118,7 +118,7 @@ export default function LawyerProfilePage() {
                             กลับไปหน้ารายชื่อทนาย
                         </Link>
 
-                        <Card className="overflow-hidden">
+                        <Card className="overflow-hidden rounded-3xl shadow-sm border-none">
                             <div className="bg-card">
                                 <div className="p-8 flex flex-col md:flex-row items-center gap-8">
                                     <div className="relative h-32 w-32 flex-shrink-0">
@@ -170,7 +170,7 @@ export default function LawyerProfilePage() {
                             </div>
 
                             <div className="p-8">
-                                <Card>
+                                <Card className="rounded-3xl shadow-sm border-none">
                                     <CardHeader>
                                         <CardTitle>เกี่ยวกับ</CardTitle>
                                     </CardHeader>
@@ -180,26 +180,26 @@ export default function LawyerProfilePage() {
                                 </Card>
 
                                 <div className="grid md:grid-cols-2 gap-6 mt-6">
-                                    <Card>
+                                    <Card className="rounded-3xl shadow-sm border-none">
                                         <CardHeader>
                                             <CardTitle>การศึกษาและใบอนุญาต</CardTitle>
                                         </CardHeader>
                                         <CardContent className="text-muted-foreground space-y-2">
-                                            <p>นิติศาสตรบัณฑิต (เกียรตินิยม) - จุฬาลงกรณ์มหาวิทยาลัย</p>
-                                            <p>ใบอนุญาตให้ว่าความเลขที่ 12345/2550</p>
+                                            <p>{lawyer.education || "ไม่ระบุข้อมูลการศึกษา"}</p>
+                                            <p>ใบอนุญาตให้ว่าความเลขที่ {lawyer.licenseNumber}</p>
                                         </CardContent>
                                     </Card>
-                                    <Card>
+                                    <Card className="rounded-3xl shadow-sm border-none">
                                         <CardHeader>
                                             <CardTitle>ประสบการณ์</CardTitle>
                                         </CardHeader>
                                         <CardContent className="text-muted-foreground">
-                                            <p>15+ ปี ในการว่าความคดีแพ่งและพาณิชย์</p>
+                                            <p>{lawyer.experience || "ไม่ระบุประสบการณ์"}</p>
                                         </CardContent>
                                     </Card>
                                 </div>
 
-                                <Card className="mt-6">
+                                <Card className="mt-6 rounded-3xl shadow-sm border-none">
                                     <CardHeader>
                                         <CardTitle>สถิติการทำงาน</CardTitle>
                                     </CardHeader>
@@ -219,7 +219,7 @@ export default function LawyerProfilePage() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="mt-6">
+                                <Card className="mt-6 rounded-3xl shadow-sm border-none">
                                     <CardHeader>
                                         <CardTitle>รีวิวจากผู้ใช้บริการ ({reviewCount})</CardTitle>
                                     </CardHeader>

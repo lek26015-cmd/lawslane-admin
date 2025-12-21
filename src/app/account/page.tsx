@@ -377,7 +377,7 @@ export default function AccountPage() {
           </div>
 
           {/* Profile Information */}
-          <Card>
+          <Card className="rounded-3xl shadow-sm border-none">
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-4">
                 <User className="w-6 h-6" />
@@ -386,7 +386,7 @@ export default function AccountPage() {
                   <CardDescription>นี่คือข้อมูลสาธารณะของคุณ</CardDescription>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(!isEditingProfile)} disabled={isSaving}>
+              <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(!isEditingProfile)} disabled={isSaving} className="rounded-full">
                 {isEditingProfile ? 'ยกเลิก' : 'แก้ไข'}
               </Button>
             </CardHeader>
@@ -405,7 +405,7 @@ export default function AccountPage() {
                       accept="image/*"
                       onChange={handleImageChange}
                     />
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>เปลี่ยนรูปภาพ</Button>
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-full">เปลี่ยนรูปภาพ</Button>
                   </>
                 )}
               </div>
@@ -417,11 +417,12 @@ export default function AccountPage() {
                     value={profileData.name}
                     onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                     disabled={!isEditingProfile || isSaving}
+                    className="rounded-full px-4"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">อีเมล</Label>
-                  <Input id="email" type="email" value={profileData.email} disabled />
+                  <Input id="email" type="email" value={profileData.email} disabled className="rounded-full px-4" />
                 </div>
               </div>
 
@@ -438,6 +439,7 @@ export default function AccountPage() {
                         onChange={(e) => setLawyerData({ ...lawyerData, phone: formatPhoneNumber(e.target.value) })}
                         disabled={!isEditingProfile || isSaving}
                         maxLength={12}
+                        className="rounded-full px-4"
                       />
                     </div>
                     <div className="space-y-2">
@@ -447,6 +449,7 @@ export default function AccountPage() {
                         value={lawyerData.licenseNumber}
                         onChange={(e) => setLawyerData({ ...lawyerData, licenseNumber: e.target.value })}
                         disabled={!isEditingProfile || isSaving}
+                        className="rounded-full px-4"
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">
@@ -456,6 +459,7 @@ export default function AccountPage() {
                         value={lawyerData.address}
                         onChange={(e) => setLawyerData({ ...lawyerData, address: e.target.value })}
                         disabled={!isEditingProfile || isSaving}
+                        className="rounded-full px-4"
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">
@@ -465,6 +469,7 @@ export default function AccountPage() {
                         value={lawyerData.description}
                         onChange={(e) => setLawyerData({ ...lawyerData, description: e.target.value })}
                         disabled={!isEditingProfile || isSaving}
+                        className="rounded-full px-4"
                       />
                     </div>
                     <div className="space-y-2">
@@ -480,7 +485,7 @@ export default function AccountPage() {
                           }}
                           disabled={!isEditingProfile || isSaving}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="rounded-full px-4">
                             <SelectValue placeholder="เลือกจังหวัดที่ให้บริการ" />
                           </SelectTrigger>
                           <SelectContent className="max-h-[300px]">
@@ -530,6 +535,7 @@ export default function AccountPage() {
                         onChange={(e) => setLawyerData({ ...lawyerData, specialty: e.target.value })}
                         disabled={!isEditingProfile || isSaving}
                         placeholder="กฎหมายแพ่ง, กฎหมายอาญา"
+                        className="rounded-full px-4"
                       />
                     </div>
                   </div>
@@ -545,7 +551,7 @@ export default function AccountPage() {
                         onValueChange={(value) => setLawyerData({ ...lawyerData, bankName: value })}
                         disabled={!isEditingProfile || isSaving}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-full px-4">
                           <SelectValue placeholder="เลือกธนาคาร" />
                         </SelectTrigger>
                         <SelectContent>
@@ -575,6 +581,7 @@ export default function AccountPage() {
                         onChange={(e) => setLawyerData({ ...lawyerData, bankAccountName: e.target.value })}
                         disabled={!isEditingProfile || isSaving}
                         placeholder="ต้องตรงกับชื่อผู้สมัคร"
+                        className="rounded-full px-4"
                       />
                       {lawyerData.bankAccountName && lawyerData.bankAccountName !== profileData.name && (
                         <p className="text-xs text-red-500">ชื่อบัญชีต้องตรงกับชื่อ-นามสกุลของคุณ</p>
@@ -589,6 +596,7 @@ export default function AccountPage() {
                         disabled={!isEditingProfile || isSaving}
                         placeholder="xxx-x-xxxxx-x"
                         maxLength={14}
+                        className="rounded-full px-4"
                       />
                     </div>
                   </div>
@@ -597,7 +605,7 @@ export default function AccountPage() {
             </CardContent>
             {isEditingProfile && (
               <CardFooter>
-                <Button onClick={handleSaveProfile} disabled={isSaving}>
+                <Button onClick={handleSaveProfile} disabled={isSaving} className="rounded-full">
                   {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> กำลังบันทึก...</> : 'บันทึกการเปลี่ยนแปลง'}
                 </Button>
               </CardFooter>
@@ -605,7 +613,7 @@ export default function AccountPage() {
           </Card>
 
           {/* Password Settings */}
-          <Card>
+          <Card className="rounded-3xl shadow-sm border-none">
             <CardHeader className="flex items-center gap-4">
               <Lock className="w-6 h-6" />
               <div>
@@ -622,6 +630,7 @@ export default function AccountPage() {
                     type="password"
                     value={passwords.newPassword}
                     onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                    className="rounded-full px-4"
                   />
                 </div>
                 <div className="space-y-2">
@@ -631,19 +640,20 @@ export default function AccountPage() {
                     type="password"
                     value={passwords.confirmPassword}
                     onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                    className="rounded-full px-4"
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handlePasswordChange} disabled={isChangingPassword || !passwords.newPassword}>
+              <Button onClick={handlePasswordChange} disabled={isChangingPassword || !passwords.newPassword} className="rounded-full">
                 {isChangingPassword ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> กำลังเปลี่ยน...</> : 'เปลี่ยนรหัสผ่าน'}
               </Button>
             </CardFooter>
           </Card>
 
           {/* Notifications */}
-          <Card>
+          <Card className="rounded-3xl shadow-sm border-none">
             <CardHeader className="flex items-center gap-4">
               <Bell className="w-6 h-6" />
               <div>
@@ -652,7 +662,7 @@ export default function AccountPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center justify-between p-4 border rounded-3xl">
                 <div>
                   <Label htmlFor="newsletter" className="font-medium">การแจ้งเตือนทางอีเมล</Label>
                   <p className="text-sm text-muted-foreground">รับข่าวสาร, อัปเดต และเคล็ดลับทางกฎหมาย</p>
@@ -663,7 +673,7 @@ export default function AccountPage() {
           </Card>
 
           {/* Danger Zone */}
-          <Card className="border-destructive">
+          <Card className="rounded-3xl shadow-sm border-destructive">
             <CardHeader className="flex items-center gap-4">
               <ShieldAlert className="w-6 h-6 text-destructive" />
               <div>
@@ -672,14 +682,14 @@ export default function AccountPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg bg-destructive/5">
+              <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-3xl bg-destructive/5">
                 <div>
                   <p className="font-semibold">ลบบัญชี</p>
                   <p className="text-sm text-muted-foreground">ข้อมูลทั้งหมดของคุณจะถูกลบอย่างถาวร</p>
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">ลบบัญชีของฉัน</Button>
+                    <Button variant="destructive" className="rounded-full">ลบบัญชีของฉัน</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>

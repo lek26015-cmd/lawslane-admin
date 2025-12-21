@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUser, useFirebase } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, DollarSign, TrendingUp, Clock, Loader2, Wallet, History } from 'lucide-react';
+import Logo from '@/components/logo';
+import { ArrowLeft, DollarSign, TrendingUp, Clock, Loader2, Wallet, History, Briefcase, AlertCircle, Menu, X } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -48,6 +49,7 @@ type Withdrawal = {
 
 export default function LawyerFinancialsPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { firestore } = useFirebase();
     const { user, isUserLoading } = useUser();
     const { toast } = useToast();
@@ -107,13 +109,20 @@ export default function LawyerFinancialsPage() {
                 } catch (e) { return 'Unknown User'; }
             };
 
+            // Fetch lawyer's pricing (defaults if not set)
+            const lawyerDoc = await getDoc(doc(firestore, 'lawyerProfiles', user.uid));
+            const lawyerProfile = lawyerDoc.data();
+            const appointmentFeeBase = lawyerProfile?.pricing?.appointmentFee || 3500;
+            const chatFeeBase = lawyerProfile?.pricing?.chatFee || 500;
+            const platformFeeRate = lawyerProfile?.pricing?.platformFeeRate || 0.15;
+
             // Process Appointments
             for (const d of appSnapshot.docs) {
                 const data = d.data();
                 // Only count if status is not cancelled or pending_payment (unless we want to show pending)
                 if (data.status === 'cancelled' || data.status === 'pending_payment') continue;
 
-                const amount = 3500 * 0.85; // Lawyer gets 85%
+                const amount = appointmentFeeBase * (1 - platformFeeRate); // Lawyer gets (100 - GP%)
                 const isCompleted = data.status === 'completed';
 
                 if (isCompleted) {
@@ -148,7 +157,7 @@ export default function LawyerFinancialsPage() {
                 const clientId = data.participants.find((p: string) => p !== user.uid);
                 const clientName = await getUserName(clientId);
 
-                const amount = 500 * 0.85; // Lawyer gets 85%
+                const amount = chatFeeBase * (1 - platformFeeRate); // Lawyer gets (100 - GP%)
                 const isCompleted = data.status === 'closed';
 
                 if (isCompleted) {
@@ -311,7 +320,7 @@ export default function LawyerFinancialsPage() {
             <div className="container mx-auto max-w-5xl">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <Link href="/lawyer-dashboard" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-2 mb-2">
+                        <Link href={searchParams.get('view') === 'admin' ? "/lawyer-dashboard?view=admin" : "/lawyer-dashboard"} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-2 mb-2">
                             <ArrowLeft className="w-4 h-4" />
                             กลับไปที่แดชบอร์ด
                         </Link>
@@ -319,69 +328,105 @@ export default function LawyerFinancialsPage() {
                         <p className="text-muted-foreground">จัดการรายได้และการถอนเงินของคุณ</p>
                     </div>
 
-                    <Button className="bg-green-600 hover:bg-green-700" onClick={() => setIsWithdrawOpen(true)}>
+                    <Button className="bg-blue-600 hover:bg-blue-700 rounded-full" onClick={() => setIsWithdrawOpen(true)}>
                         <Wallet className="mr-2 h-4 w-4" /> แจ้งถอนเงิน
                     </Button>
 
                     <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>แจ้งถอนเงิน</DialogTitle>
-                                <DialogDescription>
-                                    ตรวจสอบรายละเอียดบัญชีธนาคารและระบุจำนวนเงินที่ต้องการถอน
-                                    <br />
-                                    <span className="text-green-600 font-semibold">ยอดที่ถอนได้: ฿{stats.availableBalance.toLocaleString()}</span>
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="p-4 bg-gray-50 rounded-lg border space-y-2">
-                                    <h4 className="font-medium text-sm text-muted-foreground mb-2">บัญชีรับเงิน (ลงทะเบียนแล้ว)</h4>
-                                    <div className="grid grid-cols-3 gap-2 text-sm">
-                                        <span className="font-semibold">ธนาคาร:</span>
-                                        <span className="col-span-2">{bankName || '-'}</span>
+                        <DialogContent hideCloseButton={true} className="w-screen h-screen max-w-none sm:h-auto sm:w-full sm:max-w-[450px] rounded-none sm:rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl duration-300 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-10 flex flex-col">
+                            {/* Mobile Header */}
+                            <div className="flex items-center justify-between px-4 py-3 bg-white border-b sm:hidden shrink-0">
+                                <Logo variant="color" href="/" />
+                                <Button variant="ghost" size="icon" onClick={() => setIsWithdrawOpen(false)}>
+                                    <Menu className="w-6 h-6 text-foreground" />
+                                </Button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] p-6 text-white">
+                                    <DialogHeader className="text-white">
+                                        <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                                            <Wallet className="w-6 h-6 animate-bounce" /> แจ้งถอนเงิน
+                                        </DialogTitle>
+                                        <DialogDescription className="text-blue-100">
+                                            ระบุจำนวนเงินที่ต้องการถอนเข้าบัญชีของคุณ
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
+                                        <p className="text-sm text-blue-100 mb-1">ยอดที่ถอนได้</p>
+                                        <p className="text-3xl font-bold">฿{stats.availableBalance.toLocaleString()}</p>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-sm">
-                                        <span className="font-semibold">เลขที่บัญชี:</span>
-                                        <span className="col-span-2">{accountNumber || '-'}</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 text-sm">
-                                        <span className="font-semibold">ชื่อบัญชี:</span>
-                                        <span className="col-span-2">{accountName || '-'}</span>
-                                    </div>
-                                    {!bankName && (
-                                        <div className="text-red-500 text-xs mt-2">
-                                            * ไม่พบข้อมูลบัญชีธนาคาร กรุณาติดต่อผู้ดูแลระบบเพื่ออัปเดตข้อมูล
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="grid gap-2">
-                                    <Label htmlFor="amount">จำนวนเงินที่ต้องการถอน</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-2.5 text-muted-foreground">฿</span>
-                                        <Input
-                                            id="amount"
-                                            type="number"
-                                            className="pl-8"
-                                            placeholder="0.00"
-                                            value={withdrawAmount}
-                                            onChange={(e) => setWithdrawAmount(e.target.value)}
-                                        />
+                                <div className="p-6 space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-gray-50 rounded-3xl border border-gray-100 space-y-3 hover:shadow-md transition-shadow duration-300">
+                                            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                                                <div className="p-2 bg-white rounded-full shadow-sm">
+                                                    <Briefcase className="w-4 h-4 text-primary" />
+                                                </div>
+                                                <span className="text-sm font-medium">บัญชีรับเงิน</span>
+                                            </div>
+
+                                            <div className="space-y-1 pl-2 border-l-2 border-primary/20">
+                                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                                    <span className="text-muted-foreground">ธนาคาร:</span>
+                                                    <span className="col-span-2 font-medium text-foreground">{bankName || '-'}</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                                    <span className="text-muted-foreground">เลขที่บัญชี:</span>
+                                                    <span className="col-span-2 font-medium text-foreground tracking-wider">{accountNumber || '-'}</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                                    <span className="text-muted-foreground">ชื่อบัญชี:</span>
+                                                    <span className="col-span-2 font-medium text-foreground">{accountName || '-'}</span>
+                                                </div>
+                                            </div>
+
+                                            {!bankName && (
+                                                <div className="flex items-center gap-2 text-red-500 text-xs bg-red-50 p-2 rounded-lg animate-pulse">
+                                                    <AlertCircle className="w-4 h-4" />
+                                                    <span>ไม่พบข้อมูลบัญชี กรุณาติดต่อผู้ดูแลระบบ</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="amount" className="text-base font-semibold">จำนวนเงินที่ต้องการถอน</Label>
+                                            <div className="relative group">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-light group-focus-within:text-blue-600 transition-colors">฿</span>
+                                                <Input
+                                                    id="amount"
+                                                    type="number"
+                                                    className="pl-10 h-14 text-lg rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300"
+                                                    placeholder="0.00"
+                                                    value={withdrawAmount}
+                                                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    <DialogFooter className="gap-2 sm:gap-0">
+                                        <Button variant="ghost" onClick={() => setIsWithdrawOpen(false)} className="rounded-full hover:bg-gray-100 text-muted-foreground">
+                                            ยกเลิก
+                                        </Button>
+                                        <Button
+                                            onClick={handleWithdraw}
+                                            disabled={isSubmitting || parseFloat(withdrawAmount) > stats.availableBalance || parseFloat(withdrawAmount) <= 0 || !bankName}
+                                            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-8 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40 transition-all duration-300 transform hover:-translate-y-0.5"
+                                        >
+                                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'ยืนยันการถอน'}
+                                        </Button>
+                                    </DialogFooter>
                                 </div>
                             </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsWithdrawOpen(false)}>ยกเลิก</Button>
-                                <Button onClick={handleWithdraw} disabled={isSubmitting || parseFloat(withdrawAmount) > stats.availableBalance || parseFloat(withdrawAmount) <= 0 || !bankName}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'ยืนยันการถอน'}
-                                </Button>
-                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <Card>
+                    <Card className="rounded-3xl shadow-sm border-none">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">ยอดเงินที่ถอนได้</CardTitle>
                             <Wallet className="w-4 h-4 text-green-600" />
@@ -391,7 +436,7 @@ export default function LawyerFinancialsPage() {
                             <CardDescription>พร้อมโอนเข้าบัญชีคุณ</CardDescription>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="rounded-3xl shadow-sm border-none">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">รายได้ทั้งหมด</CardTitle>
                             <DollarSign className="w-4 h-4 text-muted-foreground" />
@@ -401,7 +446,7 @@ export default function LawyerFinancialsPage() {
                             <CardDescription>รายได้สะสมทั้งหมด</CardDescription>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="rounded-3xl shadow-sm border-none">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">ถอนแล้ว</CardTitle>
                             <History className="w-4 h-4 text-blue-500" />
@@ -411,7 +456,7 @@ export default function LawyerFinancialsPage() {
                             <CardDescription>ยอดเงินที่โอนสำเร็จแล้ว</CardDescription>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="rounded-3xl shadow-sm border-none">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">รอดำเนินการ</CardTitle>
                             <Clock className="w-4 h-4 text-orange-500" />
@@ -430,7 +475,7 @@ export default function LawyerFinancialsPage() {
                     </TabsList>
 
                     <TabsContent value="transactions">
-                        <Card>
+                        <Card className="rounded-3xl shadow-sm border-none">
                             <CardHeader>
                                 <CardTitle>รายการธุรกรรม</CardTitle>
                                 <CardDescription>รายได้จากการให้คำปรึกษา (หักค่าธรรมเนียมแพลตฟอร์ม 15% แล้ว)</CardDescription>
@@ -473,7 +518,7 @@ export default function LawyerFinancialsPage() {
                     </TabsContent>
 
                     <TabsContent value="withdrawals">
-                        <Card>
+                        <Card className="rounded-3xl shadow-sm border-none">
                             <CardHeader>
                                 <CardTitle>ประวัติการถอนเงิน</CardTitle>
                                 <CardDescription>รายการคำร้องขอถอนเงินของคุณ</CardDescription>

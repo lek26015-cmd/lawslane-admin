@@ -50,7 +50,7 @@
     "dotenv": "^16.6.1",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
-    "firebase": "^11.10.0",
+    "firebase": "^11.9.0",
     "firebase-admin": "^13.6.0",
     "genkit": "^1.20.0",
     "input-otp": "^1.2.4",
