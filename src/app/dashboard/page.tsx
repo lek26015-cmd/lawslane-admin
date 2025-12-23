@@ -215,16 +215,20 @@ export default function DashboardPage() {
                                     <div className="space-y-3">
                                         {tickets.map((ticket) => (
                                             <Link href={`/support/${ticket.id}`} key={ticket.id}>
-                                                <div className="flex items-center justify-between p-4 rounded-3xl bg-yellow-50 border border-yellow-200 cursor-pointer hover:bg-yellow-100/50 transition-colors">
+                                                <div className={`flex items-center justify-between p-4 rounded-3xl border cursor-pointer transition-colors ${ticket.status === 'resolved' ? 'bg-green-50 border-green-200 hover:bg-green-100/50' : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100/50'}`}>
                                                     <div>
-                                                        <p className="font-semibold text-yellow-900">
-                                                            {ticket.caseTitle} <span className="font-mono text-xs text-yellow-700">({ticket.caseId})</span>
+                                                        <p className={`font-semibold ${ticket.status === 'resolved' ? 'text-green-900' : 'text-yellow-900'}`}>
+                                                            {ticket.caseTitle} <span className={`font-mono text-xs ${ticket.status === 'resolved' ? 'text-green-700' : 'text-yellow-700'}`}>({ticket.caseId})</span>
                                                         </p>
-                                                        <p className="text-sm text-yellow-800">
+                                                        <p className={`text-sm ${ticket.status === 'resolved' ? 'text-green-800' : 'text-yellow-800'}`}>
                                                             ประเภทปัญหา: {ticket.problemType} | ส่งเมื่อ: {format(ticket.reportedAt, 'dd MMM yyyy', { locale: th })}
                                                         </p>
                                                     </div>
-                                                    <Badge variant="outline" className="border-yellow-600 text-yellow-700 bg-transparent">กำลังตรวจสอบ</Badge>
+                                                    {ticket.status === 'resolved' ? (
+                                                        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">แก้ไขแล้ว</Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="border-yellow-600 text-yellow-700 bg-transparent">กำลังตรวจสอบ</Badge>
+                                                    )}
                                                 </div>
                                             </Link>
                                         ))}

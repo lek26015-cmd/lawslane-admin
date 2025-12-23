@@ -3,14 +3,12 @@
 
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getDashboardData } from '@/lib/data';
 import type { ReportedTicket } from '@/lib/types';
 import { SupportChatBox } from '@/components/chat/support-chat-box';
 
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
@@ -21,6 +19,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 
 function SupportPageContent() {
@@ -36,20 +35,35 @@ function SupportPageContent() {
     const { toast } = useToast();
 
     useEffect(() => {
-        async function fetchTicket() {
-            if (!ticketId || !firestore || !user) {
-                setIsLoading(false);
-                return;
-            }
-            const { tickets } = await getDashboardData(firestore, user.uid);
-            // Simulate changing one ticket to resolved for testing purposes
-            const modifiedTickets = tickets.map(t => t.id === 'TICKET-5891A' ? { ...t, status: 'resolved' as const } : t);
-            const currentTicket = modifiedTickets.find(t => t.id === ticketId);
-
-            setTicket(currentTicket || null);
-            setIsLoading(false);
+        if (!ticketId || !firestore || !user) {
+            return;
         }
-        fetchTicket();
+
+        const ticketRef = doc(firestore, 'tickets', ticketId);
+        const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setTicket({
+                    id: docSnap.id,
+                    caseId: data.caseId || '',
+                    lawyerId: data.lawyerId || '',
+                    caseTitle: data.caseTitle || '',
+                    problemType: data.problemType || '',
+                    status: data.status || 'pending',
+                    reportedAt: data.reportedAt ? data.reportedAt.toDate() : new Date(),
+                    clientName: data.clientName || '',
+                    email: data.email || ''
+                } as ReportedTicket);
+            } else {
+                setTicket(null);
+            }
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching ticket:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [ticketId, firestore, user]);
 
     const handleUploadClick = () => {

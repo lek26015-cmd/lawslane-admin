@@ -93,6 +93,11 @@ service cloud.firestore {
         allow create: if isSignedIn();
         allow read, update: if isOwner(resource.data.userId) || isAdmin();
         allow list: if isSignedIn() || isAdmin();
+
+        match /messages/{messageId} {
+            allow read, list: if isAdmin() || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId);
+            allow create: if isSignedIn();
+        }
     }
 
     match /withdrawals/{withdrawalId} {

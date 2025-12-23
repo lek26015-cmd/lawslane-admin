@@ -37,6 +37,11 @@ export default function LawyerRegistryPage() {
         status: 'active'
     });
 
+    // Edit State
+    const [editingLawyer, setEditingLawyer] = useState<VerifiedLawyer | null>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
     useEffect(() => {
         const checkAdmin = async () => {
             if (user && firestore) {
@@ -242,6 +247,42 @@ export default function LawyerRegistryPage() {
         }
     };
 
+    const handleEditClick = (lawyer: VerifiedLawyer) => {
+        setEditingLawyer(lawyer);
+        setIsEditOpen(true);
+    };
+
+    const handleUpdateLawyer = async () => {
+        if (!firestore || !editingLawyer) return;
+
+        setIsUpdating(true);
+        try {
+            const docRef = doc(firestore, 'verifiedLawyers', editingLawyer.id);
+            await setDoc(docRef, {
+                ...editingLawyer,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+
+            toast({
+                title: "อัปเดตสำเร็จ",
+                description: "แก้ไขข้อมูลทนายความเรียบร้อยแล้ว",
+            });
+
+            setIsEditOpen(false);
+            setEditingLawyer(null);
+            fetchLawyers();
+        } catch (error) {
+            console.error("Error updating lawyer:", error);
+            toast({
+                title: "เกิดข้อผิดพลาด",
+                description: "ไม่สามารถอัปเดตข้อมูลได้",
+                variant: "destructive",
+            });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     const filteredLawyers = lawyers.filter(l =>
         l.licenseNumber.includes(searchQuery) ||
         l.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -337,6 +378,82 @@ export default function LawyerRegistryPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Edit Dialog */}
+                <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>แก้ไขข้อมูลทนายความ</DialogTitle>
+                            <DialogDescription>
+                                แก้ไขข้อมูลทนายความในฐานข้อมูล
+                            </DialogDescription>
+                        </DialogHeader>
+                        {editingLawyer && (
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-license" className="text-right">เลขใบอนุญาต</Label>
+                                    <Input
+                                        id="edit-license"
+                                        value={editingLawyer.licenseNumber}
+                                        onChange={(e) => setEditingLawyer({ ...editingLawyer, licenseNumber: e.target.value })}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-firstname" className="text-right">ชื่อ</Label>
+                                    <Input
+                                        id="edit-firstname"
+                                        value={editingLawyer.firstName}
+                                        onChange={(e) => setEditingLawyer({ ...editingLawyer, firstName: e.target.value })}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-lastname" className="text-right">นามสกุล</Label>
+                                    <Input
+                                        id="edit-lastname"
+                                        value={editingLawyer.lastName}
+                                        onChange={(e) => setEditingLawyer({ ...editingLawyer, lastName: e.target.value })}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-province" className="text-right">จังหวัด</Label>
+                                    <Input
+                                        id="edit-province"
+                                        value={editingLawyer.province}
+                                        onChange={(e) => setEditingLawyer({ ...editingLawyer, province: e.target.value })}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-status" className="text-right">สถานะ</Label>
+                                    <Select
+                                        value={editingLawyer.status}
+                                        onValueChange={(val: any) => setEditingLawyer({ ...editingLawyer, status: val })}
+                                    >
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="เลือกสถานะ" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="active">ปกติ (Active)</SelectItem>
+                                            <SelectItem value="pending">รอตรวจสอบ (Pending)</SelectItem>
+                                            <SelectItem value="suspended">ถูกระงับ (Suspended)</SelectItem>
+                                            <SelectItem value="struck_off">ลบชื่อออก (Struck Off)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsEditOpen(false)}>ยกเลิก</Button>
+                            <Button onClick={handleUpdateLawyer} disabled={isUpdating}>
+                                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                บันทึกการแก้ไข
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="grid gap-8 md:grid-cols-3">
@@ -426,7 +543,7 @@ export default function LawyerRegistryPage() {
                                         <TableHead>ชื่อ-นามสกุล</TableHead>
                                         <TableHead>จังหวัด</TableHead>
                                         <TableHead>สถานะ</TableHead>
-                                        <TableHead className="text-right">อัปเดตเมื่อ</TableHead>
+                                        <TableHead className="text-right">จัดการ</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -447,8 +564,10 @@ export default function LawyerRegistryPage() {
                                                         {lawyer.status === 'active' ? 'ปกติ' : lawyer.status === 'pending' ? 'รอตรวจสอบ' : lawyer.status === 'suspended' ? 'ถูกระงับ' : 'ลบชื่อออก'}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right text-xs text-slate-500">
-                                                    {new Date(lawyer.updatedAt).toLocaleDateString('th-TH')}
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" onClick={() => handleEditClick(lawyer)}>
+                                                        แก้ไข
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))
