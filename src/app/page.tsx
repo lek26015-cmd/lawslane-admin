@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Users, ShieldCheck, ArrowRight, Briefcase, UserCheck, FileText, Download } from 'lucide-react';
+import { MessageSquare, Users, ShieldCheck, ArrowRight, Briefcase, UserCheck, FileText, Download, Check } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getApprovedLawyers, getAllArticles, getAdsByPlacement, getImageUrl, getImageHint } from '@/lib/data';
@@ -125,29 +125,87 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Legal Forms CTA */}
-        <section className="w-full py-12 bg-blue-50 border-b border-blue-100">
+        {/* Legal Forms CTA - Redesigned (Text Left, Features Right) */}
+        <section className="w-full py-16 md:py-24 bg-white">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-blue-600 rounded-2xl shadow-lg text-white hidden md:block">
-                  <FileText className="w-8 h-8" />
-                </div>
-                <div className="space-y-1 text-center md:text-left">
-                  <h3 className="text-2xl font-bold text-[#0B3979] font-headline">
-                    แจกฟรี! แบบฟอร์มสัญญาและเอกสารกฎหมาย
-                  </h3>
-                  <p className="text-slate-600 max-w-xl">
-                    ดาวน์โหลดเอกสารมาตรฐานที่ผ่านการตรวจสอบจากทนายความมืออาชีพ ได้ฟรีทันที
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left Column: Text Content */}
+              <FadeIn direction="right">
+                <div className="space-y-6">
+                  <h2 className="text-3xl md:text-4xl font-bold font-headline text-[#0B3979]">
+                    ดาวน์โหลดแบบฟอร์มทางกฎหมายกับเราได้ฟรี!!
+                  </h2>
+                  <p className="text-slate-600 text-lg leading-relaxed">
+                    เรามุ่งมั่นที่จะรวบรวมแบบฟอร์มทางกฎหมายที่ถูกต้องและเป็นปัจจุบันที่สุด เพื่อให้คุณมั่นใจในทุกนิติกรรมสัญญา ลดความเสี่ยงทางกฎหมาย ด้วยเอกสารที่ร่างโดยทนายความมืออาชีพ
                   </p>
+                  <div className="pt-2">
+                    <Link href="/forms" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white bg-[#0B3979] rounded-full hover:bg-[#082a5a] shadow-lg hover:shadow-xl transition-all duration-300 group">
+                      ดาวน์โหลดแบบฟอร์มทั้งหมด
+                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-              <Button size="lg" className="bg-[#0B3979] hover:bg-[#082a5a] shadow-lg hover:shadow-xl transition-all" asChild>
-                <Link href="/forms" className="flex items-center gap-2">
-                  <Download className="w-5 h-5" />
-                  ดาวน์โหลดแบบฟอร์ม
-                </Link>
-              </Button>
+              </FadeIn>
+
+              {/* Right Column: Features List */}
+              <FadeIn direction="left" delay={200}>
+                <div className="space-y-4">
+                  {[
+                    "ร่างโดยทนายความมืออาชีพ ถูกต้องตามกฎหมาย",
+                    "อัปเดตใหม่ล่าสุด ครอบคลุมทุกประเภทสัญญา",
+                    "ดาวน์โหลดฟรี ใช้งานได้ทันที แก้ไขได้ง่าย"
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-center gap-4 bg-slate-50 px-6 py-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all hover:-translate-y-1">
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <Check className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="text-slate-700 font-medium text-lg">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </FadeIn>
+            </div>
+          </div>
+        </section>
+
+        {/* Lawyer Search CTA */}
+        <section className="w-full py-16 md:py-24 bg-blue-50">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="max-w-4xl mx-auto">
+              <FadeIn direction="up" className="text-center">
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <h2 className="text-3xl md:text-4xl font-bold font-headline text-[#0B3979]">
+                      ค้นหาทนายความที่ใช่สำหรับคุณ
+                    </h2>
+                    <p className="text-slate-600 text-lg leading-relaxed max-w-2xl mx-auto">
+                      ปรึกษาปัญหากฎหมายกับทนายความผู้เชี่ยวชาญเฉพาะด้าน ค้นหาง่าย เชื่อถือได้ พร้อมให้คำปรึกษาทันที ผ่านระบบวิดีโอคอลหรือแชท
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row justify-center gap-4 text-left">
+                    {[
+                      "ทนายความที่ผ่านการตรวจสอบใบอนุญาต",
+                      "เชี่ยวชาญหลากหลายสาขา",
+                      "ดูรีวิวและค่าบริการได้ชัดเจน"
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-center gap-3 bg-white px-5 py-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                          <Check className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <span className="text-slate-700 font-medium">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-4">
+                    <Link href="/lawyers" className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-white bg-[#0B3979] rounded-full hover:bg-[#082a5a] shadow-lg hover:shadow-xl transition-all duration-300 group">
+                      ค้นหาทนายความ
+                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
+                </div>
+              </FadeIn>
             </div>
           </div>
         </section>
