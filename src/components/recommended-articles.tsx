@@ -49,7 +49,7 @@ export function RecommendedArticles({ limit = 3 }: RecommendedArticlesProps) {
             </h3>
             <div className="space-y-4">
                 {articles.map((article) => (
-                    <Link key={article.id} href={`/blog/${article.slug}`} className="block group">
+                    <Link key={article.id} href={`/articles/${article.slug}`} className="block group">
                         <div className="flex gap-4 items-start">
                             <div className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-slate-100 shadow-sm group-hover:shadow-md transition-all duration-300">
                                 <Image
@@ -72,7 +72,7 @@ export function RecommendedArticles({ limit = 3 }: RecommendedArticlesProps) {
                 ))}
             </div>
             <div className="mt-6 pl-1">
-                <Link href="/blog" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 hover:text-[#0B3979] hover:border-blue-100 transition-all duration-300">
+                <Link href="/articles" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 hover:text-[#0B3979] hover:border-blue-100 transition-all duration-300">
                     ดูบทความทั้งหมด
                     <span aria-hidden="true">&rarr;</span>
                 </Link>
