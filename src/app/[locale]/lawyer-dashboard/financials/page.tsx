@@ -433,150 +433,149 @@ export default function LawyerFinancialsPage() {
                                     </Button>
                                 </DialogFooter>
                             </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <Card className="rounded-3xl shadow-sm border-none">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">ยอดเงินที่ถอนได้</CardTitle>
-                        <Wallet className="w-4 h-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">฿{stats.availableBalance.toLocaleString()}</div>
-                        <CardDescription>พร้อมโอนเข้าบัญชีคุณ</CardDescription>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-3xl shadow-sm border-none">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">รายได้ทั้งหมด</CardTitle>
-                        <DollarSign className="w-4 h-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">฿{stats.totalIncome.toLocaleString()}</div>
-                        <CardDescription>รายได้สะสมทั้งหมด</CardDescription>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-3xl shadow-sm border-none">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">ถอนแล้ว</CardTitle>
-                        <History className="w-4 h-4 text-blue-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">฿{stats.withdrawnAmount.toLocaleString()}</div>
-                        <CardDescription>ยอดเงินที่โอนสำเร็จแล้ว</CardDescription>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-3xl shadow-sm border-none">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">รอดำเนินการ</CardTitle>
-                        <Clock className="w-4 h-4 text-orange-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">฿{stats.pendingIncome.toLocaleString()}</div>
-                        <CardDescription>จากเคสที่ยังไม่เสร็จสิ้น</CardDescription>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Tabs defaultValue="transactions" className="w-full">
-                <TabsList className="mb-4">
-                    <TabsTrigger value="transactions">รายการรายรับ</TabsTrigger>
-                    <TabsTrigger value="withdrawals">ประวัติการถอนเงิน</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="transactions">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <Card className="rounded-3xl shadow-sm border-none">
-                        <CardHeader>
-                            <CardTitle>รายการธุรกรรม</CardTitle>
-                            <CardDescription>รายได้จากการให้คำปรึกษา (หักค่าธรรมเนียมแพลตฟอร์ม 15% แล้ว)</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">ยอดเงินที่ถอนได้</CardTitle>
+                            <Wallet className="w-4 h-4 text-green-600" />
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>วันที่</TableHead>
-                                        <TableHead>รายการ</TableHead>
-                                        <TableHead>ลูกค้า</TableHead>
-                                        <TableHead>สถานะ</TableHead>
-                                        <TableHead className="text-right">จำนวนเงิน (85%)</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {transactions.length > 0 ? (
-                                        transactions.map((t) => (
-                                            <TableRow key={t.id}>
-                                                <TableCell>{t.date}</TableCell>
-                                                <TableCell>{t.description}</TableCell>
-                                                <TableCell>{t.clientName}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={t.status === 'completed' ? 'default' : 'secondary'} className={t.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}>
-                                                        {t.status === 'completed' ? 'ได้รับแล้ว' : 'รอดำเนินการ'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">฿{t.amount.toLocaleString()}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">ไม่มีรายการธุรกรรม</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                            <div className="text-2xl font-bold text-green-600">฿{stats.availableBalance.toLocaleString()}</div>
+                            <CardDescription>พร้อมโอนเข้าบัญชีคุณ</CardDescription>
                         </CardContent>
                     </Card>
-                </TabsContent>
-
-                <TabsContent value="withdrawals">
                     <Card className="rounded-3xl shadow-sm border-none">
-                        <CardHeader>
-                            <CardTitle>ประวัติการถอนเงิน</CardTitle>
-                            <CardDescription>รายการคำร้องขอถอนเงินของคุณ</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">รายได้ทั้งหมด</CardTitle>
+                            <DollarSign className="w-4 h-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>วันที่แจ้ง</TableHead>
-                                        <TableHead>ธนาคาร</TableHead>
-                                        <TableHead>เลขที่บัญชี</TableHead>
-                                        <TableHead>สถานะ</TableHead>
-                                        <TableHead className="text-right">จำนวนเงิน</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {withdrawals.length > 0 ? (
-                                        withdrawals.map((w) => (
-                                            <TableRow key={w.id}>
-                                                <TableCell>
-                                                    {w.requestedAt?.toDate ? format(w.requestedAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'กำลังดำเนินการ'}
-                                                </TableCell>
-                                                <TableCell>{w.bankName}</TableCell>
-                                                <TableCell>{w.accountNumber}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={w.status === 'approved' ? 'default' : w.status === 'rejected' ? 'destructive' : 'secondary'}
-                                                        className={w.status === 'approved' ? 'bg-green-100 text-green-800' : ''}>
-                                                        {w.status === 'approved' ? 'โอนแล้ว' : w.status === 'rejected' ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">฿{w.amount.toLocaleString()}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">ไม่มีประวัติการถอนเงิน</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                            <div className="text-2xl font-bold">฿{stats.totalIncome.toLocaleString()}</div>
+                            <CardDescription>รายได้สะสมทั้งหมด</CardDescription>
                         </CardContent>
                     </Card>
-                </TabsContent>
-            </Tabs>
-        </div>
+                    <Card className="rounded-3xl shadow-sm border-none">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">ถอนแล้ว</CardTitle>
+                            <History className="w-4 h-4 text-blue-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-blue-600">฿{stats.withdrawnAmount.toLocaleString()}</div>
+                            <CardDescription>ยอดเงินที่โอนสำเร็จแล้ว</CardDescription>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-3xl shadow-sm border-none">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">รอดำเนินการ</CardTitle>
+                            <Clock className="w-4 h-4 text-orange-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-orange-600">฿{stats.pendingIncome.toLocaleString()}</div>
+                            <CardDescription>จากเคสที่ยังไม่เสร็จสิ้น</CardDescription>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Tabs defaultValue="transactions" className="w-full">
+                    <TabsList className="mb-4">
+                        <TabsTrigger value="transactions">รายการรายรับ</TabsTrigger>
+                        <TabsTrigger value="withdrawals">ประวัติการถอนเงิน</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="transactions">
+                        <Card className="rounded-3xl shadow-sm border-none">
+                            <CardHeader>
+                                <CardTitle>รายการธุรกรรม</CardTitle>
+                                <CardDescription>รายได้จากการให้คำปรึกษา (หักค่าธรรมเนียมแพลตฟอร์ม 15% แล้ว)</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>วันที่</TableHead>
+                                            <TableHead>รายการ</TableHead>
+                                            <TableHead>ลูกค้า</TableHead>
+                                            <TableHead>สถานะ</TableHead>
+                                            <TableHead className="text-right">จำนวนเงิน (85%)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {transactions.length > 0 ? (
+                                            transactions.map((t) => (
+                                                <TableRow key={t.id}>
+                                                    <TableCell>{t.date}</TableCell>
+                                                    <TableCell>{t.description}</TableCell>
+                                                    <TableCell>{t.clientName}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={t.status === 'completed' ? 'default' : 'secondary'} className={t.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}>
+                                                            {t.status === 'completed' ? 'ได้รับแล้ว' : 'รอดำเนินการ'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">฿{t.amount.toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">ไม่มีรายการธุรกรรม</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="withdrawals">
+                        <Card className="rounded-3xl shadow-sm border-none">
+                            <CardHeader>
+                                <CardTitle>ประวัติการถอนเงิน</CardTitle>
+                                <CardDescription>รายการคำร้องขอถอนเงินของคุณ</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>วันที่แจ้ง</TableHead>
+                                            <TableHead>ธนาคาร</TableHead>
+                                            <TableHead>เลขที่บัญชี</TableHead>
+                                            <TableHead>สถานะ</TableHead>
+                                            <TableHead className="text-right">จำนวนเงิน</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {withdrawals.length > 0 ? (
+                                            withdrawals.map((w) => (
+                                                <TableRow key={w.id}>
+                                                    <TableCell>
+                                                        {w.requestedAt?.toDate ? format(w.requestedAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'กำลังดำเนินการ'}
+                                                    </TableCell>
+                                                    <TableCell>{w.bankName}</TableCell>
+                                                    <TableCell>{w.accountNumber}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={w.status === 'approved' ? 'default' : w.status === 'rejected' ? 'destructive' : 'secondary'}
+                                                            className={w.status === 'approved' ? 'bg-green-100 text-green-800' : ''}>
+                                                            {w.status === 'approved' ? 'โอนแล้ว' : w.status === 'rejected' ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">฿{w.amount.toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">ไม่มีประวัติการถอนเงิน</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            </div>
         </div >
     );
 }
