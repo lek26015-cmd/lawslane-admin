@@ -282,22 +282,24 @@ export default function LawyerFinancialsPage() {
                 amount: amount,
                 bankName,
                 accountNumber,
-                // Create Admin Notification (In-App)
-                await addDoc(collection(firestore, 'notifications'), {
-                    type: 'withdrawal',
-                    title: 'คำร้องขอถอนเงินใหม่',
-                    message: `มีคำร้องขอถอนเงินจากทนายความ (฿${amount.toLocaleString()})`,
-                    createdAt: serverTimestamp(),
-                    read: false,
-                    recipient: 'admin',
-                    link: `/admin/financials`,
-                    relatedId: user.uid
-                });
+            });
 
-                // Send Email Notification to Admins
-                // We don't await this to prevent blocking the UI response
-                notifyAdmins('withdrawal', {
-                    lawyerName: user.displayName || accountName || 'Unknown Lawyer',
+            // Create Admin Notification (In-App)
+            await addDoc(collection(firestore, 'notifications'), {
+                type: 'withdrawal',
+                title: 'คำร้องขอถอนเงินใหม่',
+                message: `มีคำร้องขอถอนเงินจากทนายความ (฿${amount.toLocaleString()})`,
+                createdAt: serverTimestamp(),
+                read: false,
+                recipient: 'admin',
+                link: `/admin/financials`,
+                relatedId: user.uid
+            });
+
+            // Send Email Notification to Admins
+            // We don't await this to prevent blocking the UI response
+            notifyAdmins('withdrawal', {
+                lawyerName: user.displayName || accountName || 'Unknown Lawyer',
                 amount: amount,
                 bankName: bankName,
                 accountNumber: accountNumber
