@@ -20,10 +20,9 @@ export default async function middleware(request: NextRequest) {
         const hasLocale = ['/th', '/en', '/zh'].some(locale => pathname.startsWith(locale));
 
         if (!pathname.includes('/admin')) {
-            // If path is just '/' or '/th', rewrite to '/admin' or '/th/admin'
-            const newPath = hasLocale
-                ? pathname.replace(/^(\/[a-z]{2})/, '$1/admin')
-                : `/admin${pathname}`;
+            // Admin pages are NOT localized (they are at root /admin, not /[locale]/admin)
+            // So we must rewrite to /admin, stripping any locale prefix if present
+            const newPath = `/admin${pathname.replace(/^\/[a-z]{2}/, '')}`;
 
             return NextResponse.rewrite(new URL(newPath, request.url));
         }
@@ -44,7 +43,12 @@ export default async function middleware(request: NextRequest) {
     }
 
     // 2. Internationalization Middleware
-    return intlMiddleware(request);
+    const response = intlMiddleware(request);
+
+    // Add Security Headers
+    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+
+    return response;
 }
 
 export const config = {
