@@ -2,9 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { useChat } from '@/context/chat-context';
+import { useTranslations } from 'next-intl';
 
 export default function AiConsultButton() {
     const { setAiChatOpen } = useChat();
+    const t = useTranslations('HomePage.aiAnalysis');
 
     return (
         <Button
@@ -13,7 +15,7 @@ export default function AiConsultButton() {
             className="bg-transparent text-white border-white hover:bg-white/10 hover:text-white text-lg"
             onClick={() => setAiChatOpen(true)}
         >
-            ปรึกษา AI ทนายความ
+            {t('consultButton')}
         </Button>
     );
 }

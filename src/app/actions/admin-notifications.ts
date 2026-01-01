@@ -54,7 +54,7 @@ export async function getNotificationPreferences(uid: string): Promise<{ success
     }
 }
 
-export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment', data: any) {
+export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' | 'withdrawal' | 'slip_limit_warning', data: any) {
     if (!process.env.RESEND_API_KEY) {
         console.warn('RESEND_API_KEY is not set. Skipping admin notifications.');
         return;
@@ -79,6 +79,11 @@ export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment', 
             const userData = doc.data();
             const prefs = userData.notificationPreferences as NotificationPreferences | undefined;
 
+            // Special case for slip_limit_warning: Send ONLY to specific email
+            if (type === 'slip_limit_warning') {
+                return; // Skip normal admin loop
+            }
+
             // Default to true if no prefs set (or handle as you see fit - maybe default false?)
             // Let's assume if no prefs, they get everything to be safe, or nothing?
             // Based on user request "want to configure", implies current default is "everyone gets it" or "hardcoded".
@@ -100,6 +105,11 @@ export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment', 
                 recipients.push(emailToSend);
             }
         });
+
+        // Special case injection
+        if (type === 'slip_limit_warning') {
+            recipients.push('lek.26015@gmail.com');
+        }
 
         if (recipients.length === 0) return;
 
@@ -128,6 +138,39 @@ export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment', 
             // Placeholder for payment
             subject = `[Lawslane Admin] การชำระเงินสำเร็จ`;
             html = `<p>มีการชำระเงินเข้ามาใหม่</p>`;
+        } else if (type === 'withdrawal') {
+            subject = `[Lawslane Admin] คำร้องขอถอนเงินใหม่: ฿${data.amount.toLocaleString()}`;
+            html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1a365d;">มีคำร้องขอถอนเงินใหม่</h2>
+            <div style="background-color: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>ทนายความ:</strong> ${data.lawyerName}</p>
+                <p><strong>จำนวนเงิน:</strong> <span style="color: #2563eb; font-weight: bold;">฿${data.amount.toLocaleString()}</span></p>
+                <p><strong>ธนาคาร:</strong> ${data.bankName}</p>
+                <p><strong>เลขที่บัญชี:</strong> ${data.accountNumber}</p>
+                <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
+            </div>
+            <p>กรุณาตรวจสอบและดำเนินการโอนเงินได้ที่ระบบหลังบ้าน:</p>
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://lawslane.com'}/admin/financials" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                ไปที่หน้าการเงิน (Admin)
+            </a>
+        </div>
+            `;
+        } else if (type === 'slip_limit_warning') {
+            subject = `[Lawslane Admin] แจ้งเตือน: การใช้งาน SlipOK ใกล้เต็มโควต้า (${data.count}/100)`;
+            html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #c53030;">แจ้งเตือนโควต้า SlipOK</h2>
+            <div style="background-color: #fff5f5; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #feb2b2;">
+                <p>ขณะนี้มีการใช้งานตรวจสอบสลิปไปแล้ว</p>
+                <p style="font-size: 24px; font-weight: bold; color: #c53030; text-align: center; margin: 20px 0;">
+                    ${data.count} / 100 ครั้ง
+                </p>
+                <p>ประจำเดือน: <strong>${data.month}</strong></p>
+            </div>
+            <p>กรุณาตรวจสอบแพ็คเกจของคุณ หรือเติมเครดิตหากจำเป็น เพื่อให้ระบบตรวจสอบสลิปทำงานได้อย่างต่อเนื่อง</p>
+        </div>
+            `;
         }
 
         // 4. Send Emails (Batch or Loop)

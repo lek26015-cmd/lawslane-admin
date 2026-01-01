@@ -89,6 +89,7 @@ const ChatRequestSchema = z.object({
     })
   ),
   prompt: z.string(),
+  locale: z.string().optional(),
 });
 
 const ChatResponseSchema = z.object({
@@ -116,10 +117,17 @@ const chatPrompt = ai.definePrompt({
     3.  If the tool returns "General Knowledge (Typhoon AI)", this means no specific legal document was found. Use this information to answer the user's question but explicitly state that it is general knowledge, not specific legal advice from the database.
     4.  If no information is found at all, answer based on your own general knowledge.
     5.  Always conclude your response by reminding the user that your analysis is for informational purposes only and they should consult with a qualified lawyer for formal advice.
-    6.  If the user's question is complex or requires legal action (e.g., suing, drafting contracts), add a section with a Call to Action to "Find a Lawyer" linking to "/lawyers".
-    7.  All responses must be in Thai.
-    8.  **CRITICAL**: In the **very first response** of the conversation, you **MUST** introduce yourself as the AI assistant for Lawslane AND explicitly state that your advice is preliminary and not a substitute for a lawyer (Limitation of Liability).
-    9.  For all **subsequent messages** (after the first one), **DO NOT** introduce yourself, **DO NOT** say "Hello" or "Sawasdee", and **DO NOT** repeat the disclaimer. Answer the user's question directly and immediately.
+    6.  **SERVICE RECOMMENDATIONS (CRITICAL)**:
+        -   **Contracts (Drafting/Review)**: If the user asks about drafting, reviewing, or creating contracts (agreements, MOUs, NDAs, etc.), you **MUST** recommend the "Contract Service" and provide this link: \`/services/contracts\`. Do NOT recommend finding a lawyer generally for this.
+        -   **Business Registration**: If the user asks about registering a company, partnership, or business entity, you **MUST** recommend the "Registration Service" and provide this link: \`/services/registration\`.
+        -   **SME Consulting/General Business**: If the user is an SME asking for general advice or has a business dispute, recommend the "SME Consultant" and provide this link: \`/sme#contact\`.
+        -   **Find a Lawyer**: ONLY recommend "Find a Lawyer" (\`/lawyers\`) if:
+            -   The user explicitly asks to find a lawyer.
+            -   The issue involves **litigation**, **court proceedings**, **suing**, or **criminal cases**.
+            -   The issue is complex and does not fit into the specific services above.
+            -   **DO NOT** recommend finding a lawyer for every single query. Use it sparingly.
+    7.  **CRITICAL**: In the **very first response** of the conversation, you **MUST** introduce yourself as the AI assistant for Lawslane AND explicitly state that your advice is preliminary and not a substitute for a lawyer (Limitation of Liability).
+    8.  For all **subsequent messages** (after the first one), **DO NOT** introduce yourself, **DO NOT** say "Hello" or "Sawasdee", and **DO NOT** repeat the disclaimer. Answer the user's question directly and immediately.
     `,
   prompt: `User prompt: {{{prompt}}}`,
 });
@@ -128,7 +136,7 @@ const chatPrompt = ai.definePrompt({
 export async function chat(
   request: z.infer<typeof ChatRequestSchema>
 ): Promise<ChatResponse> {
-  const { history, prompt } = request;
+  const { history, prompt, locale = 'th' } = request;
 
   try {
     // Check if API key is set (basic check)
@@ -137,10 +145,20 @@ export async function chat(
       throw new Error("No API Key");
     }
 
+    // Determine language instruction
+    let languageInstruction = "Answer in Thai.";
+    if (locale.startsWith('en')) {
+      languageInstruction = "Answer in English. IMPORTANT: For any specific legal terms, laws, or sensitive legal advice, you MUST provide the original Thai text alongside the English translation (e.g., 'Civil Code (ประมวลกฎหมายแพ่ง)').";
+    }
+    if (locale.startsWith('zh')) {
+      languageInstruction = "Answer in Chinese (Simplified). IMPORTANT: For any specific legal terms, laws, or sensitive legal advice, you MUST provide the original Thai text alongside the Chinese translation.";
+    }
+
     // Check if this is a subsequent message (history exists)
-    let finalPrompt = prompt;
+    let finalPrompt = `${prompt}\n\n[System Instruction: ${languageInstruction}]`;
+
     if (history && history.length > 0) {
-      finalPrompt = `${prompt}\n\n[System Note: This is a continuing conversation. Do NOT introduce yourself again. Do NOT say 'Hello' or 'Sawasdee'. Answer the question directly.]`;
+      finalPrompt += `\n\n[System Note: This is a continuing conversation. Do NOT introduce yourself again. Do NOT say 'Hello' or 'Sawasdee'. Answer the question directly.]`;
     }
 
     const { output } = await chatPrompt({
@@ -154,31 +172,89 @@ export async function chat(
 
     // Fallback: Manual RAG (Search + Template)
     // This ensures the chat "works" even without a valid API key or if the model is overloaded.
-    return await fallbackChat(prompt);
+    return await fallbackChat(prompt, locale);
   }
 }
 
 import { collection, getDocs, limit, query } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-async function fallbackChat(prompt: string): Promise<ChatResponse> {
+async function fallbackChat(prompt: string, locale: string = 'th'): Promise<ChatResponse> {
   console.log("[ChatFlow] Running fallback chat logic...");
   try {
     const { firestore, auth } = initializeFirebase();
 
-    // Try to sign in anonymously to ensure we have a valid session
-    // This helps avoid "Missing or insufficient permissions" in some server environments
-    // UPDATE: Removed anonymous sign-in as it creates unwanted user records and public read is allowed.
-    /*
-    try {
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
-        console.log("[ChatFlow] Signed in anonymously for fallback search");
-      }
-    } catch (authError) {
-      console.warn("[ChatFlow] Anonymous auth failed (ignoring):", authError);
+    // Determine language instruction for Typhoon
+    let languageInstruction = "ตอบเป็นภาษาไทย";
+    if (locale.startsWith('en')) {
+      languageInstruction = "Answer in English. IMPORTANT: For any specific legal terms, laws, or sensitive legal advice, you MUST provide the original Thai text alongside the English translation (e.g., 'Civil Code (ประมวลกฎหมายแพ่ง)').";
     }
-    */
+    if (locale.startsWith('zh')) {
+      languageInstruction = "Answer in Chinese (Simplified). IMPORTANT: For any specific legal terms, laws, or sensitive legal advice, you MUST provide the original Thai text alongside the Chinese translation.";
+    }
+
+    // Localized strings
+    const t = {
+      th: {
+        greetingTitle: "สวัสดีครับ (โหมดสำรอง)",
+        greetingContent: "สวัสดีครับ! ผมคือผู้ช่วย AI (ในโหมดสำรอง) เนื่องจากระบบหลักขัดข้อง ผมสามารถช่วยค้นหาข้อมูลกฎหมายเบื้องต้นจากฐานข้อมูลให้ได้ครับ ลองพิมพ์คำถามสั้นๆ เช่น 'มรดก', 'หย่า', หรือ 'สัญญา' ได้เลยครับ",
+        knowledgeTitle: "ข้อมูลจากฐานความรู้ (โหมดสำรอง)",
+        knowledgeIntro: (terms: string) => `จากการค้นหาคำว่า "${terms}" พบข้อมูลที่เกี่ยวข้องดังนี้ครับ:`,
+        relatedInfo: "ข้อมูลที่เกี่ยวข้อง",
+        article: "บทความ",
+        adviceTitle: "คำแนะนำเพิ่มเติม",
+        adviceContent: "ข้อมูลข้างต้นเป็นเพียงการค้นหาเบื้องต้นจากฐานข้อมูล แนะนำให้ปรึกษาทนายความเพื่อความถูกต้องครับ",
+        findLawyer: "ค้นหาทนายความผู้เชี่ยวชาญ",
+        typhoonTitle: "คำตอบจาก AI (Typhoon)",
+        typhoonAdviceTitle: "คำแนะนำ",
+        typhoonAdviceContent: "คำตอบนี้สร้างโดย AI (Typhoon) จากความรู้ทั่วไป อาจไม่ครอบคลุมกฎหมายเฉพาะเจาะจง แนะนำให้ปรึกษาทนายความ",
+        consultLawyerTitle: "แนะนำปรึกษาทนายความ",
+        consultLawyerContent: (p: string) => `สำหรับหัวข้อ "${p}" เป็นประเด็นทางกฎหมายที่อาจมีรายละเอียดซับซ้อนเฉพาะบุคคล\n\nเพื่อให้คุณได้รับคำแนะนำที่ถูกต้องและรัดกุมที่สุด ระบบขอแนะนำให้พูดคุยกับทนายความผู้เชี่ยวชาญโดยตรง เพื่อวิเคราะห์ข้อเท็จจริงในเชิงลึกครับ`,
+        consultLawyerBtn: "ปรึกษาทนายความ",
+        errorTitle: "ระบบขัดข้องชั่วคราว",
+        errorContent: (msg: string) => `ขออภัยครับ ไม่สามารถเข้าถึงฐานข้อมูลได้ในขณะนี้ (${msg}) กรุณาลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่`
+      },
+      en: {
+        greetingTitle: "Hello (Backup Mode)",
+        greetingContent: "Hello! I am the AI Assistant (in backup mode). Since the main system is currently unavailable, I can help you search for preliminary legal information from our database. Try typing short keywords like 'Inheritance', 'Divorce', or 'Contract'.",
+        knowledgeTitle: "Knowledge Base Results (Backup Mode)",
+        knowledgeIntro: (terms: string) => `Based on your search for "${terms}", here is the relevant information found:`,
+        relatedInfo: "Related Information",
+        article: "Article",
+        adviceTitle: "Additional Advice",
+        adviceContent: "The information above is a preliminary search from our database. We recommend consulting a lawyer for accuracy.",
+        findLawyer: "Find a Lawyer",
+        typhoonTitle: "Answer from AI (Typhoon)",
+        typhoonAdviceTitle: "Advice",
+        typhoonAdviceContent: "This answer was generated by AI (Typhoon) based on general knowledge and may not cover specific legal details. We recommend consulting a lawyer.",
+        consultLawyerTitle: "Consult a Lawyer",
+        consultLawyerContent: (p: string) => `Regarding "${p}", this is a legal issue that may have complex, case-specific details.\n\nTo receive the most accurate and comprehensive advice, we recommend speaking directly with a specialized lawyer to analyze the facts in depth.`,
+        consultLawyerBtn: "Consult a Lawyer",
+        errorTitle: "Temporary System Error",
+        errorContent: (msg: string) => `Sorry, we cannot access the database at this time (${msg}). Please try again or contact support.`
+      },
+      zh: {
+        greetingTitle: "你好 (备份模式)",
+        greetingContent: "你好！我是 AI 助手（备份模式）。由于主系统暂时不可用，我可以帮助您从我们的数据库中搜索初步的法律信息。尝试输入简短的关键词，如“继承”、“离婚”或“合同”。",
+        knowledgeTitle: "知识库结果 (备份模式)",
+        knowledgeIntro: (terms: string) => `根据您搜索的 "${terms}"，以下是找到的相关信息：`,
+        relatedInfo: "相关信息",
+        article: "文章",
+        adviceTitle: "额外建议",
+        adviceContent: "以上信息仅为数据库的初步搜索结果。为了准确起见，我们建议咨询律师。",
+        findLawyer: "寻找律师",
+        typhoonTitle: "AI 回答 (Typhoon)",
+        typhoonAdviceTitle: "建议",
+        typhoonAdviceContent: "此回答由 AI (Typhoon) 基于一般知识生成，可能不涵盖具体的法律细节。我们建议咨询律师。",
+        consultLawyerTitle: "咨询律师",
+        consultLawyerContent: (p: string) => `关于 "${p}"，这是一个可能涉及复杂具体细节的法律问题。\n\n为了获得最准确和全面的建议，我们建议直接与专业律师交谈，深入分析事实。`,
+        consultLawyerBtn: "咨询律师",
+        errorTitle: "系统暂时故障",
+        errorContent: (msg: string) => `抱歉，我们目前无法访问数据库 (${msg})。请重试或联系支持人员。`
+      }
+    };
+
+    const strings = locale.startsWith('en') ? t.en : (locale.startsWith('zh') ? t.zh : t.th);
 
     // Use Client SDK with simple query
     const articlesRef = collection(firestore, 'articles');
@@ -197,12 +273,12 @@ async function fallbackChat(prompt: string): Promise<ChatResponse> {
     const lowerCaseQuery = prompt.toLowerCase();
 
     // 1. Handle Greetings
-    const greetings = ['สวัสดี', 'หวัดดี', 'hello', 'hi', 'ทักทาย'];
+    const greetings = ['สวัสดี', 'หวัดดี', 'hello', 'hi', 'ทักทาย', '你好'];
     if (greetings.some(g => lowerCaseQuery.includes(g))) {
       return {
         sections: [{
-          title: "สวัสดีครับ (โหมดสำรอง)",
-          content: "สวัสดีครับ! ผมคือผู้ช่วย AI (ในโหมดสำรอง) เนื่องจากระบบหลักขัดข้อง ผมสามารถช่วยค้นหาข้อมูลกฎหมายเบื้องต้นจากฐานข้อมูลให้ได้ครับ ลองพิมพ์คำถามสั้นๆ เช่น 'มรดก', 'หย่า', หรือ 'สัญญา' ได้เลยครับ"
+          title: strings.greetingTitle,
+          content: strings.greetingContent
         }]
       };
     }
@@ -244,8 +320,8 @@ async function fallbackChat(prompt: string): Promise<ChatResponse> {
 
     if (relevantArticles.length > 0 || ragDocs.length > 0) {
       sections.push({
-        title: "ข้อมูลจากฐานความรู้ (โหมดสำรอง)",
-        content: `จากการค้นหาคำว่า "${searchTerms.join('", "')}" พบข้อมูลที่เกี่ยวข้องดังนี้ครับ:`
+        title: strings.knowledgeTitle,
+        content: strings.knowledgeIntro(searchTerms.join('", "'))
       });
 
       if (ragDocs.length > 0) {
@@ -253,7 +329,7 @@ async function fallbackChat(prompt: string): Promise<ChatResponse> {
           const cleanContent = doc.content.trim();
           if (cleanContent) {
             sections.push({
-              title: `ข้อมูลที่เกี่ยวข้อง (${index + 1})`,
+              title: `${strings.relatedInfo} (${index + 1})`,
               content: cleanContent
             });
           }
@@ -262,39 +338,39 @@ async function fallbackChat(prompt: string): Promise<ChatResponse> {
 
       relevantArticles.forEach(article => {
         sections.push({
-          title: `บทความ: ${article.title}`,
+          title: `${strings.article}: ${article.title}`,
           content: article.content.substring(0, 300) + "..." // Summary
         });
       });
 
       sections.push({
-        title: "คำแนะนำเพิ่มเติม",
-        content: "ข้อมูลข้างต้นเป็นเพียงการค้นหาเบื้องต้นจากฐานข้อมูล แนะนำให้ปรึกษาทนายความเพื่อความถูกต้องครับ",
+        title: strings.adviceTitle,
+        content: strings.adviceContent,
         link: "/lawyers",
-        linkText: "ค้นหาทนายความผู้เชี่ยวชาญ"
+        linkText: strings.findLawyer
       });
     } else {
       // 4. If no RAG/Articles, try Typhoon AI (General Knowledge)
       console.log("[ChatFlow] No RAG results, asking Typhoon...");
-      const typhoonResponse = await callTyphoonAI(prompt);
+      const typhoonResponse = await callTyphoonAI(prompt, languageInstruction);
 
       if (typhoonResponse) {
         sections.push({
-          title: "คำตอบจาก AI (Typhoon)",
+          title: strings.typhoonTitle,
           content: typhoonResponse
         });
         sections.push({
-          title: "คำแนะนำ",
-          content: "คำตอบนี้สร้างโดย AI (Typhoon) จากความรู้ทั่วไป อาจไม่ครอบคลุมกฎหมายเฉพาะเจาะจง แนะนำให้ปรึกษาทนายความ",
+          title: strings.typhoonAdviceTitle,
+          content: strings.typhoonAdviceContent,
           link: "/lawyers",
-          linkText: "ปรึกษาทนายความ"
+          linkText: strings.consultLawyerBtn
         });
       } else {
         sections.push({
-          title: "แนะนำปรึกษาทนายความ",
-          content: `สำหรับหัวข้อ "${prompt}" เป็นประเด็นทางกฎหมายที่อาจมีรายละเอียดซับซ้อนเฉพาะบุคคล\n\nเพื่อให้คุณได้รับคำแนะนำที่ถูกต้องและรัดกุมที่สุด ระบบขอแนะนำให้พูดคุยกับทนายความผู้เชี่ยวชาญโดยตรง เพื่อวิเคราะห์ข้อเท็จจริงในเชิงลึกครับ`,
+          title: strings.consultLawyerTitle,
+          content: strings.consultLawyerContent(prompt),
           link: "/lawyers",
-          linkText: "ค้นหาทนายความผู้เชี่ยวชาญ"
+          linkText: strings.findLawyer
         });
       }
     }
@@ -305,11 +381,18 @@ async function fallbackChat(prompt: string): Promise<ChatResponse> {
     console.error("[ChatFlow] Fallback logic failed:", error);
     console.error("[ChatFlow] Error details:", JSON.stringify(error, null, 2));
     // Ultimate fallback if even Firestore fails
+    // Simple fallback string since we can't easily access t here without re-defining or passing
+    const errorMsg = locale.startsWith('en')
+      ? `Sorry, we cannot access the database at this time (${error?.message || 'Unknown Error'}). Please try again.`
+      : (locale.startsWith('zh')
+        ? `抱歉，我们目前无法访问数据库 (${error?.message || 'Unknown Error'})。请重试。`
+        : `ขออภัยครับ ไม่สามารถเข้าถึงฐานข้อมูลได้ในขณะนี้ (${error?.message || 'Unknown Error'}) กรุณาลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่`);
+
     return {
       sections: [
         {
-          title: "ระบบขัดข้องชั่วคราว",
-          content: `ขออภัยครับ ไม่สามารถเข้าถึงฐานข้อมูลได้ในขณะนี้ (${error?.message || 'Unknown Error'}) กรุณาลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่`
+          title: "System Error",
+          content: errorMsg
         }
       ]
     };

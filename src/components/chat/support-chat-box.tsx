@@ -5,12 +5,14 @@ import type { ReportedTicket } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, UserCog } from 'lucide-react';
+import { Send, Loader2, UserCog, Languages } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { translateToMultipleLanguages } from '@/app/actions/translate';
+import { useTranslations } from 'next-intl';
 
 interface SupportChatBoxProps {
   ticket: ReportedTicket;
@@ -25,6 +27,8 @@ interface SupportMessage {
   senderName: string;
   avatarUrl?: string;
   createdAt?: any;
+  translation?: string;
+  isTranslating?: boolean;
 }
 
 export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: SupportChatBoxProps) {
@@ -32,6 +36,9 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations('SupportTicket');
+
+  // For admin pages without intl context, default to 'th'
 
   const { auth, firestore } = useFirebase();
   const { data: user } = useUser(auth);
@@ -39,6 +46,30 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
   const adminProfile = {
     name: 'ฝ่ายสนับสนุน',
     avatar: "https://picsum.photos/seed/admin-avatar/100/100"
+  };
+
+  const handleTranslateMessage = async (messageId: string, text: string) => {
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, isTranslating: true } : msg
+    ));
+
+    try {
+      const result = await translateToMultipleLanguages(text);
+
+      // Translate to English by default for admin/support context
+      const translatedText = result.english;
+
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, translation: translatedText, isTranslating: false }
+          : msg
+      ));
+    } catch (error) {
+      console.error('Translation failed:', error);
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId ? { ...msg, isTranslating: false } : msg
+      ));
+    }
   };
 
   useEffect(() => {
@@ -60,7 +91,6 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
   }, [firestore, ticket.id]);
 
   useEffect(() => {
-    // Auto-scroll to bottom
     if (scrollAreaRef.current) {
       const scrollableNode = scrollAreaRef.current.querySelector('div[style*="overflow: scroll"]');
       if (scrollableNode) {
@@ -74,7 +104,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
     if (!input.trim() || !user || !firestore || isDisabled) return;
 
     const text = input.trim();
-    setInput(''); // Clear input immediately
+    setInput('');
 
     try {
       const messagesRef = collection(firestore, 'tickets', ticket.id, 'messages');
@@ -88,15 +118,17 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
       });
     } catch (error) {
       console.error("Error sending message:", error);
-      // Optionally show error toast
     }
   };
+
+  const isOwnMessage = (msg: SupportMessage) =>
+    (msg.role === 'user' && !isAdmin) || (msg.role === 'admin' && isAdmin);
 
   return (
     <Card className="flex flex-col h-[80vh] shadow-lg">
       <CardHeader className="border-b">
-        <CardTitle className="text-xl">Ticket: {ticket.id}</CardTitle>
-        <p className="text-sm text-muted-foreground">พูดคุยกับฝ่ายสนับสนุนเกี่ยวกับเคส "{ticket.caseTitle}"</p>
+        <CardTitle className="text-xl">{t('ticketId')}: {ticket.id}</CardTitle>
+        <p className="text-sm text-muted-foreground">{t('chatSubtitle')} "{ticket.caseTitle}"</p>
       </CardHeader>
 
       <CardContent className="flex-grow p-0 flex flex-col min-h-0">
@@ -108,46 +140,74 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
               </div>
             ) : messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
-                ยังไม่มีข้อความ เริ่มต้นสนทนาได้เลย
+                {t('noMessages')}
               </div>
             ) : (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex items-start gap-3 ${(msg.role === 'user' && !isAdmin) || (msg.role === 'admin' && isAdmin)
-                    ? 'justify-end'
-                    : 'justify-start'
-                    }`}
-                >
-                  {((msg.role === 'admin' && !isAdmin) || (msg.role === 'user' && isAdmin)) && (
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : undefined)} />
-                      <AvatarFallback>
-                        {msg.role === 'admin' ? <UserCog className="w-5 h-5" /> : <UserCog className="w-5 h-5" />}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className="flex flex-col gap-1 items-end">
-                    <div
-                      className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${(msg.role === 'user' && !isAdmin) || (msg.role === 'admin' && isAdmin)
-                        ? 'bg-foreground text-background self-end'
-                        : 'bg-gray-200'
-                        }`}
-                    >
-                      <p>{msg.text}</p>
+              messages.map((msg) => {
+                const ownMessage = isOwnMessage(msg);
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex items-start gap-3 ${ownMessage ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!ownMessage && (
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : undefined)} />
+                        <AvatarFallback>
+                          <UserCog className="w-5 h-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className="flex flex-col gap-1">
+                      <div
+                        className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${ownMessage
+                          ? 'bg-foreground text-background'
+                          : 'bg-gray-200'
+                          }`}
+                      >
+                        <p>{msg.text}</p>
+                      </div>
+
+                      {/* Translate button - show for messages from other party */}
+                      {!ownMessage && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleTranslateMessage(msg.id, msg.text)}
+                            disabled={msg.isTranslating}
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                          >
+                            {msg.isTranslating ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Languages className="w-3 h-3" />
+                            )}
+                            <span>{msg.translation ? t('retranslate') : t('translate')}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Translation display */}
+                      {msg.translation && !ownMessage && (
+                        <div className="max-w-md px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs">
+                          <p className="text-blue-700 font-medium mb-1">{t('translationLabel')}</p>
+                          <p className="text-blue-800">{msg.translation}</p>
+                        </div>
+                      )}
+
+                      <span className="text-xs text-muted-foreground">
+                        {msg.senderName} • {msg.createdAt?.toDate ? formatTime(msg.createdAt.toDate()) : 'Just now'}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {msg.senderName} • {msg.createdAt?.toDate ? formatTime(msg.createdAt.toDate()) : 'Just now'}
-                    </span>
+                    {ownMessage && (
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={msg.avatarUrl || (isAdmin ? adminProfile.avatar : undefined)} />
+                        <AvatarFallback>{isAdmin ? <UserCog className="w-5 h-5" /> : "Me"}</AvatarFallback>
+                      </Avatar>
+                    )}
                   </div>
-                  {((msg.role === 'user' && !isAdmin) || (msg.role === 'admin' && isAdmin)) && (
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={msg.avatarUrl || (isAdmin ? adminProfile.avatar : undefined)} />
-                      <AvatarFallback>{isAdmin ? <UserCog className="w-5 h-5" /> : "Me"}</AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </ScrollArea>
@@ -157,7 +217,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isDisabled ? "Ticket นี้ได้รับการแก้ไขแล้ว" : "พิมพ์ข้อความถึงฝ่ายสนับสนุน..."}
+            placeholder={isDisabled ? t('ticketResolved') : t('typeMessage')}
             disabled={isLoading || isDisabled}
             className="flex-grow rounded-full"
           />

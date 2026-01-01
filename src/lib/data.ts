@@ -152,10 +152,10 @@ export async function getDashboardData(db: Firestore, userId: string) {
 
     return {
       id: d.id,
-      title: data.caseTitle || 'คดีไม่ระบุชื่อ',
+      title: data.caseTitle || '',
       status: data.status || 'active',
       lastMessage: data.lastMessage || '',
-      lastMessageTimestamp: data.lastMessageAt ? format(data.lastMessageAt.toDate(), 'dd MMM yyyy HH:mm', { locale: th }) : '',
+      lastMessageTimestamp: data.lastMessageAt ? data.lastMessageAt.toDate().toISOString() : '',
       lawyer: lawyer,
       updatedAt: data.lastMessageAt ? data.lastMessageAt.toDate() : new Date(),
     } as Case;
@@ -181,7 +181,7 @@ export async function getDashboardData(db: Firestore, userId: string) {
       id: d.id,
       date: data.date.toDate(),
       time: data.timeSlot || 'N/A',
-      description: data.description || 'นัดหมายปรึกษา',
+      description: data.description || '',
       lawyer: lawyer,
     } as UpcomingAppointment;
   }));
@@ -523,6 +523,7 @@ export async function getAdminStats(db: Firestore) {
     newUsers: 0,
     activeTicketsCount: 0,
     pendingLawyersCount: 0,
+    approvedLawyersCount: 0,
     totalRevenue: 0
   };
 
@@ -530,6 +531,7 @@ export async function getAdminStats(db: Firestore) {
   let newUsers = 0;
   let activeTicketsCount = 0;
   let pendingLawyersCount = 0;
+  let approvedLawyersCount = 0;
 
   try {
     // 1. Users Stats
@@ -567,11 +569,22 @@ export async function getAdminStats(db: Firestore) {
     console.warn("Failed to fetch lawyer stats:", error);
   }
 
+  try {
+    // 4. Approved Lawyers Stats
+    const lawyersRef = collection(db, 'lawyerProfiles');
+    const approvedQuery = query(lawyersRef, where('status', '==', 'approved'));
+    const approvedSnapshot = await getDocs(approvedQuery);
+    approvedLawyersCount = approvedSnapshot.size;
+  } catch (error) {
+    console.warn("Failed to fetch approved lawyer stats:", error);
+  }
+
   return {
     totalUsers,
     newUsers,
     activeTicketsCount,
     pendingLawyersCount,
+    approvedLawyersCount,
     totalRevenue: 0
   };
 }

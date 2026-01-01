@@ -23,34 +23,48 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Button } from '@/components/ui/button';
 import { Scale } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function LawyerFilterSidebar() {
-  const specialties = ['คดีฉ้อโกง SMEs', 'คดีแพ่งและพาณิชย์', 'การผิดสัญญา'];
+  const t = useTranslations('Lawyers');
+
+  // Specialty keys to map to translations
+  const specialtyKeys = [
+    'smeFraud',
+    'civilCommercial',
+    'contractBreach',
+    'realEstate',
+    'familyInheritance',
+    'criminal',
+    'labor',
+    'intellectualProperty',
+    'business'
+  ] as const;
 
   return (
     <Card className="rounded-3xl shadow-lg border-2 border-slate-100 overflow-hidden">
       <CardHeader className="bg-slate-50/50 pb-4">
-        <CardTitle className="text-xl text-primary">ตัวกรองการค้นหา</CardTitle>
+        <CardTitle className="text-xl text-primary">{t('filter.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
         <div className="space-y-3">
-          <Label htmlFor="specialty" className="text-sm font-medium text-slate-600">ความเชี่ยวชาญ</Label>
+          <Label htmlFor="specialty" className="text-sm font-medium text-slate-600">{t('filter.expertise')}</Label>
           <Select>
             <SelectTrigger id="specialty" className="rounded-full border-slate-200 bg-white shadow-sm hover:border-primary/50 transition-colors h-11">
-              <SelectValue placeholder="ทั้งหมด" />
+              <SelectValue placeholder={t('filter.all')} />
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
-              <SelectItem value="all" className="rounded-lg">ทั้งหมด</SelectItem>
-              {specialties.map((spec) => (
-                <SelectItem key={spec} value={spec} className="rounded-lg">
-                  {spec}
+              <SelectItem value="all" className="rounded-lg">{t('filter.all')}</SelectItem>
+              {specialtyKeys.map((key) => (
+                <SelectItem key={key} value={key} className="rounded-lg">
+                  {t(`specialties.${key}`)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-slate-600">คะแนนรีวิวขั้นต่ำ</Label>
+          <Label className="text-sm font-medium text-slate-600">{t('filter.minRating')}</Label>
           <RadioGroup defaultValue="all" className="space-y-2.5">
             {[4, 3, 2].map((rating) => (
               <div key={rating} className="flex items-center space-x-2">
@@ -59,24 +73,24 @@ export default function LawyerFilterSidebar() {
                   {[...Array(5)].map((_, i) => (
                     <Scale key={i} className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200'}`} />
                   ))}
-                  <span className="text-xs text-muted-foreground ml-1">ขึ้นไป</span>
+                  <span className="text-xs text-muted-foreground ml-1">{t('filter.andUp')}</span>
                 </Label>
               </div>
             ))}
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="all" id="rating-all" />
-              <Label htmlFor="rating-all" className="font-normal text-slate-600 cursor-pointer">ทั้งหมด</Label>
+              <Label htmlFor="rating-all" className="font-normal text-slate-600 cursor-pointer">{t('filter.all')}</Label>
             </div>
           </RadioGroup>
         </div>
         <div className="space-y-3">
-          <Label htmlFor="province" className="text-sm font-medium text-slate-600">จังหวัด/พื้นที่</Label>
+          <Label htmlFor="province" className="text-sm font-medium text-slate-600">{t('filter.province')}</Label>
           <Select>
             <SelectTrigger id="province" className="rounded-full border-slate-200 bg-white shadow-sm hover:border-primary/50 transition-colors h-11">
-              <SelectValue placeholder="ทุกจังหวัด" />
+              <SelectValue placeholder={t('filter.allProvinces')} />
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
-              <SelectItem value="all" className="rounded-lg">ทุกจังหวัด</SelectItem>
+              <SelectItem value="all" className="rounded-lg">{t('filter.allProvinces')}</SelectItem>
               {thaiProvinces.map((region) => (
                 <SelectGroup key={region.region}>
                   <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{region.region}</SelectLabel>
@@ -92,7 +106,7 @@ export default function LawyerFilterSidebar() {
         </div>
       </CardContent>
       <CardFooter className="pb-6 pt-2">
-        <Button className="w-full rounded-full h-11 text-base font-medium shadow-md hover:shadow-lg transition-all">ค้นหาด้วยตัวกรอง</Button>
+        <Button className="w-full rounded-full h-11 text-base font-medium shadow-md hover:shadow-lg transition-all">{t('filter.searchButton')}</Button>
       </CardFooter>
     </Card>
   );

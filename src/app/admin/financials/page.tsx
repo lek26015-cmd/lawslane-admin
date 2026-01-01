@@ -26,6 +26,7 @@ import {
   CheckCircle,
   Clock,
   Eye,
+  ScanLine,
 } from 'lucide-react';
 import {
   Bar,
@@ -59,6 +60,8 @@ import {
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getFinancialStats } from '@/lib/data';
+
+import { SlipVerifier } from '@/components/admin/slip-verifier';
 
 type Transaction = {
   id: string;
@@ -109,6 +112,23 @@ export default function AdminFinancialsPage() {
     platformTotalRevenue: 0,
     monthlyData: [] as any[]
   });
+
+  const [isVerifierOpen, setIsVerifierOpen] = React.useState(false);
+  const [selectedSlip, setSelectedSlip] = React.useState<{ url: string, amount: number, lawyerName: string } | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setSelectedSlip({
+        url: url,
+        amount: 0,
+        lawyerName: 'ทดสอบระบบ'
+      });
+      setIsVerifierOpen(true);
+    }
+  };
 
   React.useEffect(() => {
     if (firestore) {
@@ -609,6 +629,19 @@ export default function AdminFinancialsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="flex justify-end mb-4">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                    />
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                      <ScanLine className="mr-2 h-4 w-4" />
+                      ทดสอบตรวจสอบสลิป
+                    </Button>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -646,8 +679,15 @@ export default function AdminFinancialsPage() {
                               ฿{item.amount.toLocaleString()}
                             </TableCell>
                             <TableCell className="text-right space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => item.slipUrl && window.open(item.slipUrl, '_blank')} disabled={!item.slipUrl}>
-                                <Eye className="mr-1 h-3 w-3" /> ดูสลิป
+                              <Button variant="outline" size="sm" onClick={() => {
+                                setSelectedSlip({
+                                  url: item.slipUrl || '',
+                                  amount: item.amount,
+                                  lawyerName: item.lawyerName
+                                });
+                                setIsVerifierOpen(true);
+                              }} disabled={!item.slipUrl}>
+                                <Eye className="mr-1 h-3 w-3" /> ตรวจสอบสลิป
                               </Button>
                               <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprovePayment(item)}>
                                 <CheckCircle className="mr-1 h-3 w-3" /> อนุมัติ
@@ -667,6 +707,14 @@ export default function AdminFinancialsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <SlipVerifier
+              isOpen={isVerifierOpen}
+              onClose={() => setIsVerifierOpen(false)}
+              slipUrl={selectedSlip?.url || ''}
+              expectedAmount={selectedSlip?.amount}
+              expectedLawyerName={selectedSlip?.lawyerName}
+            />
 
             <TabsContent value="transactions">
               <Card className="rounded-xl">

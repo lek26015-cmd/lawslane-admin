@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 // Force restart
 
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
+
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
@@ -47,6 +51,39 @@ const nextConfig: NextConfig = {
     },
     serverComponentsExternalPackages: ['pdf-parse'],
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: `
+              default-src 'self';
+              script-src 'self' 'unsafe-eval' 'unsafe-inline' https://challenges.cloudflare.com https://apis.google.com;
+              style-src 'self' 'unsafe-inline';
+              img-src 'self' blob: data: https://placehold.co https://images.unsplash.com https://picsum.photos https://*.r2.dev https://i.pravatar.cc;
+              font-src 'self';
+              connect-src 'self' https://challenges.cloudflare.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com;
+              frame-src 'self' https://challenges.cloudflare.com;
+            `.replace(/\s{2,}/g, ' ').trim(),
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

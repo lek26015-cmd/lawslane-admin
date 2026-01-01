@@ -123,13 +123,32 @@ export default function AdminLoginPage() {
         throw new Error('การยืนยันตัวตนล้มเหลว กรุณาลองใหม่');
       }
 
-      // In a real app, you should also verify the user's role (admin) after login.
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      // 1. Sign in with Firebase Client SDK
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // 2. Get ID Token
+      const idToken = await user.getIdToken();
+
+      // 3. Create Session Cookie via API
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create session');
+      }
+
       toast({
         title: 'เข้าสู่ระบบสำเร็จ',
         description: 'กำลังนำคุณไปยังแดชบอร์ดผู้ดูแลระบบ...',
       });
-      // The layout will handle the redirect after auth state changes.
+
+      // Force refresh to update middleware state
+      router.refresh();
+      router.push('/admin');
 
     } catch (error: any) {
       console.error(error);

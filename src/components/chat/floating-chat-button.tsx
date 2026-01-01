@@ -7,9 +7,12 @@ import { MessageSquare, Sparkles } from 'lucide-react';
 import { useChat } from '@/context/chat-context';
 import { cn } from '@/lib/utils';
 
+import { useTranslations } from 'next-intl';
+
 export default function FloatingChatButton() {
   const { setAiChatOpen, isAiChatOpen } = useChat();
   const [isFooterVisible, setIsFooterVisible] = useState(false);
+  const t = useTranslations('AiAdvisor');
 
   useEffect(() => {
     const footer = document.getElementById('page-footer');
@@ -53,7 +56,7 @@ export default function FloatingChatButton() {
             aria-label="Open AI Chat"
           >
             <Sparkles className="mr-2 h-6 w-6" />
-            AI ผู้ช่วยกฎหมาย
+            {t('floatingButton')}
           </Button>
         </div>
       </div>

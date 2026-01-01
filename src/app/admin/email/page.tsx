@@ -12,6 +12,14 @@ import { Loader2, Send, Users, ShieldCheck, Mail, Inbox, History, RefreshCcw } f
 import { useFirebase } from '@/firebase';
 import { getAllUsers, getAllLawyers } from '@/lib/data';
 import { sendAdminEmail } from '@/app/actions/admin-email';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -33,6 +41,9 @@ export default function AdminEmailPage() {
     const [sentMessages, setSentMessages] = useState<any[]>([]);
     const [isLoadingInbox, setIsLoadingInbox] = useState(false);
     const [isLoadingSent, setIsLoadingSent] = useState(false);
+    const [selectedMessage, setSelectedMessage] = useState<any>(null);
+    const [isMessageOpen, setIsMessageOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('inbox');
 
     // Effect to calculate potential recipient count
     useEffect(() => {
@@ -197,7 +208,7 @@ export default function AdminEmailPage() {
                 <p className="text-muted-foreground">จัดการการสื่อสาร รับข้อความจากลูกค้า และส่งประกาศต่างๆ</p>
             </div>
             <div className="mx-auto grid w-full max-w-5xl">
-                <Tabs defaultValue="inbox" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-3 mb-8">
                         <TabsTrigger value="inbox" className="flex items-center gap-2">
                             <Inbox className="w-4 h-4" /> กล่องข้อความเข้า
@@ -229,7 +240,14 @@ export default function AdminEmailPage() {
                                 ) : (
                                     <div className="space-y-4">
                                         {inboxMessages.map((msg) => (
-                                            <div key={msg.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                            <div
+                                                key={msg.id}
+                                                className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                                                onClick={() => {
+                                                    setSelectedMessage(msg);
+                                                    setIsMessageOpen(true);
+                                                }}
+                                            >
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
                                                         <h4 className="font-semibold">{msg.name}</h4>
@@ -242,10 +260,69 @@ export default function AdminEmailPage() {
                                                 <p className="text-sm bg-gray-100 p-3 rounded-md mt-2">
                                                     <span className="font-semibold">บริการที่สนใจ:</span> {getServiceLabel(msg.serviceType)}
                                                 </p>
+                                                {msg.message && (
+                                                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                                                        {msg.message}
+                                                    </p>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
                                 )}
+
+                                <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
+                                    <DialogContent className="max-w-2xl">
+                                        <DialogHeader>
+                                            <DialogTitle>รายละเอียดข้อความ</DialogTitle>
+                                            <DialogDescription>
+                                                ส่งเมื่อ: {selectedMessage?.createdAt?.toDate ? format(selectedMessage.createdAt.toDate(), 'd MMM yyyy HH:mm', { locale: th }) : '-'}
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        {selectedMessage && (
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+                                                    <div>
+                                                        <p className="text-sm font-medium text-muted-foreground">ผู้ส่ง</p>
+                                                        <p className="font-semibold">{selectedMessage.name}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-muted-foreground">เบอร์โทรศัพท์</p>
+                                                        <p>{selectedMessage.phone}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-sm font-medium text-muted-foreground">อีเมล</p>
+                                                        <p>{selectedMessage.email}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-sm font-medium text-muted-foreground">บริการที่สนใจ</p>
+                                                        <p className="font-medium text-blue-600">{getServiceLabel(selectedMessage.serviceType)}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="text-sm font-medium text-muted-foreground">ข้อความเพิ่มเติม</p>
+                                                    <div className="p-4 border rounded-lg bg-white min-h-[100px] whitespace-pre-wrap">
+                                                        {selectedMessage.message || <span className="text-muted-foreground italic">ไม่มีข้อความเพิ่มเติม</span>}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-end gap-2 pt-4">
+                                                    <Button variant="outline" onClick={() => setIsMessageOpen(false)}>ปิด</Button>
+                                                    <Button onClick={() => {
+                                                        setRecipientType('specific');
+                                                        setSpecificEmail(selectedMessage.email);
+                                                        setSubject(`ตอบกลับ: ${getServiceLabel(selectedMessage.serviceType)}`);
+                                                        setIsMessageOpen(false);
+                                                        setActiveTab('compose');
+                                                    }}>
+                                                        <Mail className="w-4 h-4 mr-2" /> ตอบกลับ
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </DialogContent>
+                                </Dialog>
                             </CardContent>
                         </Card>
                     </TabsContent>

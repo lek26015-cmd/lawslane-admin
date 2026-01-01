@@ -17,13 +17,7 @@ import type { ChatMessage } from '@/lib/types';
 import { z } from 'zod';
 import { useChat } from '@/context/chat-context';
 import Link from 'next/link';
-
-const quickQuestions = [
-  'ร่างสัญญา',
-  'คดีมรดก',
-  'จดทะเบียนบริษัท',
-  'คดีที่ดิน',
-];
+import { useTranslations, useLocale } from 'next-intl';
 
 const ChatRequestSchema = z.object({
   history: z.array(
@@ -41,16 +35,39 @@ const isChatResponse = (content: any): content is ChatResponse => {
 
 export default function ChatModal() {
   const { isAiChatOpen, setAiChatOpen, initialPrompt, setInitialPrompt } = useChat();
+  const t = useTranslations('ChatModal');
+  const locale = useLocale();
+
+  const quickQuestions = [
+    { key: 'contract', label: t('quickQuestions.contract') },
+    { key: 'inheritance', label: t('quickQuestions.inheritance') },
+    { key: 'company', label: t('quickQuestions.company') },
+    { key: 'land', label: t('quickQuestions.land') },
+  ];
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'assistant',
-      content:
-        'สวัสดีครับ! ผมคือผู้ช่วย AI ด้านกฎหมายจาก Lawslane มีอะไรให้ผมช่วยวิเคราะห์เบื้องต้นไหมครับ?',
+      content: t('welcome'),
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Reset welcome message when locale changes
+  useEffect(() => {
+    setMessages(prev => {
+      const newMessages = [...prev];
+      if (newMessages.length > 0 && newMessages[0].id === '1') {
+        newMessages[0] = {
+          ...newMessages[0],
+          content: t('welcome')
+        };
+      }
+      return newMessages;
+    });
+  }, [locale, t]);
 
   useEffect(() => {
     if (initialPrompt && isAiChatOpen) {
@@ -109,7 +126,7 @@ export default function ChatModal() {
         content: [{ text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }],
       }));
 
-      const request: z.infer<typeof ChatRequestSchema> = { history, prompt };
+      const request: z.infer<typeof ChatRequestSchema> = { history, prompt, locale };
       const response = await chat(request);
 
       const assistantMessage: ChatMessage = {
@@ -123,7 +140,7 @@ export default function ChatModal() {
       const errorMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'ขออภัยค่ะ เกิดข้อผิดพลาดในการเชื่อมต่อกับ AI กรุณาลองใหม่อีกครั้ง',
+        content: t('error'),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -141,7 +158,7 @@ export default function ChatModal() {
       >
         <DialogHeader className="flex flex-row justify-between items-center p-4 border-b bg-foreground text-background sm:rounded-t-2xl">
           <DialogTitle asChild>
-            <h3 className="text-xl font-bold">Lawslane AI Assistant</h3>
+            <h3 className="text-xl font-bold">{t('title')}</h3>
           </DialogTitle>
           <DialogDescription className="sr-only">
             Chat with the AI assistant to get legal advice.
@@ -205,7 +222,7 @@ export default function ChatModal() {
                   <div className="bg-white border p-3 rounded-2xl shadow-sm" style={{ borderTopLeftRadius: 0 }}>
                     <div className="flex items-center space-x-2">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-sm text-muted-foreground">กำลังคิด...</span>
+                      <span className="text-sm text-muted-foreground">{t('thinking')}</span>
                     </div>
                   </div>
                 </div>
@@ -215,15 +232,15 @@ export default function ChatModal() {
         </ScrollArea>
 
         <div className="p-3 border-t bg-gray-100">
-          <p className="text-xs font-semibold text-muted-foreground mb-2 ml-1">คำถามด่วน:</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2 ml-1">{t('quickQuestionsLabel')}</p>
           <div className="flex flex-wrap gap-2">
             {quickQuestions.map(q => (
               <button
-                key={q}
-                onClick={() => handleQuickQuestion(q)}
+                key={q.key}
+                onClick={() => handleQuickQuestion(q.label)}
                 disabled={isLoading}
                 className="text-xs px-3 py-1 bg-white border border-border rounded-full hover:bg-accent transition disabled:opacity-50 disabled:cursor-not-allowed">
-                {q}
+                {q.label}
               </button>
             ))}
           </div>
@@ -234,7 +251,7 @@ export default function ChatModal() {
             <Input
               value={input}
               onChange={handleInputChange}
-              placeholder="พิมพ์คำถามของคุณ..."
+              placeholder={t('inputPlaceholder')}
               disabled={isLoading}
               className="flex-grow px-4 py-3 rounded-full bg-gray-100 border-2 border-transparent focus:bg-white focus:border-primary transition outline-none"
             />

@@ -39,9 +39,22 @@ export interface LawyerProfile {
   lineId?: string;
   status: 'approved' | 'pending' | 'rejected' | 'suspended';
   rejectionReason?: string;
+
+  // Multi-language description
   description: string;
+  descriptionEn?: string;
+  descriptionZh?: string;
+
+  // Multi-language education
   education?: string;
+  educationEn?: string;
+  educationZh?: string;
+
+  // Multi-language experience
   experience?: string;
+  experienceEn?: string;
+  experienceZh?: string;
+
   specialty: string[];
   imageUrl: string;
   imageHint: string;
@@ -87,6 +100,18 @@ export interface Article {
   authorName: string;
   coverImage?: string;
   excerpt?: string;
+  translations?: {
+    en?: {
+      title: string;
+      description: string;
+      content: string;
+    };
+    zh?: {
+      title: string;
+      description: string;
+      content: string;
+    };
+  };
 }
 
 export interface Case {
@@ -267,12 +292,19 @@ export interface LegalFormAttachment {
   url: string;
   name: string;
   type: 'pdf' | 'doc' | 'docx' | 'xls' | 'xlsx';
+  language: 'th' | 'en' | 'zh'; // Document language
 }
 
 export interface LegalForm {
   id: string;
-  title: string;
+  title: string; // Primary/fallback title (Thai)
+  titleTh?: string; // Thai title
+  titleEn?: string; // English title
+  titleZh?: string; // Chinese title
   description: string;
+  descriptionTh?: string;
+  descriptionEn?: string;
+  descriptionZh?: string;
   // Deprecated single file fields (kept for backward compatibility if needed, but we will migrate to attachments)
   fileUrl?: string;
   fileName?: string;

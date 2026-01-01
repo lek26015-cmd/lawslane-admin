@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -12,8 +13,10 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2, CheckCircle2, AlertCircle, Upload, FileText, X } from 'lucide-react';
 import { uploadToR2 } from '@/app/actions/upload-r2';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslations } from 'next-intl';
 
 export function SmeContactForm() {
+    const t = useTranslations('SMEContactForm');
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -38,7 +41,16 @@ export function SmeContactForm() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+            const selectedFile = e.target.files[0];
+            if (selectedFile.size > 5 * 1024 * 1024) {
+                toast({
+                    title: t('toast.errorTitle'),
+                    description: t('toast.fileTooLarge'),
+                    variant: "destructive"
+                });
+                return;
+            }
+            setFile(selectedFile);
         }
     };
 
@@ -72,14 +84,14 @@ export function SmeContactForm() {
 
             setIsSuccess(true);
             toast({
-                title: "ส่งข้อมูลเรียบร้อยแล้ว",
-                description: "เจ้าหน้าที่จะติดต่อกลับโดยเร็วที่สุด",
+                title: t('toast.successTitle'),
+                description: t('toast.successDesc'),
             });
         } catch (error) {
             console.error("Error submitting form:", error);
             toast({
-                title: "เกิดข้อผิดพลาด",
-                description: "ไม่สามารถส่งข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+                title: t('toast.errorTitle'),
+                description: t('toast.errorDesc'),
                 variant: "destructive"
             });
         } finally {
@@ -94,16 +106,16 @@ export function SmeContactForm() {
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                         <CheckCircle2 className="w-8 h-8 text-green-600" />
                     </div>
-                    <h3 className="text-2xl font-bold text-green-800">ส่งข้อมูลสำเร็จ!</h3>
+                    <h3 className="text-2xl font-bold text-green-800">{t('success.title')}</h3>
                     <p className="text-green-700 max-w-xs mx-auto">
-                        ขอบคุณที่สนใจบริการของเรา ทีมงาน Lawslane จะติดต่อกลับไปยังคุณ {formData.name} โดยเร็วที่สุดครับ
+                        {t('success.description', { name: formData.name })}
                     </p>
                     <Button variant="outline" onClick={() => {
                         setIsSuccess(false);
                         setFormData({ name: '', phone: '', email: '', serviceType: '' });
                         setFile(null);
                     }} className="mt-4">
-                        ส่งข้อความเพิ่ม
+                        {t('success.button')}
                     </Button>
                 </CardContent>
             </Card>
@@ -115,17 +127,17 @@ export function SmeContactForm() {
             <CardHeader className="pb-2">
                 <CardTitle className="text-2xl flex items-center gap-2 text-[#0B3979]">
                     <FileText className="w-6 h-6" />
-                    แบบฟอร์มขอรับบริการ
+                    {t('title')}
                 </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-base font-medium">ชื่อ-นามสกุล / ชื่อบริษัท</Label>
+                            <Label htmlFor="name" className="text-base font-medium">{t('labels.name')}</Label>
                             <Input
                                 id="name"
-                                placeholder="ระบุชื่อของคุณ"
+                                placeholder={t('labels.namePlaceholder')}
                                 required
                                 value={formData.name}
                                 onChange={handleChange}
@@ -133,10 +145,10 @@ export function SmeContactForm() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="phone" className="text-base font-medium">เบอร์โทรศัพท์</Label>
+                            <Label htmlFor="phone" className="text-base font-medium">{t('labels.phone')}</Label>
                             <Input
                                 id="phone"
-                                placeholder="08x-xxx-xxxx"
+                                placeholder={t('labels.phonePlaceholder')}
                                 required
                                 value={formData.phone}
                                 onChange={handleChange}
@@ -146,11 +158,11 @@ export function SmeContactForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-base font-medium">อีเมล (สำหรับรับใบเสนอราคา)</Label>
+                        <Label htmlFor="email" className="text-base font-medium">{t('labels.email')}</Label>
                         <Input
                             id="email"
                             type="email"
-                            placeholder="name@example.com"
+                            placeholder={t('labels.emailPlaceholder')}
                             required
                             value={formData.email}
                             onChange={handleChange}
@@ -159,23 +171,23 @@ export function SmeContactForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="serviceType" className="text-base font-medium">ประเภทบริการที่ต้องการ</Label>
+                        <Label htmlFor="serviceType" className="text-base font-medium">{t('labels.serviceType')}</Label>
                         <Select onValueChange={handleSelectChange} value={formData.serviceType}>
                             <SelectTrigger className="h-12">
-                                <SelectValue placeholder="เลือกประเภทบริการ" />
+                                <SelectValue placeholder={t('labels.serviceTypePlaceholder')} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="contract">ร่างและตรวจสัญญาธุรกิจ</SelectItem>
-                                <SelectItem value="advisor">ที่ปรึกษากฎหมายประจำบริษัท</SelectItem>
-                                <SelectItem value="registration">จดทะเบียนและใบอนุญาต</SelectItem>
-                                <SelectItem value="dispute">ระงับข้อพิพาททางธุรกิจ</SelectItem>
-                                <SelectItem value="other">อื่นๆ</SelectItem>
+                                <SelectItem value="contract">{t('serviceTypes.contract')}</SelectItem>
+                                <SelectItem value="advisor">{t('serviceTypes.advisor')}</SelectItem>
+                                <SelectItem value="registration">{t('serviceTypes.registration')}</SelectItem>
+                                <SelectItem value="dispute">{t('serviceTypes.dispute')}</SelectItem>
+                                <SelectItem value="other">{t('serviceTypes.other')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-base font-medium">อัปโหลดเอกสาร (ถ้ามี)</Label>
+                        <Label className="text-base font-medium">{t('labels.upload')}</Label>
                         <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             <input
                                 type="file"
@@ -206,8 +218,8 @@ export function SmeContactForm() {
                                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-1">
                                         <Upload className="w-5 h-5" />
                                     </div>
-                                    <p>คลิกเพื่ออัปโหลดเอกสาร</p>
-                                    <p className="text-xs text-slate-400">รองรับ PDF, Word, JPG, PNG (ไม่เกิน 10MB)</p>
+                                    <p>{t('upload.click')}</p>
+                                    <p className="text-xs text-slate-400">{t('upload.support')}</p>
                                 </div>
                             )}
                         </div>
@@ -216,10 +228,10 @@ export function SmeContactForm() {
                     <Button type="submit" className="w-full text-lg h-12 rounded-xl" disabled={isLoading}>
                         {isLoading ? (
                             <>
-                                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> กำลังส่งข้อมูล...
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('submitting')}
                             </>
                         ) : (
-                            'ส่งข้อมูล'
+                            t('submit')
                         )}
                     </Button>
                 </form>

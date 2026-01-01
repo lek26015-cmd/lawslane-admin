@@ -2,7 +2,7 @@
 const TYPHOON_API_URL = 'https://api.opentyphoon.ai/v1/chat/completions';
 const TYPHOON_MODEL = 'typhoon-v2.1-12b-instruct';
 
-export async function callTyphoonAI(prompt: string): Promise<string> {
+export async function callTyphoonAI(prompt: string, languageInstruction: string = "ตอบเป็นภาษาไทย"): Promise<string> {
     const apiKey = process.env.TYPHOON_API_KEY;
 
     if (!apiKey) {
@@ -21,7 +21,7 @@ export async function callTyphoonAI(prompt: string): Promise<string> {
             body: JSON.stringify({
                 model: TYPHOON_MODEL,
                 messages: [
-                    { role: "system", content: "คุณคือผู้ช่วยทนายความ AI ของ Lawslane แพลตฟอร์มกฎหมายไทย หน้าที่ของคุณคือให้คำแนะนำเบื้องต้นเกี่ยวกับกฎหมายไทยอย่างถูกต้องและเข้าใจง่าย หากไม่แน่ใจให้แนะนำปรึกษาทนายความ" },
+                    { role: "system", content: `คุณคือผู้ช่วยทนายความ AI ของ Lawslane แพลตฟอร์มกฎหมายไทย หน้าที่ของคุณคือให้คำแนะนำเบื้องต้นเกี่ยวกับกฎหมายไทยอย่างถูกต้องและเข้าใจง่าย หากไม่แน่ใจให้แนะนำปรึกษาทนายความ\n\nคำสั่งเพิ่มเติม: ${languageInstruction}` },
                     { role: "user", content: prompt }
                 ],
                 max_tokens: 512,

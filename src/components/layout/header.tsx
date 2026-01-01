@@ -1,8 +1,9 @@
 
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, usePathname } from '@/navigation';
+import { useTranslations } from 'next-intl';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ import { NotificationBell } from '@/components/admin/notification-bell';
 
 
 export default function Header({ setUserRole, domainType = 'main' }: { setUserRole: (role: string | null) => void; domainType?: string }) {
+  const t = useTranslations('Navigation');
   const pathname = usePathname();
   const isHomePage = pathname === `/` && domainType === 'main';
 
@@ -183,118 +185,124 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
       <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
         <Logo href={getMainLink('/')} variant={useTransparentHeader ? 'color' : 'white'} className={cn(useTransparentHeader ? '' : 'text-background')} />
 
-        <div className="hidden md:flex flex-1 justify-center px-8 lg:px-16">
-          <div className="relative w-full max-w-lg">
-            <Input
-              type="search"
-              placeholder="ค้นหาทนาย, ความเชี่ยวชาญ, หรือปัญหา..."
-              className={searchInputClasses}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              variant="secondary"
-              className={cn(
-                "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full",
-                useTransparentHeader
-                  ? "bg-foreground/20 hover:bg-foreground/30"
-                  : "bg-white/20 hover:bg-white/30"
-              )}
-            >
-              <Search className={cn(
-                "h-4 w-4",
-                useTransparentHeader ? "text-foreground/80" : "text-white/80"
-              )} />
-            </Button>
-          </div>
 
-        </div>
 
-        <nav className="hidden items-center gap-4 text-sm font-medium md:flex whitespace-nowrap">
-          <DropdownMenu>
-            <DropdownMenuTrigger className={cn("flex items-center gap-1 font-medium focus:outline-none", navLinkClasses)}>
-              สำหรับ SME <ChevronDown className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem asChild>
-                <Link href="/services/contracts">ร่างและตรวจสัญญาธุรกิจ</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/sme#contact">ที่ปรึกษากฎหมายประจำบริษัท</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/services/registration">จดทะเบียนและใบอนุญาต</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/sme#contact">ระงับข้อพิพาททางธุรกิจ</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Link href={getMainLink('/lawyers')} className={pathname.startsWith(`/lawyers`) ? activeNavLinkClasses : navLinkClasses}>
-            ค้นหาทนาย
-          </Link>
-          <Link href={getMainLink('/verify-lawyer')} className={pathname.startsWith(`/verify-lawyer`) ? activeNavLinkClasses : navLinkClasses}>
-            ตรวจสอบทนาย
-          </Link>
-          <Link href={getMainLink('/articles')} className={pathname.startsWith(`/articles`) ? activeNavLinkClasses : navLinkClasses}>
-            บทความ
-          </Link>
-          <Link href={getMainLink('/forms')} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
-            แบบฟอร์ม
-          </Link>
-          <Link href={getMainLink('/for-lawyers')} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
-            สำหรับทนายความ
-          </Link>
-        </nav>
-
-        <div className="hidden items-center gap-2 md:flex ml-4 whitespace-nowrap">
-          {isLoading ? null : user ? (
+        <div className="hidden md:flex items-center gap-6">
+          <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className={cn("flex items-center gap-2", loginButtonClasses)}>
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={avatarUrl || profileLawyerImg.src} />
-                    <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="hidden lg:inline">{user.displayName || user.email}</span>
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
+              <DropdownMenuTrigger className={cn("flex items-center gap-1 font-medium focus:outline-none", navLinkClasses)}>
+                {t('forSME')} <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="start">
                 <DropdownMenuItem asChild>
-                  <Link href={(role === 'lawyer' || user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2') ? "/lawyer-dashboard" : "/dashboard"}><LayoutDashboard className="mr-2" />แดชบอร์ด</Link>
+                  <Link href="/services/contracts">{t('smeMenu.contracts')}</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/account"><User className="mr-2" />จัดการบัญชี</Link>
+                  <Link href="/sme#contact">{t('smeMenu.consultant')}</Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="mr-2" />ออกจากระบบ
+                <DropdownMenuItem asChild>
+                  <Link href="/services/registration">{t('smeMenu.registration')}</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/sme#contact">{t('smeMenu.dispute')}</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Link href="/login">
-              <Button className={cn(
-                "rounded-full px-8 h-10 font-bold shadow-lg transition-all transform hover:scale-105",
-                useTransparentHeader
-                  ? "bg-[#0B3979] text-white border-2 border-white/20 hover:bg-[#082a5a]"
-                  : "bg-[#0B3979] text-white hover:bg-[#082a5a]"
-              )}>
-                เข้าสู่ระบบ
-              </Button>
+            <Link href={getMainLink('/lawyers')} className={pathname.startsWith(`/lawyers`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('findLawyer')}
             </Link>
-          )}
-          {user && (
-            <div className={cn(useTransparentHeader ? "text-foreground" : "text-background")}>
-              <NotificationBell recipientId={role === 'admin' || role === 'Super Admin' ? 'admin' : user.uid} />
+            <Link href={getMainLink('/verify-lawyer')} className={pathname.startsWith(`/verify-lawyer`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('verifyLawyer')}
+            </Link>
+            <Link href={getMainLink('/articles')} className={pathname.startsWith(`/articles`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('articles')}
+            </Link>
+            <Link href={getMainLink('/forms')} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('forms')}
+            </Link>
+            <Link href={getMainLink('/for-lawyers')} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('forLawyers')}
+            </Link>
+          </nav>
+
+          <div className="hidden items-center gap-2 md:flex ml-4 whitespace-nowrap">
+
+            {isLoading ? null : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className={cn("flex items-center gap-2", loginButtonClasses)}>
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={avatarUrl || profileLawyerImg.src} />
+                      <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="hidden lg:inline">{user.displayName || user.email}</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{t('myAccount')}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={(role === 'lawyer' || user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2') ? "/lawyer-dashboard" : "/dashboard"}><LayoutDashboard className="mr-2" />{t('dashboard')}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/account"><User className="mr-2" />{t('manageAccount')}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                    <LogOut className="mr-2" />{t('logout')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login">
+                <Button className={cn(
+                  "rounded-full px-8 h-10 font-bold shadow-lg transition-all transform hover:scale-105",
+                  useTransparentHeader
+                    ? "bg-[#0B3979] text-white border-2 border-white/20 hover:bg-[#082a5a]"
+                    : "bg-[#0B3979] text-white hover:bg-[#082a5a]"
+                )}>
+                  {t('login')}
+                </Button>
+              </Link>
+            )}
+            {user && (
+              <div className={cn(useTransparentHeader ? "text-foreground" : "text-background")}>
+                <NotificationBell recipientId={role === 'admin' || role === 'Super Admin' ? 'admin' : user.uid} />
+              </div>
+            )}
+            <div className={cn(
+              "transition-all duration-300 ease-in-out ml-2",
+              useTransparentHeader ? "text-foreground" : "text-background"
+            )}>
+              <LanguageSwitcher
+                className={cn(
+                  "h-9 px-3 text-sm",
+                  useTransparentHeader
+                    ? "text-foreground border-foreground/20 bg-foreground/5 hover:bg-foreground/10"
+                    : "text-white border-white/20 bg-white/10 hover:bg-white/20"
+                )}
+                iconClassName={useTransparentHeader ? "text-foreground" : "text-white"}
+              />
             </div>
-          )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
+          <div className={cn(
+            "transition-all duration-300 ease-in-out mr-1",
+            useTransparentHeader ? "text-foreground" : "text-background"
+          )}>
+            <LanguageSwitcher
+              className={cn(
+                "h-8 px-2 text-xs",
+                useTransparentHeader
+                  ? "text-foreground border-foreground/20 bg-foreground/5 hover:bg-foreground/10"
+                  : "text-white border-white/20 bg-white/10 hover:bg-white/20"
+              )}
+              iconClassName={useTransparentHeader ? "text-foreground" : "text-white"}
+            />
+          </div>
           {user ? (
             <Link href="/account">
               <Avatar className="w-8 h-8 border border-border/50">
@@ -306,7 +314,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
             <Link href="/login">
               <Button variant="ghost" size="icon" className={cn(useTransparentHeader ? 'text-foreground' : 'text-background')}>
                 <User className="w-5 h-5" />
-                <span className="sr-only">เข้าสู่ระบบ</span>
+                <span className="sr-only">{t('login')}</span>
               </Button>
             </Link>
           )}
@@ -325,21 +333,21 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
               </SheetHeader>
               <div className="flex flex-col gap-6 p-6">
                 <nav className="flex flex-col gap-4 text-lg mt-6">
-                  <Link href={getMainLink('/')} className="hover:text-primary">หน้าแรก</Link>
+                  <Link href={getMainLink('/')} className="hover:text-primary">{t('home')}</Link>
 
                   <div className="flex flex-col gap-2 py-2">
-                    <span className="font-semibold">สำหรับ SME</span>
-                    <Link href="/services/contracts" className="pl-4 text-base hover:text-primary text-muted-foreground">ร่างและตรวจสัญญาธุรกิจ</Link>
-                    <Link href="/sme#contact" className="pl-4 text-base hover:text-primary text-muted-foreground">ที่ปรึกษากฎหมายประจำบริษัท</Link>
-                    <Link href="/services/registration" className="pl-4 text-base hover:text-primary text-muted-foreground">จดทะเบียนและใบอนุญาต</Link>
-                    <Link href="/sme#contact" className="pl-4 text-base hover:text-primary text-muted-foreground">ระงับข้อพิพาททางธุรกิจ</Link>
+                    <span className="font-semibold">{t('forSME')}</span>
+                    <Link href="/services/contracts" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.contracts')}</Link>
+                    <Link href="/sme#contact" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.consultant')}</Link>
+                    <Link href="/services/registration" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.registration')}</Link>
+                    <Link href="/sme#contact" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.dispute')}</Link>
                   </div>
 
-                  <Link href={getMainLink('/articles')} className="hover:text-primary">บทความ</Link>
-                  <Link href={getMainLink('/forms')} className="hover:text-primary">แบบฟอร์ม</Link>
-                  <Link href={getMainLink('/for-lawyers')} className="hover:text-primary">สำหรับทนายความ</Link>
-                  <Link href={getMainLink('/lawyers')} className="hover:text-primary">ค้นหาทนาย</Link>
-                  <Link href={getMainLink('/verify-lawyer')} className="hover:text-primary">ตรวจสอบทนาย</Link>
+                  <Link href={getMainLink('/articles')} className="hover:text-primary">{t('articles')}</Link>
+                  <Link href={getMainLink('/forms')} className="hover:text-primary">{t('forms')}</Link>
+                  <Link href={getMainLink('/for-lawyers')} className="hover:text-primary">{t('forLawyers')}</Link>
+                  <Link href={getMainLink('/lawyers')} className="hover:text-primary">{t('findLawyer')}</Link>
+                  <Link href={getMainLink('/verify-lawyer')} className="hover:text-primary">{t('verifyLawyer')}</Link>
                 </nav>
                 <div className="border-t pt-6">
                   {user ? (
@@ -356,17 +364,17 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                       </div>
                       <div className="flex flex-col gap-2">
                         <Link href={(role === 'lawyer' || user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2') ? "/lawyer-dashboard" : "/dashboard"} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
-                          <LayoutDashboard className="w-4 h-4" /> แดชบอร์ด
+                          <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
                         </Link>
                         <Link href="/account" className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
-                          <User className="w-4 h-4" /> จัดการบัญชี
+                          <User className="w-4 h-4" /> {t('manageAccount')}
                         </Link>
                       </div>
-                      <Button onClick={handleLogout} className="w-full mt-2" variant="destructive">ออกจากระบบ</Button>
+                      <Button onClick={handleLogout} className="w-full mt-2" variant="destructive">{t('logout')}</Button>
                     </div>
                   ) : (
                     <Link href="/login">
-                      <Button className="w-full rounded-xl bg-[#0B3979] hover:bg-[#082a5a] text-white font-semibold">เข้าสู่ระบบ</Button>
+                      <Button className="w-full rounded-xl bg-[#0B3979] hover:bg-[#082a5a] text-white font-semibold">{t('login')}</Button>
                     </Link>
                   )}
                 </div>

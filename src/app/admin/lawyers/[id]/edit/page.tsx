@@ -5,6 +5,8 @@ import * as React from 'react'
 import {
   ChevronLeft,
   Upload,
+  Languages,
+  Loader2,
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -19,6 +21,7 @@ import {
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -35,6 +38,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { doc, updateDoc } from 'firebase/firestore';
 import { uploadToR2 } from '@/app/actions/upload-r2';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
+import { translateToMultipleLanguages } from '@/app/actions/translate';
 
 export default function AdminLawyerEditPage() {
   const params = useParams()
@@ -44,7 +48,67 @@ export default function AdminLawyerEditPage() {
   const { firestore } = useFirebase();
 
   const [lawyer, setLawyer] = React.useState<LawyerProfile | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isTranslating, setIsTranslating] = React.useState<{
+    description: boolean;
+    education: boolean;
+    experience: boolean;
+  }>({ description: false, education: false, experience: false });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleTranslate = async (field: 'description' | 'education' | 'experience') => {
+    if (!lawyer) return;
+
+    const thaiText = lawyer[field];
+    if (!thaiText || thaiText.trim().length === 0) {
+      toast({
+        variant: "destructive",
+        title: "ไม่มีข้อความภาษาไทย",
+        description: "กรุณากรอกข้อความภาษาไทยก่อนกดแปล",
+      });
+      return;
+    }
+
+    setIsTranslating(prev => ({ ...prev, [field]: true }));
+
+    try {
+      const result = await translateToMultipleLanguages(thaiText);
+
+      if (field === 'description') {
+        setLawyer({
+          ...lawyer,
+          descriptionEn: result.english,
+          descriptionZh: result.chinese
+        });
+      } else if (field === 'education') {
+        setLawyer({
+          ...lawyer,
+          educationEn: result.english,
+          educationZh: result.chinese
+        });
+      } else if (field === 'experience') {
+        setLawyer({
+          ...lawyer,
+          experienceEn: result.english,
+          experienceZh: result.chinese
+        });
+      }
+
+      toast({
+        title: "แปลสำเร็จ",
+        description: "แปลข้อความเป็นภาษาอังกฤษและจีนแล้ว",
+      });
+    } catch (error) {
+      console.error("Translation failed:", error);
+      toast({
+        variant: "destructive",
+        title: "แปลไม่สำเร็จ",
+        description: "เกิดข้อผิดพลาดในการแปลภาษา กรุณาลองใหม่",
+      });
+    } finally {
+      setIsTranslating(prev => ({ ...prev, [field]: false }));
+    }
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,13 +147,24 @@ export default function AdminLawyerEditPage() {
   const handleSaveChanges = async () => {
     if (!lawyer || !firestore || !id) return;
 
+    setIsSaving(true);
     try {
       const lawyerRef = doc(firestore, 'lawyerProfiles', id as string);
       await updateDoc(lawyerRef, {
         name: lawyer.name,
         status: lawyer.status,
         specialty: lawyer.specialty,
-        imageUrl: lawyer.imageUrl // Add imageUrl to update
+        imageUrl: lawyer.imageUrl,
+        // Multi-language fields
+        description: lawyer.description,
+        descriptionEn: lawyer.descriptionEn || null,
+        descriptionZh: lawyer.descriptionZh || null,
+        education: lawyer.education,
+        educationEn: lawyer.educationEn || null,
+        educationZh: lawyer.educationZh || null,
+        experience: lawyer.experience,
+        experienceEn: lawyer.experienceEn || null,
+        experienceZh: lawyer.experienceZh || null,
       });
 
       toast({
@@ -104,6 +179,8 @@ export default function AdminLawyerEditPage() {
         description: "ไม่สามารถบันทึกข้อมูลได้",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -111,7 +188,7 @@ export default function AdminLawyerEditPage() {
     return <div>Loading...</div>
   }
 
-  const allSpecialties = ['คดีฉ้อโกง SMEs', 'คดีแพ่งและพาณิชย์', 'การผิดสัญญา', 'ทรัพย์สินทางปัญญา', 'กฎหมายแรงงาน'];
+  const allSpecialties = ['คดีฉ้อโกง SMEs', 'คดีแพ่งและพาณิชย์', 'การผิดสัญญา', 'ทรัพย์สินทางปัญญา', 'กฎหมายแรงงาน', 'อสังหาริมทรัพย์'];
 
 
   return (
@@ -119,7 +196,7 @@ export default function AdminLawyerEditPage() {
       <div className="mx-auto grid max-w-2xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
           <Link href={`/admin/lawyers/${id}`}>
-            <Button variant="outline" size="icon" className="h-7 w-7">
+            <Button variant="outline" size="icon" className="h-7 w-7" disabled={isSaving}>
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
             </Button>
@@ -129,15 +206,16 @@ export default function AdminLawyerEditPage() {
           </h1>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
             <Link href={`/admin/lawyers/${id}`}>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled={isSaving}>
                 ยกเลิก
               </Button>
             </Link>
-            <Button size="sm" onClick={handleSaveChanges}>
-              บันทึกการเปลี่ยนแปลง
+            <Button size="sm" onClick={handleSaveChanges} disabled={isSaving}>
+              {isSaving ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
             </Button>
           </div>
         </div>
+
         <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>ข้อมูลโปรไฟล์</CardTitle>
@@ -161,7 +239,7 @@ export default function AdminLawyerEditPage() {
                     accept="image/*"
                     className="hidden"
                   />
-                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSaving}>
                     <Upload className="h-4 w-4 mr-2" />
                     เปลี่ยนรูป
                   </Button>
@@ -218,14 +296,206 @@ export default function AdminLawyerEditPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Multi-language Description */}
+        <Card className="rounded-xl">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>เกี่ยวกับ (แยกตามภาษา)</CardTitle>
+                <CardDescription>
+                  ข้อความแนะนำตัวที่จะแสดงในหน้าโปรไฟล์
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTranslate('description')}
+                disabled={isTranslating.description || !lawyer.description}
+              >
+                {isTranslating.description ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Languages className="h-4 w-4 mr-2" />
+                )}
+                แปลอัตโนมัติ
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇹🇭</span>
+                  <Label>ภาษาไทย</Label>
+                </div>
+                <Textarea
+                  placeholder="คำอธิบายภาษาไทย"
+                  value={lawyer.description || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇬🇧</span>
+                  <Label>English</Label>
+                </div>
+                <Textarea
+                  placeholder="English description (optional)"
+                  value={lawyer.descriptionEn || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, descriptionEn: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇨🇳</span>
+                  <Label>中文</Label>
+                </div>
+                <Textarea
+                  placeholder="中文描述 (选填)"
+                  value={lawyer.descriptionZh || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, descriptionZh: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Multi-language Education */}
+        <Card className="rounded-xl">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>การศึกษา (แยกตามภาษา)</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTranslate('education')}
+                disabled={isTranslating.education || !lawyer.education}
+              >
+                {isTranslating.education ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Languages className="h-4 w-4 mr-2" />
+                )}
+                แปลอัตโนมัติ
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇹🇭</span>
+                  <Label>ภาษาไทย</Label>
+                </div>
+                <Textarea
+                  placeholder="ข้อมูลการศึกษาภาษาไทย"
+                  value={lawyer.education || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, education: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇬🇧</span>
+                  <Label>English</Label>
+                </div>
+                <Textarea
+                  placeholder="Education info in English (optional)"
+                  value={lawyer.educationEn || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, educationEn: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇨🇳</span>
+                  <Label>中文</Label>
+                </div>
+                <Textarea
+                  placeholder="学历信息 (选填)"
+                  value={lawyer.educationZh || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, educationZh: e.target.value })}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Multi-language Experience */}
+        <Card className="rounded-xl">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>ประสบการณ์ (แยกตามภาษา)</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTranslate('experience')}
+                disabled={isTranslating.experience || !lawyer.experience}
+              >
+                {isTranslating.experience ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Languages className="h-4 w-4 mr-2" />
+                )}
+                แปลอัตโนมัติ
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇹🇭</span>
+                  <Label>ภาษาไทย</Label>
+                </div>
+                <Textarea
+                  placeholder="ประสบการณ์การทำงานภาษาไทย"
+                  value={lawyer.experience || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇬🇧</span>
+                  <Label>English</Label>
+                </div>
+                <Textarea
+                  placeholder="Work experience in English (optional)"
+                  value={lawyer.experienceEn || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, experienceEn: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🇨🇳</span>
+                  <Label>中文</Label>
+                </div>
+                <Textarea
+                  placeholder="工作经验 (选填)"
+                  value={lawyer.experienceZh || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, experienceZh: e.target.value })}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="flex items-center justify-end gap-2 md:hidden">
           <Link href={`/admin/lawyers/${id}`}>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" disabled={isSaving}>
               ยกเลิก
             </Button>
           </Link>
-          <Button size="sm" onClick={handleSaveChanges}>
-            บันทึกการเปลี่ยนแปลง
+          <Button size="sm" onClick={handleSaveChanges} disabled={isSaving}>
+            {isSaving ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
           </Button>
         </div>
       </div>

@@ -6,7 +6,9 @@ import {
     ChevronLeft,
     Upload,
     Info,
-    PlusCircle
+    PlusCircle,
+    Languages,
+    Loader2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -36,16 +38,29 @@ import { errorEmitter, FirestorePermissionError } from '@/firebase'
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants'
 import { compressImageToBase64 } from '@/lib/image-utils'
 import Image from 'next/image'
+import { translateToMultipleLanguages } from '@/app/actions/translate';
 
 export default function AdminArticleCreatePage() {
     const router = useRouter()
     const { toast } = useToast()
     const { firestore } = useFirebase();
 
+    // Thai (default)
     const [title, setTitle] = React.useState('');
     const [slug, setSlug] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [content, setContent] = React.useState('');
+
+    // English translations
+    const [titleEn, setTitleEn] = React.useState('');
+    const [descriptionEn, setDescriptionEn] = React.useState('');
+    const [contentEn, setContentEn] = React.useState('');
+
+    // Chinese translations
+    const [titleZh, setTitleZh] = React.useState('');
+    const [descriptionZh, setDescriptionZh] = React.useState('');
+    const [contentZh, setContentZh] = React.useState('');
+
     const [category, setCategory] = React.useState('');
     const [authorName, setAuthorName] = React.useState('ทีมงาน Lawslane');
     const [isSaving, setIsSaving] = React.useState(false);
@@ -53,8 +68,67 @@ export default function AdminArticleCreatePage() {
     const [imageUrl, setImageUrl] = React.useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+    // Translation states
+    const [isTranslatingTitle, setIsTranslatingTitle] = React.useState(false);
+    const [isTranslatingDesc, setIsTranslatingDesc] = React.useState(false);
+    const [isTranslatingContent, setIsTranslatingContent] = React.useState(false);
+
     const [categories, setCategories] = React.useState(['กฎหมายแรงงาน', 'กฎหมายธุรกิจ', 'ทรัพย์สินทางปัญญา', 'คดีฉ้อโกง', 'กฎหมายแพ่ง']);
     const [newCategory, setNewCategory] = React.useState('');
+
+    const handleTranslateTitle = async () => {
+        if (!title.trim()) {
+            toast({ variant: "destructive", title: "กรุณากรอกหัวข้อภาษาไทยก่อน" });
+            return;
+        }
+        setIsTranslatingTitle(true);
+        try {
+            const result = await translateToMultipleLanguages(title);
+            setTitleEn(result.english);
+            setTitleZh(result.chinese);
+            toast({ title: "แปลสำเร็จ", description: "แปลหัวข้อเป็น EN/ZH แล้ว" });
+        } catch {
+            toast({ variant: "destructive", title: "แปลไม่สำเร็จ" });
+        } finally {
+            setIsTranslatingTitle(false);
+        }
+    };
+
+    const handleTranslateDesc = async () => {
+        if (!description.trim()) {
+            toast({ variant: "destructive", title: "กรุณากรอกคำอธิบายภาษาไทยก่อน" });
+            return;
+        }
+        setIsTranslatingDesc(true);
+        try {
+            const result = await translateToMultipleLanguages(description);
+            setDescriptionEn(result.english);
+            setDescriptionZh(result.chinese);
+            toast({ title: "แปลสำเร็จ", description: "แปลคำอธิบายเป็น EN/ZH แล้ว" });
+        } catch {
+            toast({ variant: "destructive", title: "แปลไม่สำเร็จ" });
+        } finally {
+            setIsTranslatingDesc(false);
+        }
+    };
+
+    const handleTranslateContent = async () => {
+        if (!content.trim()) {
+            toast({ variant: "destructive", title: "กรุณากรอกเนื้อหาภาษาไทยก่อน" });
+            return;
+        }
+        setIsTranslatingContent(true);
+        try {
+            const result = await translateToMultipleLanguages(content);
+            setContentEn(result.english);
+            setContentZh(result.chinese);
+            toast({ title: "แปลสำเร็จ", description: "แปลเนื้อหาเป็น EN/ZH แล้ว" });
+        } catch {
+            toast({ variant: "destructive", title: "แปลไม่สำเร็จ" });
+        } finally {
+            setIsTranslatingContent(false);
+        }
+    };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -65,11 +139,10 @@ export default function AdminArticleCreatePage() {
                     title: "ไฟล์มีขนาดใหญ่เกินไป",
                     description: `กรุณาอัปโหลดไฟล์ขนาดไม่เกิน ${MAX_FILE_SIZE_MB}MB`,
                 });
-                e.target.value = ''; // Reset input
+                e.target.value = '';
                 return;
             }
             setImageFile(file);
-            // Create preview URL
             const url = URL.createObjectURL(file);
             setImageUrl(url);
         }
@@ -78,7 +151,6 @@ export default function AdminArticleCreatePage() {
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value;
         setTitle(newTitle);
-        // Auto-generate slug from title (simple version)
         const newSlug = newTitle.toString()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
@@ -136,10 +208,21 @@ export default function AdminArticleCreatePage() {
                 imageUrl: finalImageUrl,
                 imageHint: 'legal article',
                 publishedAt: serverTimestamp(),
+                translations: {
+                    en: {
+                        title: titleEn,
+                        description: descriptionEn,
+                        content: contentEn,
+                    },
+                    zh: {
+                        title: titleZh,
+                        description: descriptionZh,
+                        content: contentZh,
+                    }
+                }
             };
 
             const articlesCollection = collection(firestore, 'articles');
-
             await addDoc(articlesCollection, newArticle);
 
             toast({
@@ -154,7 +237,7 @@ export default function AdminArticleCreatePage() {
                 const permissionError = new FirestorePermissionError({
                     path: 'articles',
                     operation: 'create',
-                    requestResourceData: { title, slug }, // Simplified data for error
+                    requestResourceData: { title, slug },
                 });
                 errorEmitter.emit('permission-error', permissionError);
             } else {
@@ -172,7 +255,7 @@ export default function AdminArticleCreatePage() {
     const handleAddNewCategory = () => {
         if (newCategory && !categories.includes(newCategory)) {
             setCategories(prev => [...prev, newCategory]);
-            setCategory(newCategory); // Auto-select the new category
+            setCategory(newCategory);
             setNewCategory('');
             toast({
                 title: 'เพิ่มหมวดหมู่สำเร็จ',
@@ -199,7 +282,7 @@ export default function AdminArticleCreatePage() {
                         </Button>
                     </Link>
                     <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-                        สร้างบทความใหม่
+                        สร้างบทความใหม่ (3 ภาษา)
                     </h1>
                     <div className="hidden items-center gap-2 md:ml-auto md:flex">
                         <Link href="/admin/content">
@@ -212,160 +295,254 @@ export default function AdminArticleCreatePage() {
                         </Button>
                     </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-                    <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-                        <Card className="rounded-xl">
-                            <CardHeader>
-                                <CardTitle>เนื้อหาบทความ</CardTitle>
-                                <CardDescription>
-                                    กรอกเนื้อหาหลักและรูปภาพสำหรับบทความใหม่
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid gap-6">
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="title">หัวข้อบทความ (H1)</Label>
-                                        <Input
-                                            id="title"
-                                            type="text"
-                                            className="w-full"
-                                            value={title}
-                                            onChange={handleTitleChange}
-                                            placeholder="เช่น 5 สิ่งต้องรู้ก่อนเซ็นสัญญา..."
-                                        />
-                                    </div>
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="picture">รูปภาพหน้าปก</Label>
-                                        <div className="flex items-center gap-4">
-                                            <div className="aspect-video w-48 rounded-md object-contain bg-muted border flex items-center justify-center overflow-hidden relative">
-                                                {imageFile || imageUrl ? (
-                                                    <Image
-                                                        src={imageFile ? URL.createObjectURL(imageFile) : (imageUrl || '')}
-                                                        alt="Preview"
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                ) : (
-                                                    <span className="text-muted-foreground text-xs">Preview</span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col gap-2">
-                                                <Input
-                                                    id="picture"
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    ref={fileInputRef}
-                                                    onChange={handleImageChange}
-                                                />
-                                                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                                    <Upload className="h-4 w-4 mr-2" />
-                                                    อัปโหลดรูป
-                                                </Button>
-                                                <p className="text-xs text-muted-foreground">
-                                                    ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="content">เนื้อหาบทความ</Label>
-                                        <Textarea
-                                            id="content"
-                                            placeholder="เนื้อหาฉบับเต็มของบทความ..."
-                                            rows={15}
-                                            value={content}
-                                            onChange={(e) => setContent(e.target.value)}
-                                        />
-                                    </div>
+
+                {/* Thai Content (Main) */}
+                <Card className="rounded-xl">
+                    <CardHeader>
+                        <CardTitle>🇹🇭 เนื้อหาภาษาไทย (หลัก)</CardTitle>
+                        <CardDescription>
+                            กรอกเนื้อหาหลักและรูปภาพสำหรับบทความใหม่
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-6">
+                            <div className="grid gap-3">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="title">หัวข้อบทความ (H1)</Label>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleTranslateTitle}
+                                        disabled={isTranslatingTitle || !title.trim()}
+                                    >
+                                        {isTranslatingTitle ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Languages className="h-4 w-4 mr-2" />}
+                                        แปลหัวข้อ
+                                    </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="rounded-xl">
-                            <CardHeader>
-                                <CardTitle>Search Engine Optimization (SEO)</CardTitle>
-                                <CardDescription>
-                                    ปรับแต่งการแสดงผลบนหน้าการค้นหาของ Google
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="grid gap-6">
-                                <div className="grid gap-3">
-                                    <Label htmlFor="slug">Slug (URL Path)</Label>
-                                    <Input
-                                        id="slug"
-                                        type="text"
-                                        value={slug}
-                                        onChange={(e) => setSlug(e.target.value)}
-                                        placeholder="เช่น 5-things-before-signing"
-                                    />
-                                    <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800">
-                                        <Info className="h-4 w-4 !text-blue-600" />
-                                        <AlertDescription>
-                                            Slug จะถูกสร้างจากหัวข้อโดยอัตโนมัติ แต่สามารถแก้ไขได้ ควรใช้ภาษาอังกฤษและคั่นด้วย -
-                                        </AlertDescription>
-                                    </Alert>
-                                </div>
-                                <div className="grid gap-3">
-                                    <Label htmlFor="meta-title">Meta Title</Label>
-                                    <Input
-                                        id="meta-title"
-                                        type="text"
-                                        placeholder="หัวข้อที่จะแสดงบน Google"
-                                        value={title}
-                                        readOnly
-                                    />
-                                </div>
-                                <div className="grid gap-3">
-                                    <Label htmlFor="meta-description">Meta Description</Label>
-                                    <Textarea
-                                        id="meta-description"
-                                        placeholder="คำอธิบายสั้นๆ ที่จะแสดงในผลการค้นหา (ไม่เกิน 160 ตัวอักษร)"
-                                        rows={3}
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                    <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
-                        <Card className="rounded-xl">
-                            <CardHeader>
-                                <CardTitle>การจัดหมวดหมู่</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid gap-6">
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="category">หมวดหมู่</Label>
-                                        <Select value={category} onValueChange={setCategory}>
-                                            <SelectTrigger id="category">
-                                                <SelectValue placeholder="เลือกหมวดหมู่" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {categories.map(cat => (
-                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="new-category">เพิ่มหมวดหมู่ใหม่</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                id="new-category"
-                                                placeholder="เช่น กฎหมายครอบครัว"
-                                                value={newCategory}
-                                                onChange={(e) => setNewCategory(e.target.value)}
+                                <Input
+                                    id="title"
+                                    type="text"
+                                    className="w-full"
+                                    value={title}
+                                    onChange={handleTitleChange}
+                                    placeholder="เช่น 5 สิ่งต้องรู้ก่อนเซ็นสัญญา..."
+                                />
+                            </div>
+                            <div className="grid gap-3">
+                                <Label htmlFor="picture">รูปภาพหน้าปก</Label>
+                                <div className="flex items-center gap-4">
+                                    <div className="aspect-video w-48 rounded-md object-contain bg-muted border flex items-center justify-center overflow-hidden relative">
+                                        {imageFile || imageUrl ? (
+                                            <Image
+                                                src={imageFile ? URL.createObjectURL(imageFile) : (imageUrl || '')}
+                                                alt="Preview"
+                                                fill
+                                                className="object-cover"
                                             />
-                                            <Button variant="outline" size="icon" onClick={handleAddNewCategory}>
-                                                <PlusCircle className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">Preview</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Input
+                                            id="picture"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            ref={fileInputRef}
+                                            onChange={handleImageChange}
+                                        />
+                                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            อัปโหลดรูป
+                                        </Button>
+                                        <p className="text-xs text-muted-foreground">
+                                            ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB
+                                        </p>
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                            </div>
+                            <div className="grid gap-3">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="description">คำอธิบาย (Meta Description)</Label>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleTranslateDesc}
+                                        disabled={isTranslatingDesc || !description.trim()}
+                                    >
+                                        {isTranslatingDesc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Languages className="h-4 w-4 mr-2" />}
+                                        แปลคำอธิบาย
+                                    </Button>
+                                </div>
+                                <Textarea
+                                    id="description"
+                                    placeholder="คำอธิบายสั้นๆ ที่จะแสดงในผลการค้นหา"
+                                    rows={2}
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                />
+                            </div>
+                            <div className="grid gap-3">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="content">เนื้อหาบทความ</Label>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleTranslateContent}
+                                        disabled={isTranslatingContent || !content.trim()}
+                                    >
+                                        {isTranslatingContent ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Languages className="h-4 w-4 mr-2" />}
+                                        แปลเนื้อหา
+                                    </Button>
+                                </div>
+                                <Textarea
+                                    id="content"
+                                    placeholder="เนื้อหาฉบับเต็มของบทความ..."
+                                    rows={12}
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* English Translation */}
+                <Card className="rounded-xl border-blue-200">
+                    <CardHeader className="bg-blue-50/50">
+                        <CardTitle>🇬🇧 English Translation</CardTitle>
+                        <CardDescription>
+                            Auto-translated or manually edited English version
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label>Title</Label>
+                                <Input
+                                    value={titleEn}
+                                    onChange={(e) => setTitleEn(e.target.value)}
+                                    placeholder="English title..."
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Description</Label>
+                                <Textarea
+                                    value={descriptionEn}
+                                    onChange={(e) => setDescriptionEn(e.target.value)}
+                                    placeholder="English description..."
+                                    rows={2}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Content</Label>
+                                <Textarea
+                                    value={contentEn}
+                                    onChange={(e) => setContentEn(e.target.value)}
+                                    placeholder="English content..."
+                                    rows={8}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Chinese Translation */}
+                <Card className="rounded-xl border-red-200">
+                    <CardHeader className="bg-red-50/50">
+                        <CardTitle>🇨🇳 中文翻译</CardTitle>
+                        <CardDescription>
+                            自动翻译或手动编辑的中文版本
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label>标题</Label>
+                                <Input
+                                    value={titleZh}
+                                    onChange={(e) => setTitleZh(e.target.value)}
+                                    placeholder="中文标题..."
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>描述</Label>
+                                <Textarea
+                                    value={descriptionZh}
+                                    onChange={(e) => setDescriptionZh(e.target.value)}
+                                    placeholder="中文描述..."
+                                    rows={2}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>内容</Label>
+                                <Textarea
+                                    value={contentZh}
+                                    onChange={(e) => setContentZh(e.target.value)}
+                                    placeholder="中文内容..."
+                                    rows={8}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Settings */}
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Card className="rounded-xl">
+                        <CardHeader>
+                            <CardTitle>SEO Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-3">
+                                <Label htmlFor="slug">Slug (URL Path)</Label>
+                                <Input
+                                    id="slug"
+                                    type="text"
+                                    value={slug}
+                                    onChange={(e) => setSlug(e.target.value)}
+                                    placeholder="เช่น 5-things-before-signing"
+                                />
+                                <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800">
+                                    <Info className="h-4 w-4 !text-blue-600" />
+                                    <AlertDescription>
+                                        Slug จะถูกสร้างจากหัวข้อโดยอัตโนมัติ
+                                    </AlertDescription>
+                                </Alert>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-xl">
+                        <CardHeader>
+                            <CardTitle>การจัดหมวดหมู่</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-3">
+                                <Label htmlFor="category">หมวดหมู่</Label>
+                                <Select value={category} onValueChange={setCategory}>
+                                    <SelectTrigger id="category">
+                                        <SelectValue placeholder="เลือกหมวดหมู่" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="เพิ่มหมวดหมู่ใหม่"
+                                        value={newCategory}
+                                        onChange={(e) => setNewCategory(e.target.value)}
+                                    />
+                                    <Button variant="outline" size="icon" onClick={handleAddNewCategory}>
+                                        <PlusCircle className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 md:hidden">

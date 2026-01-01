@@ -6,7 +6,10 @@ import {
     ChevronLeft,
     Upload,
     Info,
-    PlusCircle
+    PlusCircle,
+    Languages,
+    Sparkles,
+    Loader2
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -38,6 +41,8 @@ import { errorEmitter, FirestorePermissionError } from '@/firebase'
 import Image from 'next/image'
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants'
 import { compressImageToBase64 } from '@/lib/image-utils'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { translateToMultipleLanguages } from '@/app/actions/translate';
 
 export default function AdminArticleEditPage() {
     const router = useRouter()
@@ -54,6 +59,9 @@ export default function AdminArticleEditPage() {
     const [imageFile, setImageFile] = React.useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Translation States
+    const [isTranslating, setIsTranslating] = React.useState<string | null>(null); // 'en' or 'zh' or null
 
     React.useEffect(() => {
         if (!firestore || !id) return;
@@ -82,6 +90,62 @@ export default function AdminArticleEditPage() {
             setArticle({ ...article, title: value, slug: newSlug });
         } else {
             setArticle({ ...article, [id]: value });
+        }
+    };
+
+    const handleTranslationChange = (lang: 'en' | 'zh', field: 'title' | 'description' | 'content', value: string) => {
+        if (!article) return;
+        setArticle({
+            ...article,
+            translations: {
+                ...article.translations,
+                [lang]: {
+                    ...article.translations?.[lang],
+                    [field]: value
+                }
+            }
+        });
+    };
+
+    const handleAiTranslate = async (targetLang: 'en' | 'zh') => {
+        if (!article) return;
+        setIsTranslating(targetLang);
+        try {
+            // Translate title, description, content
+            const [titleResult, descResult, contentResult] = await Promise.all([
+                translateToMultipleLanguages(article.title),
+                translateToMultipleLanguages(article.description),
+                translateToMultipleLanguages(article.content)
+            ]);
+
+            const translatedData = {
+                title: targetLang === 'en' ? titleResult.english : titleResult.chinese,
+                description: targetLang === 'en' ? descResult.english : descResult.chinese,
+                content: targetLang === 'en' ? contentResult.english : contentResult.chinese,
+            };
+
+            setArticle({
+                ...article,
+                translations: {
+                    ...article.translations,
+                    [targetLang]: translatedData
+                }
+            });
+
+            toast({
+                title: "แปลภาษาสำเร็จ",
+                description: `แปลเป็นภาษา${targetLang === 'en' ? 'อังกฤษ' : 'จีน'}เรียบร้อยแล้ว`,
+            });
+
+        } catch (error) {
+            console.error("Translation error:", error);
+            toast({
+                variant: "destructive",
+                title: "การแปลล้มเหลว",
+                description: "ไม่สามารถแปลภาษาได้ กรุณาลองใหม่อีกครั้ง"
+            });
+        } finally {
+            setIsTranslating(null);
         }
     };
 
@@ -139,6 +203,7 @@ export default function AdminArticleEditPage() {
                 category: article.category || '',
                 authorName: article.authorName || 'ทีมงาน Lawslane',
                 imageUrl: finalImageUrl || '',
+                translations: article.translations || {}, // Save translations
             };
 
             await updateDoc(articleRef, updatedData);
@@ -194,7 +259,7 @@ export default function AdminArticleEditPage() {
 
     return (
         <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
-            <div className="mx-auto grid max-w-3xl flex-1 auto-rows-max gap-4">
+            <div className="mx-auto grid max-w-5xl flex-1 auto-rows-max gap-4">
                 <div className="flex items-center gap-4">
                     <Link href="/admin/content">
                         <Button variant="outline" size="icon" className="h-7 w-7" disabled={isSaving}>
@@ -222,57 +287,185 @@ export default function AdminArticleEditPage() {
                             <CardHeader>
                                 <CardTitle>เนื้อหาบทความ</CardTitle>
                                 <CardDescription>
-                                    แก้ไขเนื้อหาหลักและรูปภาพสำหรับบทความ
+                                    จัดการเนื้อหาบทความและคำแปลภาษาต่างๆ
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid gap-6">
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="title">หัวข้อบทความ (H1)</Label>
-                                        <Input
-                                            id="title"
-                                            type="text"
-                                            className="w-full"
-                                            value={article.title}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="picture">รูปภาพหน้าปก</Label>
-                                        <div className="flex items-center gap-4">
-                                            <Image
-                                                alt={article.title}
-                                                className="aspect-video w-48 rounded-md object-contain bg-white p-1 border"
-                                                height="90"
-                                                src={previewUrl || article.imageUrl}
-                                                width="160"
-                                            />
+                                <Tabs defaultValue="th" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                                        <TabsTrigger value="th">🇹🇭 ภาษาไทย (หลัก)</TabsTrigger>
+                                        <TabsTrigger value="en">🇺🇸 English</TabsTrigger>
+                                        <TabsTrigger value="zh">🇨🇳 中文</TabsTrigger>
+                                    </TabsList>
+
+                                    {/* Thai Content (Default) */}
+                                    <TabsContent value="th" className="space-y-4">
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="title">หัวข้อบทความ (TH)</Label>
                                             <Input
-                                                id="picture"
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                ref={fileInputRef}
-                                                onChange={handleImageChange}
+                                                id="title"
+                                                type="text"
+                                                className="w-full"
+                                                value={article.title}
+                                                onChange={handleInputChange}
                                             />
-                                            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                                <Upload className="h-4 w-4 mr-2" />
-                                                เปลี่ยนรูป
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="description">คำอธิบายย่อ (TH)</Label>
+                                            <Textarea
+                                                id="description"
+                                                value={article.description}
+                                                onChange={handleInputChange}
+                                                rows={3}
+                                            />
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="content">เนื้อหาบทความ (TH)</Label>
+                                            <Textarea
+                                                id="content"
+                                                value={article.content}
+                                                onChange={handleInputChange}
+                                                rows={15}
+                                            />
+                                        </div>
+                                    </TabsContent>
+
+                                    {/* English Content */}
+                                    <TabsContent value="en" className="space-y-4">
+                                        <div className="flex justify-end">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleAiTranslate('en')}
+                                                disabled={isTranslating === 'en'}
+                                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                            >
+                                                {isTranslating === 'en' ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Sparkles className="mr-2 h-4 w-4" />
+                                                )}
+                                                Translate with AI
                                             </Button>
                                         </div>
-                                    </div>
-                                    <div className="grid gap-3">
-                                        <Label htmlFor="content">เนื้อหาบทความ</Label>
-                                        <Textarea
-                                            id="content"
-                                            value={article.content}
-                                            onChange={handleInputChange}
-                                            rows={15}
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="title-en">Title (EN)</Label>
+                                            <Input
+                                                id="title-en"
+                                                type="text"
+                                                className="w-full"
+                                                value={article.translations?.en?.title || ''}
+                                                onChange={(e) => handleTranslationChange('en', 'title', e.target.value)}
+                                                placeholder="English Title"
+                                            />
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="description-en">Description (EN)</Label>
+                                            <Textarea
+                                                id="description-en"
+                                                value={article.translations?.en?.description || ''}
+                                                onChange={(e) => handleTranslationChange('en', 'description', e.target.value)}
+                                                rows={3}
+                                                placeholder="English Description"
+                                            />
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="content-en">Content (EN)</Label>
+                                            <Textarea
+                                                id="content-en"
+                                                value={article.translations?.en?.content || ''}
+                                                onChange={(e) => handleTranslationChange('en', 'content', e.target.value)}
+                                                rows={15}
+                                                placeholder="English Content"
+                                            />
+                                        </div>
+                                    </TabsContent>
+
+                                    {/* Chinese Content */}
+                                    <TabsContent value="zh" className="space-y-4">
+                                        <div className="flex justify-end">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleAiTranslate('zh')}
+                                                disabled={isTranslating === 'zh'}
+                                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                            >
+                                                {isTranslating === 'zh' ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Sparkles className="mr-2 h-4 w-4" />
+                                                )}
+                                                Translate with AI
+                                            </Button>
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="title-zh">Title (ZH)</Label>
+                                            <Input
+                                                id="title-zh"
+                                                type="text"
+                                                className="w-full"
+                                                value={article.translations?.zh?.title || ''}
+                                                onChange={(e) => handleTranslationChange('zh', 'title', e.target.value)}
+                                                placeholder="Chinese Title"
+                                            />
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="description-zh">Description (ZH)</Label>
+                                            <Textarea
+                                                id="description-zh"
+                                                value={article.translations?.zh?.description || ''}
+                                                onChange={(e) => handleTranslationChange('zh', 'description', e.target.value)}
+                                                rows={3}
+                                                placeholder="Chinese Description"
+                                            />
+                                        </div>
+                                        <div className="grid gap-3">
+                                            <Label htmlFor="content-zh">Content (ZH)</Label>
+                                            <Textarea
+                                                id="content-zh"
+                                                value={article.translations?.zh?.content || ''}
+                                                onChange={(e) => handleTranslationChange('zh', 'content', e.target.value)}
+                                                rows={15}
+                                                placeholder="Chinese Content"
+                                            />
+                                        </div>
+                                    </TabsContent>
+                                </Tabs>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="rounded-xl">
+                            <CardHeader>
+                                <CardTitle>รูปภาพหน้าปก</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid gap-3">
+                                    <div className="flex items-center gap-4">
+                                        <Image
+                                            alt={article.title}
+                                            className="aspect-video w-48 rounded-md object-contain bg-white p-1 border"
+                                            height="90"
+                                            src={previewUrl || article.imageUrl}
+                                            width="160"
                                         />
+                                        <Input
+                                            id="picture"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            ref={fileInputRef}
+                                            onChange={handleImageChange}
+                                        />
+                                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            เปลี่ยนรูป
+                                        </Button>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
+
                         <Card className="rounded-xl">
                             <CardHeader>
                                 <CardTitle>Search Engine Optimization (SEO)</CardTitle>
@@ -302,15 +495,6 @@ export default function AdminArticleEditPage() {
                                         id="meta-title"
                                         type="text"
                                         defaultValue={article.title}
-                                    />
-                                </div>
-                                <div className="grid gap-3">
-                                    <Label htmlFor="meta-description">Meta Description</Label>
-                                    <Textarea
-                                        id="description"
-                                        value={article.description}
-                                        onChange={handleInputChange}
-                                        rows={3}
                                     />
                                 </div>
                             </CardContent>
@@ -370,3 +554,4 @@ export default function AdminArticleEditPage() {
         </main>
     )
 }
+

@@ -1,0 +1,733 @@
+{
+    "HomePage": {
+        "hero": {
+            "title": "Consult Legal Problems with\nProfessional Lawyers",
+            "subtitle": "Platform connecting you with expert lawyers. Find the right lawyer or consult our AI smart lawyer immediately.",
+            "searchPlaceholder": "Search for lawyers, experts, or issues..."
+        },
+        "legalForms": {
+            "title": "Download Legal Forms for Free!!",
+            "description": "We are committed to gathering the most accurate and up-to-date legal forms to ensure your confidence in every transaction. Minimize legal risks with documents drafted by professional lawyers.",
+            "features": {
+                "professional": "Drafted by professional lawyers, legally compliant",
+                "update": "Latest updates, covering all contract types",
+                "free": "Free download, ready to use, easy to edit"
+            },
+            "cta": "Download All Forms"
+        },
+        "lawyerSearch": {
+            "title": "Find the Right Lawyer for You",
+            "description": "Consult with specialized lawyers. Easy to find, reliable, and ready for immediate consultation via video call or chat.",
+            "features": {
+                "verified": "Verified licensed lawyers",
+                "expert": "Expertise in various fields",
+                "review": "Transparent reviews and fees"
+            },
+            "cta": "Find a Lawyer"
+        },
+        "aiAnalysis": {
+            "title": "Not sure which lawyer you need?",
+            "description": "Let AI analyze your problem and recommend the right lawyer.",
+            "placeholder": "Describe your problem here, e.g., 'Fraud case', 'Company registration', 'Land dispute'",
+            "button": "Analyze & Recommend",
+            "analyzing": "Analyzing...",
+            "consultButton": "Consult AI Lawyer"
+        },
+        "mainFeatures": {
+            "anywhere": {
+                "title": "Consult Anywhere",
+                "description": "Chat with lawyers instantly, wherever you are."
+            },
+            "quality": {
+                "title": "Quality Lawyers",
+                "description": "All lawyers are verified for history and license."
+            },
+            "privacy": {
+                "title": "Safe & Private",
+                "description": "Your case data is kept with highest confidentiality and security standards."
+            }
+        },
+        "usageSteps": {
+            "label": "How It Works",
+            "title": "Easy, Convenient, and Fast"
+        },
+        "verifyStatus": {
+            "title": "Verify Lawyer Status",
+            "description": "For maximum confidence, you can instantly verify the license of every lawyer in our system via the Lawyers Council database.",
+            "button": "Verify Lawyer Status"
+        },
+        "smeSolution": {
+            "label": "For SME Business",
+            "title": "Legal Solutions for SME",
+            "description": "Reduce legal risks and help your business grow steadily with professional legal consulting services.",
+            "contract": "Draft & Review Contracts",
+            "consultant": "Corporate Legal Consultant",
+            "button": "View SME Services"
+        },
+        "recommendedLawyers": {
+            "title": "Recommended Lawyers",
+            "subtitle": "Experienced and specialized lawyers ready to provide consultation and handle your case closely.",
+            "loading": "Loading lawyers...",
+            "emptyTitle": "No recommended lawyers found",
+            "emptyDescription": "There are currently no recommended lawyers in the system. Please try again later.",
+            "viewAll": "View All Lawyers"
+        },
+        "services": {
+            "title": "Our Services",
+            "subtitle": "Lawlane offers a variety of legal services that are fast and transparent.",
+            "contracts": {
+                "title": "Draft & Review Contracts",
+                "description": "Drafting, reviewing, and amending all types of business contracts to close loopholes and protect your company's best interests."
+            },
+            "consultant": {
+                "title": "Corporate Legal Consultant",
+                "description": "Have a personal lawyer available for consultation at all times to help make business decisions based on legal correctness."
+            },
+            "registration": {
+                "title": "Registration & Licenses",
+                "description": "Handling company registration, memorandum amendments, and applying for various business licenses."
+            },
+            "dispute": {
+                "title": "Business Dispute Resolution",
+                "description": "Mediation and litigation in civil and commercial cases to protect your business rights and reputation."
+            }
+        },
+        "articles": {
+            "title": "Legal Articles",
+            "loading": "Loading articles...",
+            "viewAll": "View All",
+            "readMore": "Read More",
+            "emptyTitle": "No articles found",
+            "emptyDescription": "There are currently no legal articles in the system. Please try again later."
+        },
+        "forLawyersFooter": {
+            "title": "For Lawyers",
+            "description": "Join us to expand your client base and build online credibility.",
+            "button": "Apply as a Lawyer"
+        },
+        "stats": {
+            "faster": "Faster",
+            "experts": "Expert Lawyers",
+            "247": "24/7 Service",
+            "satisfaction": "Satisfaction"
+        }
+    },
+    "Navigation": {
+        "forSME": "For SME",
+        "findLawyer": "Find Lawyer",
+        "verifyLawyer": "Verify Lawyer",
+        "articles": "Articles",
+        "forms": "Forms",
+        "forLawyers": "For Lawyers",
+        "home": "Home",
+        "login": "Login",
+        "logout": "Logout",
+        "myAccount": "My Account",
+        "dashboard": "Dashboard",
+        "manageAccount": "Manage Account",
+        "searchPlaceholder": "Search for lawyers, expertise, or issues...",
+        "smeMenu": {
+            "contracts": "Draft & Review Contracts",
+            "consultant": "Corporate Legal Consultant",
+            "registration": "Registration & Licenses",
+            "dispute": "Business Dispute Resolution"
+        },
+        "scrollToTop": "Scroll to Top"
+    },
+    "VerifyLawyer": {
+        "backToHome": "Back to Home",
+        "title": "Verify",
+        "titleLine2": "Lawyer Status",
+        "description": "Build confidence by verifying lawyer license information for accuracy and safety in receiving services.",
+        "dataSource": "This data is from the Lawslane database only",
+        "lastUpdated": "Last updated",
+        "lastUpdatedToday": "Last updated: Today",
+        "loading": "Loading...",
+        "formTitle": "Enter Information to Verify",
+        "formDescription": "Enter license number or lawyer's full name",
+        "licenseNumberLabel": "Lawyer License Number",
+        "licenseNumberPlaceholder": "e.g. 12345/2550",
+        "or": "or",
+        "lawyerNameLabel": "Lawyer's Full Name",
+        "lawyerNamePlaceholder": "Enter full name",
+        "verifyButton": "Verify",
+        "verifying": "Verifying information from the Bar Association (simulated)...",
+        "resultFound": {
+            "title": "Information Found",
+            "description": "This lawyer has been verified in the Lawslane system",
+            "licenseNumber": "License Number:",
+            "viewProfile": "View Profile"
+        },
+        "resultNotFound": {
+            "title": "Not Found",
+            "description": "No lawyer found with the provided information. Please check the details or contact support.",
+            "closeButton": "Close"
+        }
+    },
+    "LegalForms": {
+        "heroTitle": "Legal Forms Center",
+        "heroDescription": "Download legally compliant contracts and legal documents, free for everyone",
+        "searchTitle": "Search Documents",
+        "searchPlaceholder": "Enter document name...",
+        "categoryTitle": "Categories",
+        "allDocuments": "All Documents",
+        "all": "All",
+        "found": "Found",
+        "items": "items",
+        "loading": "Loading data...",
+        "noFormsFound": "No forms found",
+        "tryDifferentSearch": "Try a different search or select another category",
+        "noDescription": "No additional details",
+        "files": "files",
+        "times": "times",
+        "download": "Download",
+        "recommendedArticles": "Recommended Articles",
+        "viewAllArticles": "View All Articles",
+        "categories": {
+            "businessContract": "Business Contract",
+            "employmentContract": "Employment Contract",
+            "realEstate": "Real Estate",
+            "familyInheritance": "Family & Inheritance",
+            "powerOfAttorney": "Power of Attorney"
+        },
+        "loginDialog": {
+            "title": "Login to continue downloading",
+            "description": "You have downloaded 3 documents as a guest. Please login to download unlimited documents.",
+            "cancel": "Cancel",
+            "loginSignup": "Login / Sign Up"
+        }
+    },
+    "Lawyers": {
+        "recommendedTitle": "Recommended Lawyers for You",
+        "recommendedDescription": "These are the lawyers AI recommends based on your issue, along with all other lawyers",
+        "analyzing": "Analyzing and sorting recommended lawyers...",
+        "foundLawyers": "Found {count} lawyers matching your criteria",
+        "filter": {
+            "title": "Search Filters",
+            "expertise": "Expertise",
+            "all": "All",
+            "minRating": "Minimum Rating",
+            "andUp": "and up",
+            "province": "Province/Area",
+            "allProvinces": "All Provinces",
+            "searchButton": "Search with Filters"
+        },
+        "card": {
+            "verified": "Verified",
+            "reviews": "reviews",
+            "newLawyer": "New Lawyer",
+            "viewProfile": "View Profile",
+            "sendMessage": "Send Message"
+        },
+        "specialties": {
+            "smeFraud": "SME Fraud Cases",
+            "civilCommercial": "Civil & Commercial Cases",
+            "contractBreach": "Contract Breach",
+            "realEstate": "Real Estate",
+            "familyInheritance": "Family & Inheritance",
+            "criminal": "Criminal Cases",
+            "labor": "Labor Law",
+            "intellectualProperty": "Intellectual Property",
+            "business": "Business Law"
+        }
+    },
+    "LawyerProfile": {
+        "backToList": "Back to Lawyers",
+        "about": "About",
+        "educationLicense": "Education & License",
+        "noEducation": "Education not specified",
+        "licenseNumber": "License Number",
+        "experience": "Experience",
+        "noExperience": "Experience not specified",
+        "workStats": "Work Statistics",
+        "responseRate": "Response Rate",
+        "completedCases": "Completed Cases",
+        "userReviews": "User Reviews",
+        "noReviews": "No reviews yet",
+        "reviews": "reviews",
+        "bookConsultation": "Book Consultation",
+        "sendMessage": "Send Message",
+        "lawyerCannotBook": "Lawyer accounts cannot book appointments"
+    },
+    "Dashboard": {
+        "upcomingAppointments": "Upcoming Appointments",
+        "noAppointments": "No appointments yet",
+        "viewDetails": "View Details",
+        "ongoingCases": "Ongoing Cases",
+        "closedCases": "Closed Cases",
+        "viewHistory": "View History",
+        "manageAccount": "Manage Account / Edit Profile",
+        "quickServices": "Quick Services",
+        "findLawyer": "Find a Lawyer",
+        "bookConsultation": "Book Consultation",
+        "managePersonalInfo": "Manage Personal Info",
+        "defaultCaseTitle": "Unnamed Case",
+        "defaultAppointmentDescription": "Consultation Appointment",
+        "reportedTickets": "Reported Issue Tickets",
+        "issueType": "Issue Type",
+        "sentAt": "Sent at",
+        "resolved": "Resolved",
+        "pending": "Pending",
+        "help": "Help",
+        "helpCenter": "Help Center / FAQ",
+        "contactSupport": "Contact Support",
+        "appointmentWith": "With",
+        "date": "Date",
+        "time": "Time"
+    },
+    "Help": {
+        "title": "Help Center",
+        "subtitle": "We are here to help and answer all your questions",
+        "backToHome": "Back to Home",
+        "reportIssue": "Report an Issue",
+        "reportIssueSubtitle": "If you encounter any problems with a case, please let us know",
+        "caseIdLabel": "Case Number / Ticket ID",
+        "caseIdPlaceholder": "e.g., case-001",
+        "problemTypeLabel": "Problem Type",
+        "problemTypePlaceholder": "Select problem type",
+        "problemDescriptionLabel": "Problem Details",
+        "problemDescriptionPlaceholder": "Please describe the problem you encountered in detail...",
+        "submitButton": "Submit Issue",
+        "submitting": "Submitting...",
+        "faqTitle": "Frequently Asked Questions (FAQ)",
+        "faqSubtitle": "Questions that users often ask",
+        "successTitle": "Submitted Successfully",
+        "successDescription": "We have received your issue details and will investigate as soon as possible",
+        "errorTitle": "Error",
+        "errorDescription": "Could not submit the issue. Please try again",
+        "loginRequiredTitle": "Please Login",
+        "loginRequiredDescription": "You must login before reporting an issue",
+        "problemTypes": {
+            "communication": "Communication problem with lawyer",
+            "payment": "Payment/Escrow problem",
+            "technical": "System technical problem",
+            "quality": "Dissatisfied with service quality",
+            "other": "Other"
+        },
+        "faqs": [
+            {
+                "question": "How does the Legal AI Assistant work?",
+                "answer": "Our AI assistant is trained to analyze initial legal problems from the information you provide to assess the situation and recommend the type of lawyer with expertise that matches your problem. However, AI advice is only an initial assessment and cannot replace advice from a professional lawyer."
+            },
+            {
+                "question": "Are lawyers on the Lawslane platform verified?",
+                "answer": "Yes, every lawyer who joins us must go through a rigorous qualification verification process, including lawyer license, work history, and specialized expertise, so you can be confident that you will receive service from a real expert."
+            },
+            {
+                "question": "What is the process for hiring a lawyer through Lawslane?",
+                "answer": "You can start by using AI to analyze the problem, searching for a lawyer from the list, or making an appointment to talk directly. Once you have chosen the lawyer you want, you can open a case and pay through our Escrow system to start working immediately."
+            },
+            {
+                "question": "Will my information be kept confidential?",
+                "answer": "Of course, we prioritize customer privacy and confidentiality at the highest level. All your information and conversations with lawyers on our platform will be encrypted and kept confidential according to the highest standards. You can read more details in our Privacy Policy."
+            },
+            {
+                "question": "What should I do if there is a problem with a lawyer?",
+                "answer": "If you encounter a problem or are dissatisfied with the service, you can use the 'Report Problem' button on the chat page of that case to contact our customer support team immediately. We will quickly investigate and provide assistance as soon as possible."
+            }
+        ]
+    },
+    "Account": {
+        "title": "Manage Account",
+        "subtitle": "Update your profile information and account settings",
+        "backToDashboard": "Back to Dashboard",
+        "profileInfo": "Profile Information",
+        "profileInfoSubtitle": "This is your public information",
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "saveChanges": "Save Changes",
+        "saving": "Saving...",
+        "changeImage": "Change Image",
+        "name": "Full Name",
+        "email": "Email",
+        "lawyerInfo": "Lawyer Information",
+        "phone": "Phone Number",
+        "licenseNumber": "License Number",
+        "officeAddress": "Office Address",
+        "bio": "Introduction / Bio",
+        "serviceProvinces": "Service Provinces (Select multiple)",
+        "selectProvince": "Select service province",
+        "noProvincesSelected": "No provinces selected",
+        "specialty": "Specialty (Separated by comma)",
+        "specialtyPlaceholder": "Civil Law, Criminal Law",
+        "bankInfo": "Bank Account Information (For payments)",
+        "bank": "Bank",
+        "selectBank": "Select bank",
+        "accountName": "Account Name",
+        "accountNamePlaceholder": "Must match applicant name",
+        "accountNameError": "Account name must match your full name",
+        "accountNumber": "Account Number",
+        "security": "Security",
+        "changePassword": "Change Password",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmNewPassword": "Confirm New Password",
+        "changing": "Changing...",
+        "notifications": "Notifications",
+        "notificationsSubtitle": "Manage your notification settings",
+        "emailNotifications": "Email Notifications",
+        "emailNotificationsSubtitle": "Receive news, updates, and legal tips",
+        "dangerZone": "Danger Zone",
+        "dangerZoneSubtitle": "These actions cannot be reversed",
+        "deleteAccount": "Delete Account",
+        "deleteAccountSubtitle": "All your data will be permanently deleted",
+        "deleteMyAccount": "Delete My Account",
+        "deleteConfirmTitle": "Are you sure?",
+        "deleteConfirmSubtitle": "This action cannot be reversed. Your account and all data will be permanently deleted.",
+        "confirmDelete": "Confirm Delete",
+        "loginRequired": "Please login to manage account",
+        "login": "Login",
+        "errors": {
+            "fetchFailed": "Could not fetch user data",
+            "fileTooLarge": "File is too large",
+            "fileLimit": "Please upload a file no larger than {size}MB",
+            "uploadFailed": "Upload image failed",
+            "uploadCheck": "Please check your internet connection and try again",
+            "saveFailed": "Save failed",
+            "passwordMismatch": "Passwords do not match",
+            "passwordMismatchDetail": "Please enter the same new password in both fields",
+            "passwordTooShort": "Password too short",
+            "passwordTooShortDetail": "Password must be at least 6 characters long",
+            "authFailed": "Authentication failed",
+            "reloginRequired": "Please logout and login again before changing password",
+            "incorrectPassword": "Incorrect current password",
+            "changePasswordFailed": "Could not change password"
+        },
+        "success": {
+            "profileUpdated": "Profile Updated",
+            "profileUpdatedDetail": "Your profile information has been updated successfully",
+            "passwordChanged": "Password Changed",
+            "passwordChangedDetail": "Your password has been changed successfully"
+        }
+    },
+    "Banks": {
+        "Bangkok Bank": "Bangkok Bank",
+        "Kasikornbank": "Kasikornbank",
+        "Krungthai Bank": "Krungthai Bank",
+        "SCB": "SCB",
+        "Krungsri": "Krungsri",
+        "ttb": "ttb",
+        "Government Savings Bank": "Government Savings Bank",
+        "BAAC": "BAAC",
+        "CIMB Thai": "CIMB Thai",
+        "UOB": "UOB",
+        "TISCO": "TISCO",
+        "Islamic Bank of Thailand": "Islamic Bank of Thailand",
+        "GH Bank": "GH Bank",
+        "Kiatnakin Phatra Bank": "Kiatnakin Phatra Bank",
+        "Land and Houses Bank": "Land and Houses Bank",
+        "ICBC (Thai)": "ICBC (Thai)",
+        "Bank of China (Thai)": "Bank of China (Thai)"
+    },
+    "Regions": {
+        "ภาคเหนือ": "North",
+        "ภาคตะวันออกเฉียงเหนือ": "Northeast",
+        "ภาคกลาง": "Central",
+        "ภาคตะวันออก": "East",
+        "ภาคตะวันตก": "West",
+        "ภาคใต้": "South"
+    },
+    "AiAdvisor": {
+        "welcomeMessage": "Hello, I am your AI Legal Advisor. I am happy to provide preliminary legal advice based on our document database. How can I help you today?",
+        "errorMessage": "Sorry, an error occurred while processing. Please try again.",
+        "knowledgeBaseStatus": "Knowledge Base: Loaded (PDFs)",
+        "analyzing": "Analyzing data...",
+        "inputPlaceholder": "Type your question here...",
+        "floatingButton": "AI Legal Assistant"
+    },
+    "ChatModal": {
+        "title": "Lawslane AI Assistant",
+        "welcome": "Hello! I am Lawslane's AI Legal Assistant. Is there anything I can help you analyze initially?",
+        "quickQuestionsLabel": "Quick Questions:",
+        "inputPlaceholder": "Type your question...",
+        "thinking": "Thinking...",
+        "error": "Sorry, an error occurred connecting to AI. Please try again.",
+        "quickQuestions": {
+            "contract": "Draft Contract",
+            "inheritance": "Inheritance Case",
+            "company": "Company Registration",
+            "land": "Land Dispute"
+        }
+    },
+    "SupportTicket": {
+        "detailsTitle": "Ticket Details",
+        "ticketId": "Ticket ID",
+        "relatedCase": "Related Case",
+        "issueType": "Issue Type",
+        "dateReported": "Date Reported",
+        "status": "Status",
+        "statusPending": "Pending",
+        "statusResolved": "Resolved",
+        "relatedDocs": "Related Documents",
+        "noDocs": "No documents attached",
+        "uploadFile": "Upload File",
+        "fileTooLarge": "File too large",
+        "fileTooLargeDesc": "Please select a file smaller than {size}MB",
+        "uploadSuccess": "Upload Successful",
+        "uploadSuccessDesc": "File {name} has been added",
+        "chatSubtitle": "Chat with support about this case",
+        "noMessages": "No messages yet. Start a conversation.",
+        "translate": "Translate",
+        "retranslate": "Retranslate",
+        "translationLabel": "Translation:",
+        "ticketResolved": "This ticket has been resolved",
+        "typeMessage": "Type a message to support...",
+        "loading": "Loading chat...",
+        "notFound": "Ticket not found"
+    },
+    "Footer": {
+        "description": "Online lawyer marketplace connecting you with legal experts",
+        "quickLinks": {
+            "title": "Quick Links",
+            "home": "Home",
+            "articles": "Articles",
+            "findLawyer": "Find Lawyer",
+            "verifyLawyer": "Verify Lawyer Status",
+            "customerDashboard": "Customer Dashboard"
+        },
+        "forLawyers": {
+            "title": "For Lawyers",
+            "join": "Join Lawslane",
+            "login": "Lawyer Login",
+            "dashboard": "Lawyer Dashboard",
+            "adminDashboard": "Admin Dashboard",
+            "adminView": "Lawyer Dashboard (Admin View)"
+        },
+        "legal": {
+            "title": "Legal",
+            "privacy": "Privacy Policy",
+            "terms": "Terms of Service",
+            "aiDisclaimer": "AI Disclaimer",
+            "help": "Help Center"
+        },
+        "copyright": "© {year} Lawslane. All rights reserved."
+    },
+    "ContractsService": {
+        "title": "Document Drafting and Review Service",
+        "subtitle": "Be confident before signing... Let expert lawyers handle your important documents.",
+        "stepsTitle": "Service Process (Easy 3 Steps)",
+        "steps": {
+            "1": {
+                "title": "Upload Documents",
+                "description": "Send documents (e.g., .pdf, .docx) you want reviewed or specify your requirements for drafting new documents."
+            },
+            "2": {
+                "title": "Lawyer Assessment",
+                "description": "The lawyer will assess the scope of work and inform you of the clear service fee before starting."
+            },
+            "3": {
+                "title": "Receive Documents & Consultation",
+                "description": "Receive the completed reviewed/drafted documents along with legal precautions from the lawyer."
+            }
+        },
+        "docTypesTitle": "Document Types We Specialize In",
+        "docTypes": {
+            "business": "Business Contracts (MOU, NDA, Sales Contracts)",
+            "employment": "Employment Contracts / Service Agreements",
+            "lease": "Lease Agreements / Real Estate Sales Contracts",
+            "wills": "Wills / Inheritance Documents",
+            "litigation": "Lawsuits / Testimonies / Legal Documents",
+            "other": "Other Documents as Requested"
+        },
+        "pricing": {
+            "title": "Service Fee Starts at 1,500 THB",
+            "subtitle": "(Depends on document complexity)",
+            "cta": "Start Assessment (Upload Documents)"
+        }
+    },
+    "ContractsRequest": {
+        "title": "Send Documents for Price Assessment",
+        "subtitle": "Fill in the information and upload documents for the lawyer to assess the scope of work and price.",
+        "formTitle": "Service Request Form",
+        "labels": {
+            "name": "Name / Company Name",
+            "namePlaceholder": "Enter your name",
+            "phone": "Phone Number",
+            "phonePlaceholder": "08x-xxx-xxxx",
+            "email": "Email (for quotation)",
+            "emailPlaceholder": "name@example.com",
+            "serviceType": "Service Type",
+            "serviceTypePlaceholder": "Select service type",
+            "upload": "Upload Documents (if any)",
+            "details": "Additional Details / Concerns",
+            "detailsPlaceholder": "e.g., focus on confidentiality, or check termination conditions"
+        },
+        "serviceTypes": {
+            "draft": "Draft New Contract",
+            "review": "Review and Edit Existing Contract",
+            "consult": "Legal Consultation on Contract",
+            "other": "Other"
+        },
+        "upload": {
+            "dragDrop": "Click to upload or drag and drop files here",
+            "support": "Supports PDF, Word, JPG (Max 5MB)"
+        },
+        "submit": "Submit for Assessment",
+        "submitting": "Sending...",
+        "privacy": "Your information is kept strictly confidential according to our privacy policy.",
+        "toast": {
+            "successTitle": "Request Sent Successfully",
+            "successDesc": "Our staff will contact you with a price assessment within 24 hours.",
+            "errorTitle": "An Error Occurred",
+            "fileTooLarge": "File is too large. Maximum size is 5MB."
+        }
+    },
+    "SMEPage": {
+        "title": "Legal Services for Business",
+        "subtitle": "Lawslane provides comprehensive legal services for SME businesses.",
+        "services": {
+            "contracts": {
+                "title": "Business Contract Drafting & Review",
+                "description": "Drafting, reviewing, and editing all types of business contracts to close loopholes and maximize your company's benefits."
+            },
+            "advisor": {
+                "title": "Corporate Legal Advisor",
+                "description": "Have a personal lawyer available for consultation at all times to help make business decisions based on legal correctness."
+            },
+            "registration": {
+                "title": "Registration & Licenses",
+                "description": "Handling company registration, memorandum amendments, and various business license applications."
+            },
+            "dispute": {
+                "title": "Business Dispute Resolution",
+                "description": "Negotiation, mediation, and litigation in civil and commercial cases to protect your business rights and reputation."
+            }
+        },
+        "benefits": {
+            "title": "Why Choose Lawslane for Business?",
+            "list": {
+                "risk": "Reduce legal risks in doing business",
+                "cost": "Save costs compared to hiring an in-house legal team",
+                "expert": "Access a team of specialized lawyers from Lawslane",
+                "docs": "Manage documents and contracts professionally",
+                "privacy": "Maximum security for trade secrets"
+            }
+        },
+        "contact": {
+            "title": "Contact Lawslane for Business",
+            "subtitle": "Interested in corporate legal services? Fill out the form for our staff to contact you back, or contact us via the channels below.",
+            "phone": "Phone Number",
+            "email": "Email",
+            "line": "LINE Official"
+        }
+    },
+    "SMEContactForm": {
+        "title": "Service Request Form",
+        "labels": {
+            "name": "Name / Company Name",
+            "namePlaceholder": "Enter your name",
+            "phone": "Phone Number",
+            "phonePlaceholder": "08x-xxx-xxxx",
+            "email": "Email (for quotation)",
+            "emailPlaceholder": "name@example.com",
+            "serviceType": "Service Type",
+            "serviceTypePlaceholder": "Select service type",
+            "upload": "Upload Documents (if any)"
+        },
+        "serviceTypes": {
+            "contract": "Business Contract Drafting & Review",
+            "advisor": "Corporate Legal Advisor",
+            "registration": "Registration & Licenses",
+            "dispute": "Business Dispute Resolution",
+            "other": "Other"
+        },
+        "upload": {
+            "click": "Click to upload documents",
+            "support": "Supports PDF, Word, JPG, PNG (Max 5MB)"
+        },
+        "submit": "Submit",
+        "submitting": "Sending...",
+        "success": {
+            "title": "Sent Successfully!",
+            "description": "Thank you for your interest. The Lawslane team will contact you, {name}, as soon as possible.",
+            "button": "Send Another Message"
+        },
+        "toast": {
+            "successTitle": "Information Sent Successfully",
+            "successDesc": "Our staff will contact you back as soon as possible.",
+            "errorTitle": "An Error Occurred",
+            "errorDesc": "Could not send information. Please try again.",
+            "fileTooLarge": "File is too large. Maximum size is 5MB."
+        }
+    },
+    "RegistrationService": {
+        "title": "Business Registration Service",
+        "subtitle": "Start your business correctly and quickly with us.",
+        "servicesTitle": "Our Services Cover",
+        "services": {
+            "company": {
+                "title": "Company Registration",
+                "description": "Suitable for general businesses requiring credibility."
+            },
+            "partnership": {
+                "title": "Partnership Registration",
+                "description": "For small businesses with 2 or more co-founders."
+            },
+            "trademark": {
+                "title": "Trademark Registration",
+                "description": "Protect your brand and logo."
+            }
+        },
+        "stepsTitle": "Service Process",
+        "steps": {
+            "1": {
+                "title": "Fill Information",
+                "description": "Fill out the initial business information form."
+            },
+            "2": {
+                "title": "Lawyer Contact",
+                "description": "Lawyer verifies information and contacts back for confirmation."
+            },
+            "3": {
+                "title": "Payment",
+                "description": "Pay fees and service charges."
+            },
+            "4": {
+                "title": "Receive Documents",
+                "description": "Lawyer proceeds with registration and delivers documents."
+            }
+        },
+        "pricing": {
+            "title": "Service Fee Starts at 3,500 THB",
+            "remark": "(Excluding Department of Business Development fees)"
+        },
+        "cta": "Start Registration",
+        "back": "Back to All Services"
+    },
+    "RegistrationRequest": {
+        "title": "Start Business Registration",
+        "subtitle": "Fill out initial information for our lawyers to prepare documents and contact you back.",
+        "formTitle": "Business Information Form",
+        "labels": {
+            "registrationType": "Registration Type",
+            "companyName": "Business Name (Thai/English)",
+            "companyNamePlaceholder": "e.g. Lawslane Co., Ltd.",
+            "companyNameHint": "If you don't have a definite name yet, you can specify a tentative one.",
+            "contactName": "Contact Name",
+            "contactNamePlaceholder": "Specify your name",
+            "phone": "Phone Number",
+            "phonePlaceholder": "08x-xxx-xxxx",
+            "email": "Email",
+            "emailPlaceholder": "name@example.com",
+            "details": "Additional Details (Optional)",
+            "detailsPlaceholder": "e.g. Number of shareholders, registered capital, or other questions"
+        },
+        "registrationTypes": {
+            "placeholder": "Select Registration Type",
+            "company": "Company Registration",
+            "partnership": "Partnership Registration",
+            "trademark": "Trademark Registration",
+            "other": "Other"
+        },
+        "submit": "Submit for Registration",
+        "submitting": "Sending...",
+        "privacy": "Your information will be kept confidential and used for registration purposes only.",
+        "toast": {
+            "selectType": "Please select registration type",
+            "successTitle": "Information Sent Successfully",
+            "successDesc": "Our staff will contact you back for the next steps within 24 hours.",
+            "errorTitle": "An Error Occurred",
+            "errorDesc": "Could not send information. Please try again."
+        }
+    }
+}

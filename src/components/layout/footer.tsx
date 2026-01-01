@@ -1,45 +1,47 @@
-
 'use client';
 
 import Link from 'next/link';
 import Logo from '@/components/logo';
 import { usePathname } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 export default function Footer({ userRole }: { userRole: string | null }) {
   const pathname = usePathname();
+  const t = useTranslations('Footer');
+  const locale = useLocale();
   const isAuthPage = pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.endsWith('/lawyer-login');
 
   let quickLinks = [
-    { href: `/`, label: 'หน้าแรก' },
-    { href: `/articles`, label: 'บทความ' },
-    { href: `/lawyers`, label: 'ค้นหาทนาย' },
-    { href: `/verify-lawyer`, label: 'ตรวจสอบสถานะทนาย' },
+    { href: `/${locale}`, label: t('quickLinks.home') },
+    { href: `/${locale}/articles`, label: t('quickLinks.articles') },
+    { href: `/${locale}/lawyers`, label: t('quickLinks.findLawyer') },
+    { href: `/${locale}/verify-lawyer`, label: t('quickLinks.verifyLawyer') },
   ];
 
   if (userRole === 'customer') {
-    quickLinks.push({ href: `/dashboard`, label: 'แดชบอร์ดลูกค้า' });
+    quickLinks.push({ href: `/${locale}/dashboard`, label: t('quickLinks.customerDashboard') });
   }
 
   let forLawyersLinks = [
-    { href: `/for-lawyers`, label: 'เข้าร่วมเป็นทนาย Lawslane' },
-    { href: `/lawyer-login`, label: 'เข้าสู่ระบบทนาย' },
+    { href: `/${locale}/for-lawyers`, label: t('forLawyers.join') },
+    { href: `/${locale}/lawyer-login`, label: t('forLawyers.login') },
   ];
 
   if (userRole === 'lawyer') {
-    forLawyersLinks.push({ href: `/lawyer-dashboard`, label: 'Dashboard ทนาย' });
+    forLawyersLinks.push({ href: `/${locale}/lawyer-dashboard`, label: t('forLawyers.dashboard') });
   }
 
   if (userRole === 'admin') {
-    forLawyersLinks.push({ href: `/admin`, label: 'แดชบอร์ดผู้ดูแล' });
-    forLawyersLinks.push({ href: `/lawyer-dashboard?view=admin`, label: 'แดชบอร์ดทนาย (Admin View)' });
+    forLawyersLinks.push({ href: `/${locale}/admin`, label: t('forLawyers.adminDashboard') });
+    forLawyersLinks.push({ href: `/${locale}/lawyer-dashboard?view=admin`, label: t('forLawyers.adminView') });
   }
 
 
   const legalLinks = [
-    { href: `/privacy`, label: 'นโยบายความเป็นส่วนตัว' },
-    { href: `/terms`, label: 'ข้อกำหนดการใช้งาน' },
-    { href: `/ai-disclaimer`, label: 'ข้อจำกัดความรับผิดของ AI' },
-    { href: `/help`, label: 'ศูนย์ช่วยเหลือ' },
+    { href: `/${locale}/privacy`, label: t('legal.privacy') },
+    { href: `/${locale}/terms`, label: t('legal.terms') },
+    { href: `/${locale}/ai-disclaimer`, label: t('legal.aiDisclaimer') },
+    { href: `/${locale}/help`, label: t('legal.help') },
   ];
 
   if (isAuthPage) {
@@ -52,14 +54,14 @@ export default function Footer({ userRole }: { userRole: string | null }) {
       <div className="container mx-auto px-4 md:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="flex flex-col">
-            <Logo href="/" variant="white" className="text-white mb-4" />
+            <Logo href={`/${locale}`} variant="white" className="text-white mb-4" />
             <p className="text-sm text-gray-400 max-w-xs">
-              ตลาดกลางทนายความออนไลน์ เชื่อมต่อคุณกับผู้เชี่ยวชาญกฎหมาย
+              {t('description')}
             </p>
           </div>
 
           <div>
-            <h3 className="font-semibold text-white mb-4">ลิงก์ด่วน</h3>
+            <h3 className="font-semibold text-white mb-4">{t('quickLinks.title')}</h3>
             <ul className="space-y-2">
               {quickLinks.map((link) => (
                 <li key={link.label}>
@@ -72,7 +74,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
           </div>
 
           <div>
-            <h3 className="font-semibold text-white mb-4">สำหรับทนายความ</h3>
+            <h3 className="font-semibold text-white mb-4">{t('forLawyers.title')}</h3>
             <ul className="space-y-2">
               {forLawyersLinks.map((link) => (
                 <li key={link.label}>
@@ -85,7 +87,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
           </div>
 
           <div>
-            <h3 className="font-semibold text-white mb-4">กฎหมาย</h3>
+            <h3 className="font-semibold text-white mb-4">{t('legal.title')}</h3>
             <ul className="space-y-2">
               {legalLinks.map((link) => (
                 <li key={link.label}>
@@ -99,7 +101,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-6 text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} Lawslane. All rights reserved.</p>
+          <p>{t('copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </div>
     </footer>

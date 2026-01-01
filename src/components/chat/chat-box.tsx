@@ -22,12 +22,13 @@ import type { LawyerProfile, HumanChatMessage } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Sparkles } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useChat } from '@/context/chat-context';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
+import { translateToMultipleLanguages } from '@/app/actions/translate';
 
 interface ChatBoxProps {
   firestore: Firestore;
@@ -38,6 +39,12 @@ interface ChatBoxProps {
   isLawyerView?: boolean;
 }
 
+// Extend message type with translation
+interface MessageWithTranslation extends HumanChatMessage {
+  translation?: string;
+  isTranslating?: boolean;
+}
+
 export function ChatBox({
   firestore,
   currentUser,
@@ -46,17 +53,41 @@ export function ChatBox({
   isDisabled = false,
   isLawyerView = false,
 }: ChatBoxProps) {
-  const [messages, setMessages] = useState<HumanChatMessage[]>([]);
+  const [messages, setMessages] = useState<MessageWithTranslation[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isChatReady, setIsChatReady] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { initialChatMessage, setInitialChatMessage } = useChat();
 
+  const handleTranslateMessage = async (messageId: string, text: string) => {
+    // Mark as translating
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, isTranslating: true } : msg
+    ));
+
+    try {
+      const result = await translateToMultipleLanguages(text);
+      // Translate to English by default
+      const translatedText = result.english;
+
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, translation: translatedText, isTranslating: false }
+          : msg
+      ));
+    } catch (error) {
+      console.error('Translation failed:', error);
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId ? { ...msg, isTranslating: false } : msg
+      ));
+    }
+  };
+
   useEffect(() => {
     if (!chatId || !currentUser.uid || !otherUser.userId) {
       console.warn("ChatBox missing required props:", { chatId, currentUser: currentUser?.uid, otherUser: otherUser?.userId });
-      setIsLoading(false); // Stop loading if props are missing
+      setIsLoading(false);
       return;
     }
 
@@ -69,7 +100,7 @@ export function ChatBox({
           const newChatData = {
             participants: [currentUser.uid, otherUser.userId],
             createdAt: serverTimestamp(),
-            caseTitle: 'คดี: มรดก', // Mock data
+            caseTitle: 'คดี: มรดก',
           };
           setDoc(chatRef, newChatData)
             .then(() => {
@@ -93,7 +124,7 @@ export function ChatBox({
           operation: 'get',
         });
         errorEmitter.emit('permission-error', permissionError);
-        setIsLoading(false); // Stop loading on error
+        setIsLoading(false);
       }
     };
 
@@ -139,7 +170,7 @@ export function ChatBox({
       const msgs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-      } as HumanChatMessage));
+      } as MessageWithTranslation));
       setMessages(msgs);
       setIsLoading(false);
     }, (error) => {
@@ -194,10 +225,8 @@ export function ChatBox({
 
     let notificationLink = '';
     if (isLawyerView) {
-      // Lawyer sending to Client
       notificationLink = `/chat/${chatId}?lawyerId=${currentUser.uid}`;
     } else {
-      // Client sending to Lawyer
       notificationLink = `/chat/${chatId}?lawyerId=${otherUser.userId}&clientId=${currentUser.uid}&view=lawyer`;
     }
 
@@ -291,32 +320,61 @@ export function ChatBox({
                 เริ่มต้นการสนทนา...
               </div>
             ) : (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex items-end gap-2 ${msg.senderId === currentUser.uid
-                    ? 'justify-end'
-                    : 'justify-start'
-                    }`}
-                >
-                  {msg.senderId !== currentUser.uid && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={otherUser.imageUrl} />
-                      <AvatarFallback>
-                        {otherUser.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
+              messages.map((msg) => {
+                const isOwnMessage = msg.senderId === currentUser.uid;
+
+                return (
                   <div
-                    className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${msg.senderId === currentUser.uid
-                      ? 'bg-foreground text-background'
-                      : 'bg-gray-200'
-                      }`}
+                    key={msg.id}
+                    className={`flex items-end gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                   >
-                    <p>{msg.text}</p>
+                    {!isOwnMessage && (
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={otherUser.imageUrl} />
+                        <AvatarFallback>
+                          {otherUser.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className="flex flex-col gap-1">
+                      <div
+                        className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${isOwnMessage
+                          ? 'bg-foreground text-background'
+                          : 'bg-gray-200'
+                          }`}
+                      >
+                        <p>{msg.text}</p>
+                      </div>
+
+                      {/* Translate button - show for messages from other user */}
+                      {!isOwnMessage && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleTranslateMessage(msg.id, msg.text)}
+                            disabled={msg.isTranslating}
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                          >
+                            {msg.isTranslating ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Languages className="w-3 h-3" />
+                            )}
+                            <span>{msg.translation ? 'แปลใหม่' : 'แปลภาษา'}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Translation display */}
+                      {msg.translation && !isOwnMessage && (
+                        <div className="max-w-md px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs">
+                          <p className="text-blue-700 font-medium mb-1">คำแปล:</p>
+                          <p className="text-blue-800">{msg.translation}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </ScrollArea>

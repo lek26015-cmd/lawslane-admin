@@ -61,10 +61,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useFirebase } from '@/firebase'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function AdminLawyerDetailPage() {
   const params = useParams()
@@ -78,13 +80,42 @@ export default function AdminLawyerDetailPage() {
   const [currentDate, setCurrentDate] = React.useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = React.useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = React.useState(false);
+  const [duplicateLawyers, setDuplicateLawyers] = React.useState<LawyerProfile[]>([]);
 
   React.useEffect(() => {
     setCurrentDate(new Date().toISOString());
     if (!firestore || !id) return;
 
-    getLawyerById(firestore, id as string).then(foundLawyer => {
+    getLawyerById(firestore, id as string).then(async (foundLawyer) => {
       setLawyer(foundLawyer || null);
+
+      if (foundLawyer) {
+        // Check for duplicates
+        const lawyersRef = collection(firestore, 'lawyerProfiles');
+        // Check by Name
+        const nameQuery = query(lawyersRef, where('name', '==', foundLawyer.name));
+        const nameSnapshot = await getDocs(nameQuery);
+
+        // Check by License Number
+        const licenseQuery = query(lawyersRef, where('licenseNumber', '==', foundLawyer.licenseNumber));
+        const licenseSnapshot = await getDocs(licenseQuery);
+
+        const duplicates = new Map<string, LawyerProfile>();
+
+        nameSnapshot.docs.forEach(doc => {
+          if (doc.id !== foundLawyer.id) {
+            duplicates.set(doc.id, { id: doc.id, ...doc.data() } as LawyerProfile);
+          }
+        });
+
+        licenseSnapshot.docs.forEach(doc => {
+          if (doc.id !== foundLawyer.id) {
+            duplicates.set(doc.id, { id: doc.id, ...doc.data() } as LawyerProfile);
+          }
+        });
+
+        setDuplicateLawyers(Array.from(duplicates.values()));
+      }
     });
 
     // Fetch real cases
@@ -238,6 +269,29 @@ export default function AdminLawyerDetailPage() {
 
           </div>
         </div>
+
+        {duplicateLawyers.length > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>พบข้อมูลทนายความซ้ำซ้อน</AlertTitle>
+            <AlertDescription>
+              พบทนายความที่มีชื่อหรือเลขใบอนุญาตตรงกันในระบบ:
+              <ul className="list-disc list-inside mt-2">
+                {duplicateLawyers.map(dup => (
+                  <li key={dup.id}>
+                    <Link href={`/admin/lawyers/${dup.id}`} className="underline font-medium hover:text-destructive/80">
+                      {dup.name}
+                    </Link>
+                    <span className="ml-2 text-muted-foreground">
+                      (License: {dup.licenseNumber}, Status: {dup.status})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>ประวัติเคสล่าสุด</CardTitle>

@@ -5,31 +5,34 @@ import { FileText, Users, Briefcase, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { FadeIn } from '@/components/fade-in';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
 
 export function HomeServicesSection() {
+    const t = useTranslations('HomePage.services');
+
     const services = [
         {
             icon: <FileText className="w-10 h-10 text-[#0B3979]" />,
-            title: "ร่างและตรวจสัญญาธุรกิจ",
-            description: "บริการร่าง ตรวจสอบ และแก้ไขสัญญาทางธุรกิจทุกประเภท เพื่อปิดช่องโหว่และรักษาผลประโยชน์สูงสุดของบริษัทคุณ",
+            title: t('contracts.title'),
+            description: t('contracts.description'),
             link: "/services/contracts"
         },
         {
             icon: <ShieldCheck className="w-10 h-10 text-[#0B3979]" />,
-            title: "ที่ปรึกษากฎหมายประจำบริษัท",
-            description: "มีทนายความส่วนตัวคอยให้คำปรึกษาตลอดเวลา ช่วยตัดสินใจทางธุรกิจบนพื้นฐานความถูกต้องทางกฎหมาย",
+            title: t('consultant.title'),
+            description: t('consultant.description'),
             link: "/sme#contact"
         },
         {
             icon: <Briefcase className="w-10 h-10 text-[#0B3979]" />,
-            title: "จดทะเบียนและใบอนุญาต",
-            description: "ดูแลเรื่องการจดทะเบียนบริษัท แก้ไขหนังสือบริคณห์สนธิ และขอใบอนุญาตประกอบธุรกิจต่างๆ",
+            title: t('registration.title'),
+            description: t('registration.description'),
             link: "/services/registration"
         },
         {
             icon: <Users className="w-10 h-10 text-[#0B3979]" />,
-            title: "ระงับข้อพิพาททางธุรกิจ",
-            description: "เจรจาไกล่เกลี่ย และว่าความในคดีแพ่งและพาณิชย์ เพื่อปกป้องสิทธิและชื่อเสียงของธุรกิจ",
+            title: t('dispute.title'),
+            description: t('dispute.description'),
             link: "/sme#contact"
         }
     ];
@@ -40,10 +43,10 @@ export function HomeServicesSection() {
                 <FadeIn direction="up">
                     <div className="text-center mb-12 space-y-4">
                         <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-[#0B3979] font-headline">
-                            บริการของเรา
+                            {t('title')}
                         </h2>
                         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                            Lawlane นำเสนอบริการทางกฎหมายที่หลากหลาย รวดเร็ว และโปร่งใส
+                            {t('subtitle')}
                         </p>
                     </div>
                 </FadeIn>

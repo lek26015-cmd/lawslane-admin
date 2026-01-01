@@ -9,16 +9,26 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import profileLawyerImg from '@/pic/profile-lawyer.jpg';
+import { useUser } from '@/firebase';
+import { useTranslations } from 'next-intl';
+
+import { getSpecialtyKey } from '@/lib/specialties';
 
 interface LawyerCardProps {
   lawyer: LawyerProfile;
 }
 
-import { useUser } from '@/firebase';
-
 export default function LawyerCard({ lawyer }: LawyerCardProps) {
   const router = useRouter();
   const { user } = useUser();
+  const t = useTranslations('Lawyers');
+
+  // Helper to translate specialty
+  const translateSpecialty = (spec: string) => {
+    const key = getSpecialtyKey(spec);
+    return key ? t(`specialties.${key}`) : spec;
+  };
+
   // Use real data if available, otherwise default to 0 (or hide)
   const rating = lawyer.averageRating || 0;
   const reviewCount = lawyer.reviewCount || 0;
@@ -64,28 +74,29 @@ export default function LawyerCard({ lawyer }: LawyerCardProps) {
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground mt-1 font-medium bg-gray-50 px-2 py-0.5 rounded-full">
-            {reviewCount > 0 ? `${reviewCount} รีวิว` : 'ทนายใหม่'}
+            {reviewCount > 0 ? `${reviewCount} ${t('card.reviews')}` : t('card.newLawyer')}
           </p>
         </div>
       </div>
 
       <div className="flex-grow text-center md:text-left relative z-10 w-full">
         <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1 justify-center md:justify-start">
+          {/* Lawyer name is NOT translated */}
           <h3 className="font-bold text-xl text-slate-800">{lawyer.name}</h3>
           {lawyer.status === 'approved' && (
             <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-blue-50 text-blue-700 hover:bg-blue-100">
-              ยืนยันตัวตนแล้ว
+              {t('card.verified')}
             </span>
           )}
         </div>
 
-        <p className="font-semibold text-primary/90 text-sm uppercase tracking-wide mb-2">{lawyer.specialty[0]}</p>
+        <p className="font-semibold text-primary/90 text-sm uppercase tracking-wide mb-2">{translateSpecialty(lawyer.specialty[0])}</p>
         <p className="text-sm text-slate-500 mb-4 line-clamp-2 leading-relaxed">{lawyer.description}</p>
 
         <div className="flex flex-wrap gap-2 justify-center md:justify-start">
           {lawyer.specialty.slice(0, 3).map((spec, index) => (
             <Badge key={index} variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-200 font-normal">
-              {spec}
+              {translateSpecialty(spec)}
             </Badge>
           ))}
           {lawyer.specialty.length > 3 && (
@@ -99,10 +110,10 @@ export default function LawyerCard({ lawyer }: LawyerCardProps) {
           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all"
           onClick={handleViewProfile}
         >
-          ดูโปรไฟล์
+          {t('card.viewProfile')}
         </Button>
         <Button variant="outline" className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800" onClick={handleStartChat}>
-          <Mail className="mr-2 h-4 w-4" /> ส่งข้อความ
+          <Mail className="mr-2 h-4 w-4" /> {t('card.sendMessage')}
         </Button>
       </div>
     </div>

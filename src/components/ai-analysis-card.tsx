@@ -10,12 +10,14 @@ import { Sparkles, Loader2 } from 'lucide-react';
 import Logo from '@/components/logo';
 import { findLawyerSpecialties } from '@/ai/flows/find-lawyers-flow';
 import { useChat } from '@/context/chat-context';
+import { useTranslations } from 'next-intl';
 
 export default function AiAnalysisCard() {
   const router = useRouter();
   const [isFindingLawyers, setIsFindingLawyers] = useState(false);
   const [analysisText, setAnalysisText] = useState('');
   const { setAiChatOpen } = useChat();
+  const t = useTranslations('HomePage.aiAnalysis');
 
   const handleAnalysis = async () => {
     if (!analysisText.trim()) return;
@@ -42,17 +44,17 @@ export default function AiAnalysisCard() {
         <div className="flex items-center gap-3 mb-2">
           <Logo href="/" variant="color" showText={false} />
           <h2 className="text-2xl md:text-3xl font-bold font-headline">
-            ไม่แน่ใจว่าต้องการทนายด้านไหน?
+            {t('title')}
           </h2>
         </div>
         <p className="text-muted-foreground mb-6">
-          ให้ AI ช่วยวิเคราะห์ปัญหาเบื้องต้นและแนะนำทนายที่ตรงจุด
+          {t('description')}
         </p>
         <div className="space-y-4">
           <Textarea
             value={analysisText}
             onChange={(e) => setAnalysisText(e.target.value)}
-            placeholder="อธิบายปัญหาของคุณที่นี่ เช่น 'โดนโกงแชร์', 'ต้องการจดทะเบียนบริษัท', 'ปัญหาที่ดินกับเพื่อนบ้าน'"
+            placeholder={t('placeholder')}
             rows={4}
             className="bg-background/10 text-foreground placeholder:text-muted-foreground border-border rounded-2xl resize-none"
           />
@@ -60,10 +62,10 @@ export default function AiAnalysisCard() {
             {isFindingLawyers ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                กำลังวิเคราะห์...
+                {t('analyzing')}
               </>
             ) : (
-              'วิเคราะห์และแนะนำทนาย'
+              t('button')
             )}
           </Button>
         </div>
