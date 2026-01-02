@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import '../globals.css';
 import React from 'react';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { ChatProvider } from '@/context/chat-context';
-import { Toaster } from '@/components/ui/toaster';
+import { ClientProviders } from '../client-providers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 
@@ -33,12 +31,9 @@ export default async function LawyerLayout({
             </head>
             <body className="font-body antialiased">
                 <NextIntlClientProvider messages={messages} locale={locale}>
-                    <FirebaseClientProvider>
-                        <ChatProvider>
-                            {children}
-                            <Toaster />
-                        </ChatProvider>
-                    </FirebaseClientProvider>
+                    <ClientProviders>
+                        {children}
+                    </ClientProviders>
                 </NextIntlClientProvider>
             </body>
         </html>

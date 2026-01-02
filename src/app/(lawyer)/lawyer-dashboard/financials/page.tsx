@@ -420,7 +420,7 @@ function LawyerFinancialsContent() {
                                     </div>
                                 </div>
 
-                                <DialogFooter className="gap-2 sm:gap-0">
+                                <DialogFooter className="gap-2 sm:gap-0 px-6 pb-6">
                                     <Button variant="ghost" onClick={() => setIsWithdrawOpen(false)} className="rounded-full hover:bg-gray-100 text-muted-foreground">
                                         ยกเลิก
                                     </Button>

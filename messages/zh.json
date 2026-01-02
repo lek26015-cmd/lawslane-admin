@@ -124,6 +124,8 @@
         "logout": "退出",
         "myAccount": "我的账户",
         "dashboard": "仪表板",
+        "adminDashboard": "管理员控制台",
+        "adminView": "律师仪表板 (管理员视图)",
         "manageAccount": "管理账户",
         "searchPlaceholder": "搜索律师、专业知识或问题...",
         "smeMenu": {

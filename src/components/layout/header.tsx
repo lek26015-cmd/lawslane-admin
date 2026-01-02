@@ -263,9 +263,12 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                     </DropdownMenuItem>
                   )}
 
-                  {!isAdmin && !isLawyer && (
+                  {(!isAdmin && !isLawyer || isSuperUser) && (
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard"><LayoutDashboard className="mr-2" />{t('dashboard')}</Link>
+                      <Link href="/dashboard">
+                        <LayoutDashboard className="mr-2" />
+                        {t('dashboard')} {isSuperUser ? '(ผู้ใช้)' : ''}
+                      </Link>
                     </DropdownMenuItem>
                   )}
 
