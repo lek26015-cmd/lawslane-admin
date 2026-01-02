@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 's
 
 import { useSearchParams } from 'next/navigation';
 
-export default function LawyerSchedulePage() {
+function LawyerScheduleContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const isAdminView = searchParams.get('view') === 'admin';
@@ -220,5 +220,13 @@ export default function LawyerSchedulePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LawyerSchedulePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LawyerScheduleContent />
+    </Suspense>
   );
 }

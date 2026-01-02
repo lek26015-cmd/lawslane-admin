@@ -267,6 +267,12 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
         return <div className="flex h-screen items-center justify-center">Loading...</div>;
     }
 
+    // Fix: If on login page, render only the content (login form) without sidebar
+    // This prevents the "sidebar + login page" glitch if the user is already authenticated
+    if (pathname === '/admin/login') {
+        return <>{children}</>;
+    }
+
     if (!isAdmin) {
         return <AdminLoginPage />;
     }

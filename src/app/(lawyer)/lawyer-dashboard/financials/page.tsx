@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useUser, useFirebase } from '@/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -48,7 +48,7 @@ type Withdrawal = {
     accountNumber: string;
 };
 
-export default function LawyerFinancialsPage() {
+function LawyerFinancialsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { firestore } = useFirebase();
@@ -577,5 +577,13 @@ export default function LawyerFinancialsPage() {
                 </Tabs>
             </div>
         </div >
+    );
+}
+
+export default function LawyerFinancialsPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+            <LawyerFinancialsContent />
+        </Suspense>
     );
 }

@@ -28,21 +28,30 @@ export default async function middleware(request: NextRequest) {
         }
     }
 
-    // 1. Admin Route Protection
-    if (pathname.startsWith('/admin')) {
-        // Allow access to login page
-        if (pathname === '/admin/login') {
-            return NextResponse.next();
-        }
-
-        // Check for session cookie
-        const session = request.cookies.get('session');
-        if (!session) {
-            return NextResponse.redirect(new URL('/admin/login', request.url));
-        }
+    // 0.5 Redirect localized lawyer routes to root (e.g. /th/lawyer-login -> /lawyer-login)
+    const localizedLawyerRegex = /^\/[a-z]{2}\/(lawyer-|verify-lawyer)(.*)/;
+    if (localizedLawyerRegex.test(pathname)) {
+        const newPath = pathname.replace(/^\/[a-z]{2}/, '');
+        return NextResponse.redirect(new URL(newPath, request.url));
     }
 
-    // 2. Internationalization Middleware
+    // 1. Admin & Lawyer System Exclusion (No i18n)
+    if (pathname.startsWith('/admin') || pathname.startsWith('/lawyer-') || pathname.startsWith('/verify-lawyer')) {
+        // Admin Auth Check
+        if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+            const session = request.cookies.get('session');
+            if (!session) {
+                return NextResponse.redirect(new URL('/admin/login', request.url));
+            }
+        }
+
+        // For these systems, simply proceed without i18n
+        const response = NextResponse.next();
+        response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+        return response;
+    }
+
+    // 2. Internationalization Middleware (Only for non-admin routes)
     const response = intlMiddleware(request);
 
     // Add Security Headers

@@ -15,7 +15,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
     { href: `/${locale}`, label: t('quickLinks.home') },
     { href: `/${locale}/articles`, label: t('quickLinks.articles') },
     { href: `/${locale}/lawyers`, label: t('quickLinks.findLawyer') },
-    { href: `/${locale}/verify-lawyer`, label: t('quickLinks.verifyLawyer') },
+    { href: `/verify-lawyer`, label: t('quickLinks.verifyLawyer') },
   ];
 
   if (userRole === 'customer') {
@@ -24,16 +24,16 @@ export default function Footer({ userRole }: { userRole: string | null }) {
 
   let forLawyersLinks = [
     { href: `/${locale}/for-lawyers`, label: t('forLawyers.join') },
-    { href: `/${locale}/lawyer-login`, label: t('forLawyers.login') },
+    { href: `/lawyer-login`, label: t('forLawyers.login') },
   ];
 
   if (userRole === 'lawyer') {
-    forLawyersLinks.push({ href: `/${locale}/lawyer-dashboard`, label: t('forLawyers.dashboard') });
+    forLawyersLinks.push({ href: `/lawyer-dashboard`, label: t('forLawyers.dashboard') });
   }
 
   if (userRole === 'admin') {
-    forLawyersLinks.push({ href: `/${locale}/admin`, label: t('forLawyers.adminDashboard') });
-    forLawyersLinks.push({ href: `/${locale}/lawyer-dashboard?view=admin`, label: t('forLawyers.adminView') });
+    forLawyersLinks.push({ href: `/admin`, label: t('forLawyers.adminDashboard') });
+    forLawyersLinks.push({ href: `/lawyer-dashboard?view=admin`, label: t('forLawyers.adminView') });
   }
 
 

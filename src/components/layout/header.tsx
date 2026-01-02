@@ -1,7 +1,7 @@
-
 'use client';
 
 import { Link, usePathname } from '@/navigation';
+import { default as NextLink } from 'next/link';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,11 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
   const { auth, firestore } = useFirebase();
   const { user, isUserLoading: isLoading } = useAuthUser();
 
+  const isSuperUser = user && (user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2' || user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3');
   const [role, setRole] = useState<string | null>(null);
+  const isAdmin = role === 'admin' || isSuperUser;
+  const isLawyer = role === 'lawyer' || isSuperUser;
+
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -242,14 +246,29 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{t('myAccount')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href={(role === 'lawyer' || user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2' || user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3') ? "/lawyer-dashboard" : (role === 'admin' ? "/admin" : "/dashboard")}><LayoutDashboard className="mr-2" />{role === 'admin' ? t('adminDashboard') : t('dashboard')}</Link>
-                  </DropdownMenuItem>
-                  {role === 'admin' && (
+
+                  {isAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link href="/lawyer-dashboard?view=admin"><LayoutDashboard className="mr-2" />{t('adminView')}</Link>
+                      <NextLink href="/admin">
+                        <LayoutDashboard className="mr-2" />{t('adminDashboard')}
+                      </NextLink>
                     </DropdownMenuItem>
                   )}
+
+                  {(isLawyer || isSuperUser) && (
+                    <DropdownMenuItem asChild>
+                      <NextLink href="/lawyer-dashboard">
+                        <LayoutDashboard className="mr-2" />{t('dashboard')} {isSuperUser ? '(ทนาย)' : ''}
+                      </NextLink>
+                    </DropdownMenuItem>
+                  )}
+
+                  {!isAdmin && !isLawyer && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard"><LayoutDashboard className="mr-2" />{t('dashboard')}</Link>
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem asChild>
                     <Link href="/account"><User className="mr-2" />{t('manageAccount')}</Link>
                   </DropdownMenuItem>
@@ -368,9 +387,21 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <Link href={(role === 'lawyer' || user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2') ? "/lawyer-dashboard" : "/dashboard"} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
-                          <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
-                        </Link>
+                        {isAdmin && (
+                          <NextLink href="/admin" className="flex items-center gap-2 p-2 hover:bg-muted rounded-md text-foreground">
+                            <LayoutDashboard className="w-4 h-4" /> {t('adminDashboard')}
+                          </NextLink>
+                        )}
+                        {(isLawyer || isSuperUser) && (
+                          <NextLink href="/lawyer-dashboard" className="flex items-center gap-2 p-2 hover:bg-muted rounded-md text-foreground">
+                            <LayoutDashboard className="w-4 h-4" /> {t('dashboard')} {isSuperUser ? '(ทนาย)' : ''}
+                          </NextLink>
+                        )}
+                        {!isAdmin && !isLawyer && (
+                          <Link href="/dashboard" className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
+                            <LayoutDashboard className="w-4 h-4" /> {t('dashboard')}
+                          </Link>
+                        )}
                         <Link href="/account" className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
                           <User className="w-4 h-4" /> {t('manageAccount')}
                         </Link>
