@@ -26,6 +26,15 @@ export default async function middleware(request: NextRequest) {
 
             return NextResponse.rewrite(new URL(newPath, request.url));
         }
+    } else {
+        // Redirect /admin on main domain to admin subdomain
+        if (pathname.startsWith('/admin')) {
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
+            const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+            // Strip /admin from the path since the subdomain handles it
+            const newPath = pathname.replace(/^\/admin/, '') || '/';
+            return NextResponse.redirect(`${protocol}://admin.${rootDomain}${newPath}`);
+        }
     }
 
     // 0.5 Redirect localized lawyer routes to root (e.g. /th/lawyer-login -> /lawyer-login)

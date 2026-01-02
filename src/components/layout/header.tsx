@@ -249,9 +249,9 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
 
                   {isAdmin && (
                     <DropdownMenuItem asChild>
-                      <NextLink href="/admin">
+                      <a href={`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://admin.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com'}`}>
                         <LayoutDashboard className="mr-2" />{t('adminDashboard')}
-                      </NextLink>
+                      </a>
                     </DropdownMenuItem>
                   )}
 
