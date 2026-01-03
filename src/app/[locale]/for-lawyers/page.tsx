@@ -115,6 +115,7 @@ export default function ForLawyersPage() {
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [customSpecialty, setCustomSpecialty] = useState('');
   const [customOptions, setCustomOptions] = useState<string[]>([]);
@@ -177,7 +178,7 @@ export default function ForLawyersPage() {
     },
   });
 
-  const handleFileChange = (setter: React.Dispatch<React.SetStateAction<File | null>>) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (setter: React.Dispatch<React.SetStateAction<File | null>>, isProfileImage: boolean = false) => (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
 
@@ -192,6 +193,12 @@ export default function ForLawyersPage() {
       }
 
       setter(file);
+
+      // Create preview for profile image
+      if (isProfileImage) {
+        const previewUrl = URL.createObjectURL(file);
+        setProfileImagePreview(previewUrl);
+      }
     }
   };
 
@@ -780,13 +787,20 @@ export default function ForLawyersPage() {
 
                     <h3 className="text-lg font-semibold border-b pb-2 pt-4">รูปโปรไฟล์และเอกสาร</h3>
                     <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label>รูปโปรไฟล์ (ไม่บังคับ - ไม่เกิน 5MB)</Label>
+                        {profileImagePreview && (
+                          <div className="flex justify-center">
+                            <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg">
+                              <Image src={profileImagePreview} alt="Preview" fill className="object-cover" />
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 p-2 border rounded-full bg-gray-50 px-4">
                           <User className="h-5 w-5 text-gray-500 flex-shrink-0" />
                           <span className="text-sm text-gray-600 truncate flex-grow">{profileImageFile ? profileImageFile.name : 'ยังไม่ได้เลือกรูป'}</span>
-                          <Input id="profile-image-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange(setProfileImageFile)} />
-                          <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('profile-image-upload')?.click()} className="rounded-full">เลือกรูป</Button>
+                          <Input id="profile-image-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange(setProfileImageFile, true)} />
+                          <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('profile-image-upload')?.click()} className="rounded-full">{profileImagePreview ? 'เปลี่ยนรูป' : 'เลือกรูป'}</Button>
                         </div>
                       </div>
                       <div className="space-y-2">

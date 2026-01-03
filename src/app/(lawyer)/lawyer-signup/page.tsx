@@ -20,6 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, User } from 'lucide-react';
 import Logo from '@/components/logo';
+import Image from 'next/image';
 import { TurnstileWidget } from '@/components/turnstile-widget';
 import { validateTurnstile } from '@/app/actions/turnstile';
 
@@ -53,6 +54,7 @@ export default function LawyerExpressSignupPage() {
     const [customOptions, setCustomOptions] = useState<string[]>([]);
     const isSubmittingRef = useRef(false);
     const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+    const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -67,6 +69,9 @@ export default function LawyerExpressSignupPage() {
                 return;
             }
             setProfileImageFile(file);
+            // Create preview URL
+            const previewUrl = URL.createObjectURL(file);
+            setProfileImagePreview(previewUrl);
         }
     };
 
@@ -314,13 +319,20 @@ export default function LawyerExpressSignupPage() {
                                 />
 
                                 {/* Profile Image Upload */}
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <label className="text-sm font-medium">รูปโปรไฟล์ (ไม่บังคับ - ไม่เกิน 5MB)</label>
+                                    {profileImagePreview && (
+                                        <div className="flex justify-center">
+                                            <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 shadow-lg">
+                                                <Image src={profileImagePreview} alt="Preview" fill className="object-cover" />
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-2 p-2 border rounded-xl bg-slate-50 border-slate-200 px-4">
                                         <User className="h-5 w-5 text-gray-500 flex-shrink-0" />
                                         <span className="text-sm text-gray-600 truncate flex-grow">{profileImageFile ? profileImageFile.name : 'ยังไม่ได้เลือกรูป'}</span>
                                         <Input id="profile-image-upload-express" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('profile-image-upload-express')?.click()} className="rounded-full">เลือกรูป</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('profile-image-upload-express')?.click()} className="rounded-full">{profileImagePreview ? 'เปลี่ยนรูป' : 'เลือกรูป'}</Button>
                                     </div>
                                 </div>
 
