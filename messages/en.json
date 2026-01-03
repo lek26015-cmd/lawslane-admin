@@ -97,6 +97,7 @@
             "loading": "Loading articles...",
             "viewAll": "View All",
             "readMore": "Read More",
+            "publishedAt": "Published",
             "emptyTitle": "No articles found",
             "emptyDescription": "There are currently no legal articles in the system. Please try again later."
         },

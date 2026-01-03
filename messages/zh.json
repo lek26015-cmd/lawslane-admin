@@ -97,6 +97,7 @@
             "loading": "正在加载文章...",
             "viewAll": "查看全部",
             "readMore": "阅读更多",
+            "publishedAt": "发布于",
             "emptyTitle": "未找到文章",
             "emptyDescription": "系统中目前没有法律文章。请稍后再试。"
         },
