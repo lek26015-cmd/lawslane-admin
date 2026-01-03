@@ -65,7 +65,7 @@ const nextConfig: NextConfig = {
               img-src 'self' blob: data: https://placehold.co https://images.unsplash.com https://picsum.photos https://*.r2.dev https://i.pravatar.cc https://*.googleusercontent.com;
               font-src 'self' https://fonts.gstatic.com;
               connect-src 'self' https://challenges.cloudflare.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://firestore.googleapis.com https://*.firebaseapp.com;
-              frame-src 'self' https://challenges.cloudflare.com https://*.firebaseapp.com https://*.googleapis.com;
+              frame-src 'self' https://challenges.cloudflare.com https://*.firebaseapp.com https://*.googleapis.com https://auth.lawslane.com;
             `.replace(/\s{2,}/g, ' ').trim(),
           },
           {
