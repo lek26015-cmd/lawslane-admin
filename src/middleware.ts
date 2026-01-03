@@ -56,7 +56,7 @@ export default async function middleware(request: NextRequest) {
 
         // For these systems, simply proceed without i18n
         const response = NextResponse.next();
-        response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+        response.headers.set('Cross-Origin-Opener-Policy', 'unsafe-none');
         return response;
     }
 
@@ -64,7 +64,7 @@ export default async function middleware(request: NextRequest) {
     const response = intlMiddleware(request);
 
     // Add Security Headers
-    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    response.headers.set('Cross-Origin-Opener-Policy', 'unsafe-none');
 
     return response;
 }
