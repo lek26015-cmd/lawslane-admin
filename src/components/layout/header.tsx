@@ -358,7 +358,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                   <Logo href={getMainLink('/')} variant="color" />
                 </SheetTitle>
               </SheetHeader>
-              <div className="flex flex-col gap-6 p-6">
+              <div className="flex flex-col gap-6 p-6 overflow-y-auto flex-1">
                 <nav className="flex flex-col gap-4 text-lg mt-6">
                   <Link href={getMainLink('/')} className="hover:text-primary">{t('home')}</Link>
 
