@@ -191,7 +191,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
 
 
 
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden lg:flex items-center gap-6">
           <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
             <DropdownMenu>
               <DropdownMenuTrigger className={cn("flex items-center gap-1 font-medium focus:outline-none", navLinkClasses)}>
@@ -315,7 +315,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <div className={cn(
             "transition-all duration-300 ease-in-out mr-1",
             useTransparentHeader ? "text-foreground" : "text-background"
