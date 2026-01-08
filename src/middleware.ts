@@ -27,8 +27,8 @@ export default async function middleware(request: NextRequest) {
             return NextResponse.rewrite(new URL(newPath, request.url));
         }
     } else {
-        // Redirect /admin on main domain to admin subdomain
-        if (pathname.startsWith('/admin')) {
+        // Redirect /admin on main domain to admin subdomain (Skip for localhost)
+        if (pathname.startsWith('/admin') && hostname && !hostname.includes('localhost')) {
             const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
             const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
             // Strip /admin from the path since the subdomain handles it

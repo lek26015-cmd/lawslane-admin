@@ -225,8 +225,19 @@ export default function AdminCustomersPage() {
                                                 {customer.registeredAt as string}
                                             </TableCell>
                                             <TableCell className="hidden md:table-cell">
-                                                <Badge variant={customer.status === 'active' ? 'secondary' : 'destructive'}>
-                                                    {customer.status === 'active' ? 'Active' : 'Suspended'}
+                                                <Badge
+                                                    variant={
+                                                        customer.status === 'active' ? 'secondary' :
+                                                            customer.status === 'pending' ? 'outline' :
+                                                                'destructive'
+                                                    }
+                                                    className={customer.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
+                                                >
+                                                    {
+                                                        customer.status === 'active' ? 'Active' :
+                                                            customer.status === 'pending' ? 'Pending' :
+                                                                'Suspended'
+                                                    }
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>

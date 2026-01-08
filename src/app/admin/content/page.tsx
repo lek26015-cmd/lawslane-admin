@@ -112,42 +112,42 @@ export default function AdminContentPage() {
                             </div>
                         </div>
                         <TabsContent value="all">
-                            <AlertDialog>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="hidden w-[100px] sm:table-cell">
-                                                รูปภาพ
-                                            </TableHead>
-                                            <TableHead>หัวข้อ</TableHead>
-                                            <TableHead>หมวดหมู่</TableHead>
-                                            <TableHead>
-                                                <span className="sr-only">Actions</span>
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {articles.map((article) => (
-                                            <TableRow key={article.id}>
-                                                <TableCell className="hidden sm:table-cell">
-                                                    <Image
-                                                        alt={article.title}
-                                                        className="aspect-square rounded-md object-cover"
-                                                        height="64"
-                                                        src={article.imageUrl}
-                                                        width="64"
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="font-medium">
-                                                    {article.title}
-                                                    <div className="text-xs text-muted-foreground md:hidden">
-                                                        {article.category}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="hidden md:table-cell">
-                                                    <Badge variant="outline">{article.category}</Badge>
-                                                </TableCell>
-                                                <TableCell>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="hidden w-[100px] sm:table-cell">
+                                            รูปภาพ
+                                        </TableHead>
+                                        <TableHead>หัวข้อ</TableHead>
+                                        <TableHead>หมวดหมู่</TableHead>
+                                        <TableHead>
+                                            <span className="sr-only">Actions</span>
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {articles.map((article) => (
+                                        <TableRow key={article.id}>
+                                            <TableCell className="hidden sm:table-cell">
+                                                <Image
+                                                    alt={article.title}
+                                                    className="aspect-square rounded-md object-cover"
+                                                    height="64"
+                                                    src={article.imageUrl}
+                                                    width="64"
+                                                />
+                                            </TableCell>
+                                            <TableCell className="font-medium">
+                                                {article.title}
+                                                <div className="text-xs text-muted-foreground md:hidden">
+                                                    {article.category}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="hidden md:table-cell">
+                                                <Badge variant="outline">{article.category}</Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <AlertDialog>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button
@@ -183,12 +183,12 @@ export default function AdminContentPage() {
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </AlertDialog>
+                                                </AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </TabsContent>
                     </Tabs>
                 </CardContent>

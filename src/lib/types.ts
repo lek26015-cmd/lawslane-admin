@@ -11,7 +11,7 @@ export interface UserProfile {
   role: 'customer' | 'lawyer' | 'admin';
   type: 'บุคคลทั่วไป' | 'SME';
   registeredAt: any;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'pending';
   avatar?: string;
   permissions?: Record<string, string[]>;
   superAdmin?: boolean;

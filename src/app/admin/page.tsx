@@ -110,60 +110,68 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
-        <Card className="rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              ผู้ใช้งานทั้งหมด
-            </CardTitle>
-            <Users2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.newUsers} ในเดือนนี้
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket ที่เปิดอยู่</CardTitle>
-            <Ticket className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeTicketsCount}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.activeTicketsCount > 0 ? `${stats.activeTicketsCount} เรื่องรอการแก้ไข` : 'ไม่มีเรื่องค้าง'}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              ทนายรออนุมัติ
-            </CardTitle>
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingLawyersCount}</div>
-            <p className="text-xs text-muted-foreground">
-              รอการตรวจสอบคุณสมบัติ
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              ทนายที่ Active
-            </CardTitle>
-            <Gavel className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.approvedLawyersCount}</div>
-            <p className="text-xs text-muted-foreground">
-              ทนายความพร้อมให้บริการ
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/admin/customers" className="block transition-transform hover:scale-[1.02] active:scale-95">
+          <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                ผู้ใช้งานทั้งหมด
+              </CardTitle>
+              <Users2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              <p className="text-xs text-muted-foreground">
+                +{stats.newUsers} ในเดือนนี้
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/tickets" className="block transition-transform hover:scale-[1.02] active:scale-95">
+          <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ticket ที่เปิดอยู่</CardTitle>
+              <Ticket className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.activeTicketsCount}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.activeTicketsCount > 0 ? `${stats.activeTicketsCount} เรื่องรอการแก้ไข` : 'ไม่มีเรื่องค้าง'}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/lawyers?tab=pending" className="block transition-transform hover:scale-[1.02] active:scale-95">
+          <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                ทนายรออนุมัติ
+              </CardTitle>
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendingLawyersCount}</div>
+              <p className="text-xs text-muted-foreground">
+                รอการตรวจสอบคุณสมบัติ
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/lawyers?tab=active" className="block transition-transform hover:scale-[1.02] active:scale-95">
+          <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                ทนายที่ Active
+              </CardTitle>
+              <Gavel className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.approvedLawyersCount}</div>
+              <p className="text-xs text-muted-foreground">
+                ทนายความพร้อมให้บริการ
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
         <Card className="xl:col-span-2 rounded-xl overflow-hidden">

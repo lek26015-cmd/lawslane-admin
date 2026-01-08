@@ -71,11 +71,28 @@ export default function AdminCustomerDetailPage() {
       const docSnap = await getDoc(userRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setCustomer({
+        let userProfile = {
           uid: docSnap.id,
           ...data,
           status: data.status || 'active' // Default to active if missing
-        } as UserProfile);
+        } as UserProfile;
+
+        // If user is a lawyer, fetch additional lawyer profile data
+        if (data.role === 'lawyer') {
+          const lawyerRef = doc(firestore, 'lawyerProfiles', id as string);
+          const lawyerSnap = await getDoc(lawyerRef);
+          if (lawyerSnap.exists()) {
+            const lawyerData = lawyerSnap.data();
+            // Merge or attach lawyer data. For now, let's just make it available in the user profile object or separate state?
+            // The UserProfile type doesn't stricly have lawyer fields, but let's extend it dynamically for display or use a separate state.
+            // Simpler to just extend the state or add a new state variable.
+            // Let's modify the customer state to include 'licenseNumber' for display if needed, forcing type casting or extending the type locally.
+            (userProfile as any).licenseNumber = lawyerData.licenseNumber;
+            (userProfile as any).lawyerStatus = lawyerData.status;
+          }
+        }
+
+        setCustomer(userProfile);
 
         // Fetch User Cases
         const dashboardData = await getDashboardData(firestore, id as string);
@@ -158,8 +175,19 @@ export default function AdminCustomerDetailPage() {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             โปรไฟล์ลูกค้า
           </h1>
-          <Badge variant={customer.status === 'active' ? 'secondary' : 'destructive'} className="ml-auto sm:ml-0">
-            {customer.status === 'active' ? 'Active' : 'Suspended'}
+          <Badge
+            variant={
+              customer.status === 'active' ? 'secondary' :
+                customer.status === 'pending' ? 'outline' :
+                  'destructive'
+            }
+            className={customer.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
+          >
+            {
+              customer.status === 'active' ? 'Active' :
+                customer.status === 'pending' ? 'Pending' :
+                  'Suspended'
+            }
           </Badge>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
             <Link href={`/admin/customers/${id}/edit`}>
@@ -285,6 +313,11 @@ export default function AdminCustomerDetailPage() {
                   <p className="font-medium">{customer.name}</p>
                   <p className="text-muted-foreground">{customer.email}</p>
                   <p className="text-xs text-muted-foreground">Role: {customer.role || 'user'}</p>
+                  {(customer as any).licenseNumber && (
+                    <p className="text-xs font-semibold text-blue-600 mt-1">
+                      เลขใบอนุญาต: {(customer as any).licenseNumber}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="font-semibold">หมายเหตุสำหรับแอดมิน</div>

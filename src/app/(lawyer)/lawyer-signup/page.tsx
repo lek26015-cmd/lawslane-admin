@@ -23,6 +23,7 @@ import Logo from '@/components/logo';
 import Image from 'next/image';
 import { TurnstileWidget } from '@/components/turnstile-widget';
 import { validateTurnstile } from '@/app/actions/turnstile';
+import { notifyAdmins } from '@/app/actions/admin-notifications';
 
 const specialties = [
     'คดีฉ้อโกง SMEs',
@@ -207,20 +208,16 @@ export default function LawyerExpressSignupPage() {
 
             await setDoc(lawyerProfileRef, lawyerProfileData);
 
-            // 5. Add to Verified Lawyers Registry (Auto-add)
+            // 5. Add to Verified Lawyers Registry (Auto-add via Server Action)
             try {
-                const docId = values.licenseNumber.replace(/\//g, '-');
-                const verifiedLawyerRef = doc(firestore, 'verifiedLawyers', docId);
-                const verifiedLawyerData = {
+                // Dynamically import to ensure server action is handled correctly
+                const { addToVerifiedRegistry } = await import('@/app/actions/lawyer-actions');
+                await addToVerifiedRegistry({
                     licenseNumber: values.licenseNumber,
                     firstName: values.name.split(' ')[0],
                     lastName: values.name.split(' ').slice(1).join(' ') || '',
-                    status: 'pending',
-                    registeredDate: new Date().toISOString(),
-                    province: 'ไม่ระบุ',
-                    updatedAt: serverTimestamp()
-                };
-                await setDoc(verifiedLawyerRef, verifiedLawyerData);
+                    province: 'ไม่ระบุ'
+                });
             } catch (err) {
                 console.error("Error adding to verified registry:", err);
             }
@@ -236,6 +233,14 @@ export default function LawyerExpressSignupPage() {
                     recipient: 'admin',
                     link: `/admin/lawyers/${user.uid}`,
                     relatedId: user.uid
+                });
+
+                // Send Email Notification to Admins
+                await notifyAdmins('new_lawyer', {
+                    name: values.name,
+                    email: values.email,
+                    licenseNumber: values.licenseNumber,
+                    uid: user.uid
                 });
             } catch (e) {
                 console.error("Error creating notification:", e);

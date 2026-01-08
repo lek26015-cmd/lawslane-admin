@@ -12,6 +12,7 @@ export interface NotificationPreferences {
     notifyOnNewUser: boolean;
     notifyOnNewTicket: boolean;
     notifyOnPayment: boolean;
+    notifyOnNewLawyer?: boolean;
 }
 
 export async function saveNotificationPreferences(uid: string, preferences: NotificationPreferences) {
@@ -54,7 +55,7 @@ export async function getNotificationPreferences(uid: string): Promise<{ success
     }
 }
 
-export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' | 'withdrawal' | 'slip_limit_warning', data: any) {
+export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' | 'withdrawal' | 'slip_limit_warning' | 'new_lawyer', data: any) {
     if (!process.env.RESEND_API_KEY) {
         console.warn('RESEND_API_KEY is not set. Skipping admin notifications.');
         return;
@@ -99,6 +100,7 @@ export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' |
                 if (type === 'new_user' && !prefs.notifyOnNewUser) shouldNotify = false;
                 if (type === 'new_ticket' && !prefs.notifyOnNewTicket) shouldNotify = false;
                 if (type === 'payment' && !prefs.notifyOnPayment) shouldNotify = false;
+                if (type === 'new_lawyer' && (prefs.notifyOnNewLawyer === false)) shouldNotify = false;
             }
 
             if (shouldNotify && emailToSend) {
@@ -169,6 +171,23 @@ export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' |
                 <p>ประจำเดือน: <strong>${data.month}</strong></p>
             </div>
             <p>กรุณาตรวจสอบแพ็คเกจของคุณ หรือเติมเครดิตหากจำเป็น เพื่อให้ระบบตรวจสอบสลิปทำงานได้อย่างต่อเนื่อง</p>
+        </div>
+            `;
+        } else if (type === 'new_lawyer') {
+            subject = `[Lawslane Admin] มีทนายความใหม่สมัครสมาชิก: ${data.name}`;
+            html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1a365d;">มีทนายความใหม่สมัครสมาชิก</h2>
+            <div style="background-color: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>ชื่อ:</strong> ${data.name}</p>
+                <p><strong>อีเมล:</strong> ${data.email}</p>
+                <p><strong>เลขใบอนุญาต:</strong> ${data.licenseNumber}</p>
+                <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
+            </div>
+            <p>กรุณาตรวจสอบข้อมูลและอนุมัติการใช้งานได้ที่ระบบหลังบ้าน:</p>
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://lawslane.com'}/admin/lawyers/${data.uid}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                ตรวจสอบข้อมูลทนายความ
+            </a>
         </div>
             `;
         }

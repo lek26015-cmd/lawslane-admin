@@ -249,9 +249,15 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
 
                   {isAdmin && (
                     <DropdownMenuItem asChild>
-                      <a href={`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://admin.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com'}`}>
-                        <LayoutDashboard className="mr-2" />{t('adminDashboard')}
-                      </a>
+                      {process.env.NODE_ENV === 'development' ? (
+                        <Link href="/admin">
+                          <LayoutDashboard className="mr-2" />{t('adminDashboard')}
+                        </Link>
+                      ) : (
+                        <a href={`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://admin.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com'}`}>
+                          <LayoutDashboard className="mr-2" />{t('adminDashboard')}
+                        </a>
+                      )}
                     </DropdownMenuItem>
                   )}
 
@@ -352,7 +358,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                 <span className="sr-only">เปิดเมนู</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0">
+            <SheetContent side="left" className="p-0 flex flex-col h-full">
               <SheetHeader className="p-6 pb-0">
                 <SheetTitle>
                   <Logo href={getMainLink('/')} variant="color" />
