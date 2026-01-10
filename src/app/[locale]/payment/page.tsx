@@ -184,19 +184,18 @@ function PaymentPageContent() {
 
                 console.log("Chat document created.");
 
-                if (!isManualTransfer) {
-                    const messagePayload = {
-                        text: initialMessage,
-                        senderId: user.uid,
-                        timestamp: serverTimestamp(),
-                    };
-                    await addDoc(messagesRef, messagePayload)
-                        .catch(serverError => {
-                            const permissionError = new FirestorePermissionError({ path: messagesRef.path, operation: 'create', requestResourceData: messagePayload });
-                            errorEmitter.emit('permission-error', permissionError);
-                            throw serverError;
-                        });
-                }
+                // Always create the initial message
+                const messagePayload = {
+                    text: initialMessage,
+                    senderId: user.uid,
+                    timestamp: serverTimestamp(),
+                };
+                await addDoc(messagesRef, messagePayload)
+                    .catch(serverError => {
+                        const permissionError = new FirestorePermissionError({ path: messagesRef.path, operation: 'create', requestResourceData: messagePayload });
+                        errorEmitter.emit('permission-error', permissionError);
+                        throw serverError;
+                    });
 
                 if (isManualTransfer) {
                     console.log("Setting payment success (manual)...");
