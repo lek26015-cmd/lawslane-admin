@@ -209,17 +209,28 @@ function PaymentPageContent() {
                     router.push(`/chat/${newChatId}?lawyerId=${lawyer.id}`);
                 }
 
-                // Send Email Notification to Lawyer
-                import('@/app/actions/email').then(({ sendLawyerNewCaseEmail }) => {
-                    const caseLink = `${window.location.origin}/chat/${newChatId}?lawyerId=${lawyer.id}&clientId=${user.uid}&view=lawyer`;
-                    sendLawyerNewCaseEmail(
-                        lawyer.email,
-                        lawyer.name,
-                        user.displayName || 'ลูกค้า',
-                        `Ticket สนทนา: ${initialMessage.substring(0, 30)}...`,
-                        caseLink
-                    ).then(res => console.log("Email sent:", res));
-                });
+                if (!isManualTransfer) {
+                    // Send Email Notification to Lawyer (Only for instant payment)
+                    import('@/app/actions/email').then(({ sendLawyerNewCaseEmail }) => {
+                        const caseLink = `${window.location.origin}/chat/${newChatId}?lawyerId=${lawyer.id}&clientId=${user.uid}&view=lawyer`;
+                        sendLawyerNewCaseEmail(
+                            lawyer.email,
+                            lawyer.name,
+                            user.displayName || 'ลูกค้า',
+                            `Ticket สนทนา: ${initialMessage.substring(0, 30)}...`,
+                            caseLink
+                        ).then(res => console.log("Email sent:", res));
+                    });
+                } else {
+                    // Notify Admin for Manual Payment
+                    import('@/app/actions/admin-notifications').then(({ notifyAdmins }) => {
+                        notifyAdmins('payment', {
+                            lawyerName: lawyer.name,
+                            amount: fee,
+                            slipUrl: slipUrl
+                        });
+                    });
+                }
             } else if (paymentType === 'appointment' && dateStr) {
                 console.log("Processing appointment payment...");
                 const appointmentRef = collection(firestore, 'appointments');
@@ -252,6 +263,19 @@ function PaymentPageContent() {
                     toast({
                         title: "ชำระเงินสำเร็จ!",
                         description: 'เราได้ส่งคำขอนัดหมายของคุณไปยังทนายความแล้ว',
+                    });
+
+                    // Send Email Notification for Appointment (Instant)
+                    // (Assuming there was email logic here, otherwise add it if needed, but for now focus on blocking manual)
+                } else {
+                    // Notify Admin for Manual Payment (Appointment)
+                    import('@/app/actions/admin-notifications').then(({ notifyAdmins }) => {
+                        notifyAdmins('payment', {
+                            lawyerName: lawyer.name,
+                            amount: fee,
+                            slipUrl: slipUrl,
+                            type: 'Appointment'
+                        });
                     });
                 }
             }
