@@ -1,7 +1,10 @@
 
 import * as admin from 'firebase-admin';
 import * as dotenv from 'dotenv';
-dotenv.config();
+import * as path from 'path';
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const books = [
     {
@@ -50,17 +53,24 @@ const books = [
 ];
 
 async function seed() {
-    if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
-        console.error('Missing Firebase credentials in .env');
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (!projectId || !clientEmail || !privateKey) {
+        console.error('Missing Firebase credentials:');
+        console.error('- Project ID:', !!projectId);
+        console.error('- Client Email:', !!clientEmail);
+        console.error('- Private Key:', !!privateKey);
         process.exit(1);
     }
 
     try {
         admin.initializeApp({
             credential: admin.credential.cert({
-                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                projectId: projectId,
+                clientEmail: clientEmail,
+                privateKey: privateKey.replace(/\\n/g, '\n'),
             })
         });
 

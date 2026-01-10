@@ -783,9 +783,15 @@ export default function AdminFinancialsPage() {
                             <TableCell>{t.date}</TableCell>
                             <TableCell>{t.description}</TableCell>
                             <TableCell>
-                              <Badge variant={t.type === 'revenue' ? 'default' : 'secondary'}>
-                                {t.type === 'revenue' ? 'รายรับ' : 'ค่าธรรมเนียม'}
-                              </Badge>
+                              {t.status === 'pending' ? (
+                                <Badge variant="outline" className="text-yellow-700 bg-yellow-50 border-yellow-200">
+                                  เงินพัก (Escrow)
+                                </Badge>
+                              ) : (
+                                <Badge variant={t.type === 'revenue' ? 'default' : 'secondary'}>
+                                  {t.type === 'revenue' ? 'รายรับ' : 'ค่าธรรมเนียม'}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600 border-green-600' : ''}>

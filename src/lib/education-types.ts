@@ -41,6 +41,8 @@ export interface Question {
     correctAnswerText?: string; // For ESSAY (Model Answer / ธงคำตอบ)
     explanation?: string;
     order: number;
+    subject?: string; // e.g., 'Civil', 'Criminal'
+    tags?: string[];
 }
 
 export interface ExamAttempt {
@@ -52,4 +54,28 @@ export interface ExamAttempt {
     score?: number; // Might be null for Essay until graded
     answers: Record<string, number | string>; // questionId -> index (MC) or text (Essay)
     status: 'IN_PROGRESS' | 'COMPLETED' | 'TIMEOUT';
+}
+
+export interface RecommendedMaterial {
+    title: string;
+    type: 'BOOK' | 'ARTICLE' | 'LAW';
+    url?: string; // Link to book/article in our platform
+    reason: string;
+}
+
+export interface AIAnalysisResult {
+    questionId: string;
+    score: number; // 0-10 or 0-100
+    feedback: string;
+    strengths: string[];
+    weaknesses: string[];
+    suggestions: string[];
+}
+
+export interface ExamResult {
+    attemptId: string;
+    totalScore: number;
+    analysis: AIAnalysisResult[];
+    overallFeedback: string;
+    recommendedMaterials: RecommendedMaterial[];
 }

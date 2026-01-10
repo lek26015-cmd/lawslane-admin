@@ -8,7 +8,7 @@ import { RecommendedBooksSection } from './components/recommended-books';
 
 export default function EducationPage() {
     return (
-        <div className="container mx-auto px-4 py-8 flex flex-col gap-12">
+        <div className="flex flex-col gap-12">
             {/* Hero Section - Exam Focused */}
             <section
                 className="relative overflow-hidden rounded-3xl text-white p-12 lg:p-20"

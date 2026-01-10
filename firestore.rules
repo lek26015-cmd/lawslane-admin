@@ -168,5 +168,10 @@ service cloud.firestore {
         // Only admins can write settings
         allow write: if isAdmin();
     }
+
+    match /student_exam_results/{resultId} {
+        allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
   }
 }

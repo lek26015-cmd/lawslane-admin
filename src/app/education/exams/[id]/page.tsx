@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, HelpCircle, CheckCircle, AlertTriangle, PlayCircle, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StartExamButton } from "../components/start-exam-button";
 
 const MOCK_EXAM: Exam = {
     id: "exam-1",
@@ -82,12 +83,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                 </div>
 
                 <div className="flex justify-center">
-                    <Link href={`/education/exams/${id}/take`}>
-                        <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200">
-                            <PlayCircle className="mr-2 w-6 h-6" />
-                            เริ่มทำข้อสอบทันที
-                        </Button>
-                    </Link>
+                    <StartExamButton examId={id} />
                 </div>
             </div>
         </div>

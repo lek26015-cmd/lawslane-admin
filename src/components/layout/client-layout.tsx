@@ -1,13 +1,14 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import FloatingChatButton from '@/components/chat/floating-chat-button';
 import ChatModal from '@/components/chat/chat-modal';
 import CookieBanner from '@/components/cookie-banner';
+import { useUser as useAuthUser, useFirebase } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function ClientLayout({
   children,
@@ -17,7 +18,41 @@ export default function ClientLayout({
   domainType?: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { firestore } = useFirebase();
+  const { user } = useAuthUser();
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Auth Guard for Education Students
+  useEffect(() => {
+    async function checkRole() {
+      if (!user || !firestore) return;
+
+      // Optimization: If userRole is already set (from Header lifting state), use it
+      if (userRole === 'education_student') {
+        if (!pathname.startsWith('/education')) {
+          router.push('/education');
+        }
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.role === 'education_student') {
+            if (!pathname.startsWith('/education')) {
+              router.push('/education');
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Auth Guard Error:", error);
+      }
+    }
+
+    checkRole();
+  }, [user, firestore, pathname, router, userRole]);
 
   // Hide header/footer ONLY for admin pages (lawyer pages should show header now)
   const isAdminPage = pathname.startsWith('/admin') || domainType === 'admin';
@@ -25,7 +60,6 @@ export default function ClientLayout({
   if (isAdminPage) {
     return <>{children}</>;
   }
-
 
   return (
     <>

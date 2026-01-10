@@ -67,8 +67,8 @@ export default function DashboardPage() {
     const activeCases = cases.filter(c => c.status === 'active' || c.status === 'pending_payment' || c.status === 'rejected' || c.status === 'approved' || c.status === 'pending');
     const closedCases = cases.filter(c => c.status === 'closed');
 
-    // Filter appointments to show confirmed and pending (waiting for lawyer), exclude pending_payment
-    const visibleAppointments = appointments.filter(a => a.status !== 'pending_payment');
+    // Filter appointments (show all, including pending_payment)
+    const visibleAppointments = appointments;
 
     const caseColors: { [key: string]: string } = {
         blue: 'border-l-4 border-blue-500',
@@ -109,6 +109,11 @@ export default function DashboardPage() {
                                                         {appt.status === 'pending' && (
                                                             <Badge variant="outline" className="text-yellow-700 border-yellow-600 bg-yellow-50">
                                                                 รอทนายตอบรับ
+                                                            </Badge>
+                                                        )}
+                                                        {appt.status === 'pending_payment' && (
+                                                            <Badge variant="outline" className="text-red-700 border-red-600 bg-red-50">
+                                                                รอชำระเงิน
                                                             </Badge>
                                                         )}
                                                     </p>

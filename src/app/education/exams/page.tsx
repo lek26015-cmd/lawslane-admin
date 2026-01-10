@@ -171,162 +171,163 @@ export default function ExamListingPage() {
                 </p>
             </div>
 
-            {/* Filters */}
-            <div className="bg-slate-50 rounded-2xl p-4 md:p-6 border">
-                <div className="flex items-center gap-2 mb-4">
-                    <Filter className="w-5 h-5 text-slate-600" />
-                    <span className="font-semibold text-slate-900">ตัวกรอง</span>
-                    {hasActiveFilters && (
-                        <button
-                            onClick={clearFilters}
-                            className="ml-auto text-sm text-slate-500 hover:text-slate-900 flex items-center gap-1"
-                        >
-                            <X className="w-4 h-4" /> ล้างตัวกรอง
-                        </button>
-                    )}
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                {/* Sidebar Filters */}
+                <div className="space-y-6">
+                    <div className="bg-white rounded-xl p-4 border shadow-sm sticky top-24">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Filter className="w-5 h-5 text-slate-600" />
+                                <span className="font-semibold text-slate-900">ตัวกรอง</span>
+                            </div>
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="text-xs text-slate-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+                                >
+                                    <X className="w-3 h-3" /> ล้าง
+                                </button>
+                            )}
+                        </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Year Level Filter */}
-                    <div>
-                        <label className="text-sm font-medium text-slate-700 mb-2 block">ระดับชั้นปี</label>
-                        <Select value={yearFilter} onValueChange={setYearFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="เลือกระดับ" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {YEAR_LEVELS.map(year => (
-                                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Law Category Filter */}
-                    <div>
-                        <label className="text-sm font-medium text-slate-700 mb-2 block">ประเภทกฎหมาย</label>
-                        <Select value={lawCategoryFilter} onValueChange={setLawCategoryFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="เลือกประเภท" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {LAW_CATEGORIES.map(cat => (
-                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Difficulty Filter */}
-                    <div>
-                        <label className="text-sm font-medium text-slate-700 mb-2 block">ระดับความยาก</label>
-                        <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="เลือกระดับ" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {DIFFICULTIES.map(diff => (
-                                    <SelectItem key={diff} value={diff}>
-                                        {diff === 'ทั้งหมด' ? 'ทั้งหมด' : diff === 'easy' ? 'ง่าย' : diff === 'medium' ? 'ปานกลาง' : 'ยาก'}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                {/* Quick Filter Pills for Law Categories */}
-                <div className="flex flex-wrap gap-2 mt-4">
-                    {LAW_CATEGORIES.filter(c => c !== 'ทั้งหมด').map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setLawCategoryFilter(cat === lawCategoryFilter ? 'ทั้งหมด' : cat)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${lawCategoryFilter === cat
-                                    ? 'bg-slate-900 text-white'
-                                    : 'bg-white border hover:bg-slate-100 text-slate-700'
-                                }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Results Count */}
-            <div className="flex items-center justify-between">
-                <p className="text-slate-600">
-                    พบ <strong>{filteredExams.length}</strong> ข้อสอบ
-                </p>
-            </div>
-
-            {/* Exam List */}
-            <div className="space-y-4">
-                {filteredExams.length > 0 ? (
-                    filteredExams.map((exam) => (
-                        <div key={exam.id} className="group relative flex flex-col sm:flex-row gap-6 p-6 border rounded-xl bg-white hover:border-purple-300 transition-all hover:shadow-md">
-                            <div className="flex-1 space-y-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant={exam.price === 0 ? "default" : "outline"} className={exam.price === 0 ? "bg-green-600 hover:bg-green-700" : ""}>
-                                        {exam.price === 0 ? "ฟรี" : `฿${exam.price}`}
-                                    </Badge>
-                                    <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                                        {exam.yearLevel}
-                                    </Badge>
-                                    <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                                        {exam.lawCategory}
-                                    </Badge>
-                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${exam.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
-                                            exam.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-green-100 text-green-700'
-                                        }`}>
-                                        {exam.difficulty === 'easy' ? 'ง่าย' : exam.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'}
-                                    </span>
-                                </div>
-
-                                <h3 className="text-xl font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
-                                    {exam.title}
-                                </h3>
-                                <p className="text-slate-500">
-                                    {exam.description}
-                                </p>
-
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                                    <div className="flex items-center gap-1.5">
-                                        <Clock className="w-4 h-4" />
-                                        <span>{exam.durationMinutes} นาที</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <AlertCircle className="w-4 h-4" />
-                                        <span>{exam.totalQuestions} ข้อ</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        <span>เกณฑ์ผ่าน {exam.passingScore} คะแนน</span>
-                                    </div>
-                                </div>
+                        <div className="space-y-4">
+                            {/* Year Level Filter */}
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">ระดับชั้นปี</label>
+                                <Select value={yearFilter} onValueChange={setYearFilter}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="เลือกระดับ" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {YEAR_LEVELS.map(year => (
+                                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
-                            <div className="flex flex-row sm:flex-col items-center sm:justify-center border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6 gap-3">
-                                <Link href={`/education/exams/${exam.id}`} className="w-full sm:w-auto">
-                                    <Button className="w-full sm:w-32 bg-purple-600 hover:bg-purple-700">
-                                        เริ่มทำข้อสอบ
-                                    </Button>
-                                </Link>
+                            {/* Law Category Filter */}
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">ประเภทกฎหมาย</label>
+                                <Select value={lawCategoryFilter} onValueChange={setLawCategoryFilter}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="เลือกประเภท" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {LAW_CATEGORIES.map(cat => (
+                                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Difficulty Filter */}
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">ระดับความยาก</label>
+                                <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="เลือกระดับ" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {DIFFICULTIES.map(diff => (
+                                            <SelectItem key={diff} value={diff}>
+                                                {diff === 'ทั้งหมด' ? 'ทั้งหมด' : diff === 'easy' ? 'ง่าย' : diff === 'medium' ? 'ปานกลาง' : 'ยาก'}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
-                    ))
-                ) : (
-                    <div className="text-center py-16 bg-slate-50 rounded-2xl border">
-                        <AlertCircle className="mx-auto h-12 w-12 text-slate-400" />
-                        <h3 className="mt-4 text-lg font-semibold text-slate-900">ไม่พบข้อสอบ</h3>
-                        <p className="mt-2 text-sm text-slate-600">
-                            ลองเปลี่ยนตัวกรองหรือล้างการค้นหา
-                        </p>
-                        <Button variant="outline" className="mt-4" onClick={clearFilters}>
-                            ล้างตัวกรอง
-                        </Button>
+
+                        {/* Quick Filter Pills - Moved here or kept? Let's keep them as quick toggles or remove to clean up? 
+                            User asked for "like Lawyer Search" which usually just has sidebar. 
+                            I'll remove the pills to keep it clean, or maybe simplify. 
+                            Let's keep them but simpler. Actually, the Select above covers it. 
+                        */}
                     </div>
-                )}
+                </div>
+
+                {/* Main Content */}
+                <div className="md:col-span-3 space-y-6">
+                    {/* Results Count */}
+                    <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border">
+                        <p className="text-sm text-slate-600">
+                            พบทั้งหมด <strong>{filteredExams.length}</strong> รายการ
+                        </p>
+                    </div>
+
+                    {/* Exam List */}
+                    <div className="space-y-4">
+                        {filteredExams.length > 0 ? (
+                            filteredExams.map((exam) => (
+                                <div key={exam.id} className="group relative flex flex-col sm:flex-row gap-6 p-6 border rounded-xl bg-white hover:border-purple-300 transition-all hover:shadow-md">
+                                    <div className="flex-1 space-y-3">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge variant={exam.price === 0 ? "default" : "outline"} className={exam.price === 0 ? "bg-green-600 hover:bg-green-700" : ""}>
+                                                {exam.price === 0 ? "ฟรี" : `฿${exam.price}`}
+                                            </Badge>
+                                            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                                                {exam.yearLevel}
+                                            </Badge>
+                                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                                                {exam.lawCategory}
+                                            </Badge>
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${exam.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                                                exam.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-green-100 text-green-700'
+                                                }`}>
+                                                {exam.difficulty === 'easy' ? 'ง่าย' : exam.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                                            {exam.title}
+                                        </h3>
+                                        <p className="text-slate-500">
+                                            {exam.description}
+                                        </p>
+
+                                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                                            <div className="flex items-center gap-1.5">
+                                                <Clock className="w-4 h-4" />
+                                                <span>{exam.durationMinutes} นาที</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <AlertCircle className="w-4 h-4" />
+                                                <span>{exam.totalQuestions} ข้อ</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                <span>เกณฑ์ผ่าน {exam.passingScore} คะแนน</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-row sm:flex-col items-center sm:justify-center border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6 gap-3">
+                                        <Link href={`/education/exams/${exam.id}`} className="w-full sm:w-auto">
+                                            <Button className="w-full sm:w-32 bg-purple-600 hover:bg-purple-700">
+                                                เริ่มทำข้อสอบ
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                                <div className="bg-white p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                    <Filter className="h-8 w-8 text-slate-400" />
+                                </div>
+                                <h3 className="mt-2 text-lg font-semibold text-slate-900">ไม่พบข้อสอบที่ตรงกับเงื่อนไข</h3>
+                                <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">
+                                    ลองปรับเปลี่ยนตัวกรองด้านซ้ายมือ หรือล้างตัวกรองเพื่อดูรายการทั้งหมด
+                                </p>
+                                <Button variant="outline" className="mt-6" onClick={clearFilters}>
+                                    ล้างตัวกรองทั้งหมด
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

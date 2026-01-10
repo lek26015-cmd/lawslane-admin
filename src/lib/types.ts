@@ -8,7 +8,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string;
-  role: 'customer' | 'lawyer' | 'admin';
+  role: 'customer' | 'lawyer' | 'admin' | 'education_student';
   type: 'บุคคลทั่วไป' | 'SME';
   registeredAt: any;
   status: 'active' | 'suspended' | 'pending';

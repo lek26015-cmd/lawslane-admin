@@ -7,11 +7,13 @@ import { EducationToasterWrapper } from './components/education-toaster-wrapper'
 import Link from 'next/link';
 import Image from 'next/image';
 import logoColor from '@/pic/logo-lawslane-transparent-color.png';
+import logoWhite from '@/pic/logo-lawslane-transparent-white.png';
 import "../globals.css";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { CartProvider } from './context/cart-context';
 import { CartSheet } from './components/cart-sheet';
 import { FloatingCartButton } from './components/floating-cart-button';
+import { EducationHeaderActions } from './components/header-actions';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -54,11 +56,12 @@ export default function EducationLayout({
                                         <Link href="/education/exams" className="hover:text-primary transition-colors">คลังข้อสอบ</Link>
                                         <Link href="/education/my-learning" className="hover:text-primary transition-colors">การเรียนรู้ของฉัน</Link>
                                     </nav>
+                                    <EducationHeaderActions />
                                 </div>
                             </div>
                         </header>
 
-                        <main className="w-full">
+                        <main className="container mx-auto px-4 py-8 min-h-screen">
                             {children}
                         </main>
 
@@ -70,11 +73,11 @@ export default function EducationLayout({
                                     <div>
                                         <div className="flex items-center gap-3 mb-4">
                                             <Image
-                                                src={logoColor}
+                                                src={logoWhite}
                                                 alt="Lawlanes Logo"
                                                 width={32}
                                                 height={32}
-                                                className="h-8 w-auto brightness-0 invert"
+                                                className="h-8 w-auto"
                                             />
                                             <div className="flex flex-col" style={{ lineHeight: '1.1' }}>
                                                 <span className="font-bold text-lg text-white">Lawlanes</span>
