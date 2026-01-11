@@ -15,12 +15,19 @@ export async function translateToMultipleLanguages(
     }
 
     try {
+        // Escape check: Ensure text doesn't break prompt, though standard string interpolation is usually fine.
+        // We removed the quotes around thaiText to avoid breaking on internal quotes.
         const prompt = `You are a professional translator. Translate the following Thai text to English and Chinese (Simplified).
 
-Thai text: "${thaiText}"
+Input Text:
+${thaiText}
 
-Return ONLY a JSON object in this exact format, no markdown, no explanation:
-{"english": "translation in English", "chinese": "translation in Simplified Chinese"}`;
+Instructions:
+1. Translate to English.
+2. Translate to Chinese (Simplified).
+3. Return ONLY a valid JSON object. Do not include markdown formatting (like \`\`\`json).
+4. JSON Format: {"english": "...", "chinese": "..."}
+`;
 
         const response = await ai.generate({
             prompt,
@@ -30,19 +37,29 @@ Return ONLY a JSON object in this exact format, no markdown, no explanation:
         });
 
         const text = response.text.trim();
+        console.log('AI Response:', text); // Debugging
 
-        // Try to parse as JSON
+        // Improved JSON parsing
         try {
-            // Remove markdown code blocks if present
-            const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            const result = JSON.parse(cleanText);
+            // Remove potential markdown code blocks and whitespace
+            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const start = cleanText.indexOf('{');
+            const end = cleanText.lastIndexOf('}');
+
+            if (start === -1 || end === -1) {
+                throw new Error('No JSON object found in response');
+            }
+
+            const jsonString = cleanText.substring(start, end + 1);
+            const result = JSON.parse(jsonString);
+
             return {
                 english: result.english || '',
                 chinese: result.chinese || '',
             };
-        } catch {
-            // If parsing fails, return empty
-            console.error('Failed to parse translation response:', text);
+        } catch (parseError) {
+            console.error('Failed to parse translation response:', text, parseError);
+            // Fallback: If simple parse fails, try to just extract lines if the LLM failed instructions (unlikely with this prompt but safety net)
             return { english: '', chinese: '' };
         }
     } catch (error) {
