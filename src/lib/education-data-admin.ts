@@ -1,3 +1,5 @@
+'use server';
+
 import { initAdmin } from './firebase-admin';
 import { Book, Exam, Order } from './education-types';
 
