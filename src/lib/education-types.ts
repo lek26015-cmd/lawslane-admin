@@ -79,3 +79,32 @@ export interface ExamResult {
     overallFeedback: string;
     recommendedMaterials: RecommendedMaterial[];
 }
+
+export type OrderStatus = 'PENDING' | 'PAID' | 'SHIPPING' | 'COMPLETED' | 'CANCELLED';
+
+export interface OrderItem {
+    id: string; // Product ID (Book ID or Exam ID)
+    title: string;
+    type: 'BOOK' | 'EXAM';
+    price: number;
+    quantity: number;
+    coverUrl?: string;
+}
+
+export interface Order {
+    id: string;
+    userId: string;
+    items: OrderItem[];
+    totalAmount: number;
+    status: OrderStatus;
+    shippingInfo?: {
+        name: string;
+        phone: string;
+        address: string;
+        trackingNumber?: string;
+        carrier?: string;
+    };
+    paymentSlipUrl?: string; // URL to uploaded slip
+    createdAt: Date;
+    updatedAt: Date;
+}

@@ -1,13 +1,12 @@
 import { Book } from "@/lib/education-types";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BookPurchaseSection } from "../../components/book-purchase-section";
-
-// MOCK DATA (Same as listing for consistency)
-import { getBookById } from "@/lib/education-data-admin";
+import { getBookById, getAllBooks } from "@/lib/education-data-admin";
 
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -16,6 +15,10 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
     if (!book) {
         return notFound();
     }
+
+    // Get related books (excluding current book)
+    const allBooks = await getAllBooks();
+    const relatedBooks = allBooks.filter(b => b.id !== id).slice(0, 4);
 
     return (
         <div className="max-w-5xl mx-auto space-y-8">
@@ -90,6 +93,41 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
                     <BookPurchaseSection book={book} />
                 </div>
             </div>
+
+            {/* Related Books Section */}
+            {relatedBooks.length > 0 && (
+                <section className="pt-8 border-t mt-12">
+                    <div className="flex items-center gap-2 mb-6">
+                        <BookOpen className="w-5 h-5 text-slate-600" />
+                        <h2 className="text-xl font-bold text-slate-900">หนังสือที่เกี่ยวข้อง</h2>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {relatedBooks.map((relatedBook) => (
+                            <Link key={relatedBook.id} href={`/education/books/${relatedBook.id}`} className="group">
+                                <div className="relative aspect-[2/3] w-full bg-slate-100 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group-hover:-translate-y-1">
+                                    <img
+                                        src={relatedBook.coverUrl}
+                                        alt={relatedBook.title}
+                                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                                    />
+                                    {relatedBook.isDigital && (
+                                        <Badge className="absolute top-1.5 right-1.5 bg-blue-600 text-[10px] px-1.5 py-0.5 shadow-sm">E-Book</Badge>
+                                    )}
+                                </div>
+                                <div className="mt-2 px-0.5">
+                                    <h3 className="font-medium text-sm leading-tight line-clamp-2 text-slate-800 group-hover:text-indigo-600 transition-colors">
+                                        {relatedBook.title}
+                                    </h3>
+                                    <p className="text-sm font-bold text-indigo-600 mt-1">
+                                        ฿{relatedBook.price.toLocaleString()}
+                                    </p>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
         </div>
     );
 }
+

@@ -6,12 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress"; // Added Progress
-import { BookOpen, ShoppingBag, Clock, FileText, TrendingUp, AlertCircle, Sparkles } from "lucide-react"; // Added TrendingUp, AlertCircle, Sparkles
+import { BookOpen, ShoppingBag, Clock, FileText, TrendingUp, AlertCircle, Sparkles, Award } from "lucide-react"; // Added TrendingUp, AlertCircle, Sparkles
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useUser, useFirebase } from "@/firebase";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { ExamResult } from "@/lib/education-types"; // Added ExamResult type
+import { PageHeader } from '../components/page-header';
 
 interface SubjectPerformance {
     subject: string;
@@ -117,11 +118,17 @@ export default function MyLearningPage() {
     if (!user) return null;
 
     return (
-        <div className="container mx-auto py-8 px-4 lg:px-8 space-y-8">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">การเรียนรู้ของฉัน</h1>
-                <p className="text-slate-500">ติดตามสถานะการเรียน สมรรถนะ และประวัติการทำข้อสอบ</p>
-            </div>
+        <div className="space-y-6">
+            {/* Beautiful Page Header */}
+            <PageHeader
+                title="การเรียนรู้ของฉัน"
+                description="ติดตามสถานะการเรียน สมรรถนะ และประวัติการทำข้อสอบของคุณ"
+                icon={Award}
+                theme="rose"
+                backLink="/education"
+                backLabel="กลับหน้าหลัก"
+                badge={`${examHistory.length} ผลสอบ`}
+            />
 
             {/* Analytics Dashboard */}
             {examHistory.length > 0 && (

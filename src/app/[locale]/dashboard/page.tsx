@@ -137,51 +137,58 @@ export default function DashboardPage() {
                         </Card>
 
                         {/* Ongoing Cases */}
-                        {activeCases.length > 0 && (
-                            <Card className="rounded-3xl shadow-sm border-none">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 font-bold">
-                                        <Briefcase className="w-5 h-5" />
-                                        {t('ongoingCases')}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
+                        <Card className="rounded-3xl shadow-sm border-none">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 font-bold">
+                                    <Briefcase className="w-5 h-5" />
+                                    {t('ongoingCases')}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {activeCases.length > 0 ? (
                                     <div className="space-y-3">
-                                        {activeCases.map((caseItem) => (
-                                            <Link href={caseItem.status === 'rejected' ? '#' : `/${locale}/chat/${caseItem.id}?lawyerId=${caseItem.lawyer.id}`} key={caseItem.id} className={caseItem.status === 'rejected' ? 'cursor-default' : ''}>
-                                                <div className={`flex items-center justify-between p-4 rounded-3xl bg-card ${caseItem.status === 'rejected' ? caseColors['red'] : caseColors['blue']}`}>
-                                                    <div>
-                                                        <p className="font-semibold flex items-center gap-2 flex-wrap">
-                                                            {caseItem.title || t('defaultCaseTitle')}
-                                                            <span className="font-mono text-xs text-muted-foreground">({caseItem.id})</span>
-                                                            {caseItem.status === 'pending_payment' && (
-                                                                <Badge variant="outline" className="text-yellow-600 border-yellow-600 bg-yellow-50">
-                                                                    รอการชำระเงิน
-                                                                </Badge>
-                                                            )}
-                                                            {caseItem.status === 'rejected' && (
-                                                                <Badge variant="destructive">
-                                                                    คำขอถูกปฏิเสธ
-                                                                </Badge>
-                                                            )}
-                                                        </p>
-                                                        {caseItem.status === 'rejected' && caseItem.rejectReason && (
-                                                            <p className="text-sm text-red-600 mt-1">
-                                                                เหตุผล: {caseItem.rejectReason}
+                                        {activeCases
+                                            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                                            .map((caseItem) => (
+                                                <Link href={caseItem.status === 'rejected' ? '#' : `/${locale}/chat/${caseItem.id}?lawyerId=${caseItem.lawyer.id}`} key={caseItem.id} className={caseItem.status === 'rejected' ? 'cursor-default' : ''}>
+                                                    <div className={`flex items-center justify-between p-4 rounded-3xl bg-card ${caseItem.status === 'rejected' ? caseColors['red'] : caseColors['blue']}`}>
+                                                        <div>
+                                                            <p className="font-semibold flex items-center gap-2 flex-wrap">
+                                                                {caseItem.title || t('defaultCaseTitle')}
+                                                                <span className="font-mono text-xs text-muted-foreground">({caseItem.id})</span>
+                                                                {caseItem.status === 'pending_payment' && (
+                                                                    <Badge variant="outline" className="text-yellow-600 border-yellow-600 bg-yellow-50">
+                                                                        รอตรวจสอบสลิป
+                                                                    </Badge>
+                                                                )}
+                                                                {caseItem.status === 'rejected' && (
+                                                                    <Badge variant="destructive">
+                                                                        คำขอถูกปฏิเสธ
+                                                                    </Badge>
+                                                                )}
                                                             </p>
+                                                            {caseItem.status === 'rejected' && caseItem.rejectReason && (
+                                                                <p className="text-sm text-red-600 mt-1">
+                                                                    เหตุผล: {caseItem.rejectReason}
+                                                                </p>
+                                                            )}
+                                                            <p className="text-sm text-muted-foreground">{caseItem.lastMessage}</p>
+                                                        </div>
+                                                        {caseItem.status !== 'rejected' && (
+                                                            <Button size="sm" className="bg-foreground hover:bg-foreground/90 text-background rounded-full">{t('viewDetails')}</Button>
                                                         )}
-                                                        <p className="text-sm text-muted-foreground">{caseItem.lastMessage}</p>
                                                     </div>
-                                                    {caseItem.status !== 'rejected' && (
-                                                        <Button size="sm" className="bg-foreground hover:bg-foreground/90 text-background rounded-full">{t('viewDetails')}</Button>
-                                                    )}
-                                                </div>
-                                            </Link>
-                                        ))}
+                                                </Link>
+                                            ))}
                                     </div>
-                                </CardContent>
-                            </Card>
-                        )}
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <Briefcase className="mx-auto h-10 w-10 mb-2" />
+                                        <p>{t('noActiveCases') || "ยังไม่มีรายการปรึกษา"}</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
 
                         {/* Closed Cases */}
                         {closedCases.length > 0 && (

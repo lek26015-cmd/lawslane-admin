@@ -276,7 +276,8 @@
         "contactSupport": "ติดต่อฝ่ายสนับสนุนลูกค้า",
         "appointmentWith": "กับ",
         "date": "วันที่",
-        "time": "เวลา"
+        "time": "เวลา",
+        "noActiveCases": "ยังไม่มีรายการปรึกษา"
     },
     "Help": {
         "title": "ศูนย์ช่วยเหลือ",

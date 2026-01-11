@@ -157,7 +157,7 @@ export async function getDashboardData(db: Firestore, userId: string) {
       lastMessage: data.lastMessage || '',
       lastMessageTimestamp: data.lastMessageAt ? data.lastMessageAt.toDate().toISOString() : '',
       lawyer: lawyer,
-      updatedAt: data.lastMessageAt ? data.lastMessageAt.toDate() : new Date(),
+      updatedAt: data.lastMessageAt ? data.lastMessageAt.toDate() : (data.createdAt?.toDate() || new Date()),
       rejectReason: data.rejectReason || '',
     } as Case;
   }));
@@ -188,8 +188,10 @@ export async function getDashboardData(db: Firestore, userId: string) {
     } as UpcomingAppointment;
   }));
 
-  // Filter for future appointments only
-  const futureAppointments = appointments.filter(apt => apt.date >= new Date());
+  // Filter for future appointments only (including today)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const futureAppointments = appointments.filter(apt => apt.date >= todayStart);
 
   // 3. Fetch Tickets
   const ticketsRef = collection(db, 'tickets');

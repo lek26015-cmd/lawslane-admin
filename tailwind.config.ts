@@ -1,4 +1,4 @@
-import type {Config} from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 
 export default {
   darkMode: ['class'],
@@ -6,6 +6,16 @@ export default {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  safelist: [
+    'from-indigo-600', 'to-purple-600',
+    'from-emerald-600', 'to-teal-600',
+    'from-amber-600', 'to-orange-600',
+    'from-purple-600', 'to-indigo-600',
+    'from-rose-600', 'to-pink-600',
+    'from-slate-700', 'to-slate-900',
+    'from-blue-600', 'to-blue-600',
+    'from-cyan-600',
   ],
   theme: {
     extend: {
@@ -88,7 +98,7 @@ export default {
             height: '0',
           },
         },
-         "caret-blink": {
+        "caret-blink": {
           "0%,70%,100%": { opacity: "1" },
           "20%,50%": { opacity: "0" },
         },

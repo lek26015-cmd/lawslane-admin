@@ -169,7 +169,9 @@ function PaymentPageContent() {
                     status: isManualTransfer ? 'pending_payment' : 'active',
                     ...(isManualTransfer && { slipUrl }),
                     lawyerId: lawyer.id, // Add lawyerId for easier querying
-                    userId: user.uid // Add userId for easier querying
+                    userId: user.uid, // Add userId for easier querying
+                    lastMessage: initialMessage,
+                    lastMessageAt: serverTimestamp()
                 };
 
                 console.log("Creating chat document...", chatPayload);

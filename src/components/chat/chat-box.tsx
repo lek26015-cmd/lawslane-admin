@@ -216,8 +216,15 @@ export function ChatBox({
           operation: 'create',
           requestResourceData: messageData,
         });
-        errorEmitter.emit('permission-error', permissionError);
       });
+
+    // Update parent chat document for Dashboard preview
+    const chatRef = doc(firestore, 'chats', chatId);
+    updateDoc(chatRef, {
+      lastMessage: input,
+      lastMessageAt: serverTimestamp(),
+      ...(isLawyerView ? { lawyerReadAt: serverTimestamp() } : { hasNewMessage: true }) // Optional: flag for unread status
+    }).catch(console.error);
 
     // Create Notification for the other user
     const recipientId = otherUser.userId;

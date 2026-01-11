@@ -130,6 +130,7 @@ export interface Case {
   hasNewMessage?: boolean;
   color?: 'blue' | 'yellow';
   rejectReason?: string;
+  updatedAt: Date;
 }
 
 export interface UpcomingAppointment {

@@ -75,17 +75,13 @@ export function EducationHeaderActions() {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                    <Link href="/education/my-learning">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        การเรียนรู้ของฉัน
-                    </Link>
+                <DropdownMenuItem onClick={() => router.push('/education/my-learning')}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    การเรียนรู้ของฉัน
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    <Link href="/education/profile">
-                        <User className="mr-2 h-4 w-4" />
-                        จัดการบัญชี
-                    </Link>
+                <DropdownMenuItem onClick={() => router.push('/education/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    จัดการบัญชี
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">

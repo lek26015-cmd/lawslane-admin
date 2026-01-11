@@ -22,6 +22,12 @@ export default function ClientLayout({
   const { firestore } = useFirebase();
   const { user } = useAuthUser();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Fix Radix UI hydration mismatch by waiting for client mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Auth Guard for Education Students
   useEffect(() => {
@@ -64,7 +70,11 @@ export default function ClientLayout({
   return (
     <>
       <div className="flex min-h-screen flex-col">
-        <Header setUserRole={setUserRole} domainType={domainType} />
+        {isMounted ? (
+          <Header setUserRole={setUserRole} domainType={domainType} />
+        ) : (
+          <header className="sticky top-0 z-50 h-16 bg-white border-b" />
+        )}
         <main className="flex-1 bg-gray-50/50">{children}</main>
         <Footer userRole={userRole} />
       </div>

@@ -14,6 +14,7 @@ import { CartProvider } from './context/cart-context';
 import { CartSheet } from './components/cart-sheet';
 import { FloatingCartButton } from './components/floating-cart-button';
 import { EducationHeaderActions } from './components/header-actions';
+import { PageAnimationWrapper } from './components/page-animation';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -62,7 +63,9 @@ export default function EducationLayout({
                         </header>
 
                         <main className="container mx-auto px-4 py-8 min-h-screen">
-                            {children}
+                            <PageAnimationWrapper>
+                                {children}
+                            </PageAnimationWrapper>
                         </main>
 
                         {/* Footer */}

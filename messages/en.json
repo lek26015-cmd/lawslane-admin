@@ -276,7 +276,8 @@
         "contactSupport": "Contact Support",
         "appointmentWith": "With",
         "date": "Date",
-        "time": "Time"
+        "time": "Time",
+        "noActiveCases": "No active cases"
     },
     "Help": {
         "title": "Help Center",

@@ -22,7 +22,8 @@ export default async function middleware(request: NextRequest) {
         if (!pathname.includes('/admin')) {
             // Admin pages are NOT localized (they are at root /admin, not /[locale]/admin)
             // So we must rewrite to /admin, stripping any locale prefix if present
-            const newPath = `/admin${pathname.replace(/^\/[a-z]{2}/, '')}`;
+            // Only strip ACTUAL locales (th, en, zh)
+            const newPath = `/admin${pathname.replace(/^\/(th|en|zh)/, '')}`;
 
             return NextResponse.rewrite(new URL(newPath, request.url));
         }
@@ -31,7 +32,8 @@ export default async function middleware(request: NextRequest) {
         console.log('Education subdomain detected:', { hostname, pathname });
         if (!pathname.startsWith('/education')) {
             // Rewrite to /education, stripping locale if present
-            const newPath = `/education${pathname.replace(/^\/[a-z]{2}/, '')}`;
+            // Only strip ACTUAL locales (th, en, zh), not arbitrary 2-letter paths like /ac
+            const newPath = `/education${pathname.replace(/^\/(th|en|zh)/, '')}`;
             console.log('Rewriting to:', newPath);
             return NextResponse.rewrite(new URL(newPath, request.url));
         }
@@ -46,9 +48,9 @@ export default async function middleware(request: NextRequest) {
         }
     }
 
-    // 0.5 Redirect localized lawyer routes to root (e.g. /th/lawyer-login -> /lawyer-login)
-    const localizedLawyerRegex = /^\/[a-z]{2}\/(lawyer-|verify-lawyer)(.*)/;
-    if (localizedLawyerRegex.test(pathname)) {
+    // 0.5 Redirect localized lawyer/admin/education routes to root (e.g. /th/admin -> /admin)
+    const localizedSystemRegex = /^\/[a-z]{2}\/(admin|lawyer-|verify-lawyer|education)(.*)/;
+    if (localizedSystemRegex.test(pathname)) {
         const newPath = pathname.replace(/^\/[a-z]{2}/, '');
         return NextResponse.redirect(new URL(newPath, request.url));
     }

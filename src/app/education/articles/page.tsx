@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { getAllArticles } from '@/lib/data';
 import type { Article } from '@/lib/types';
-import { ArrowRight, FileText, ArrowLeft } from 'lucide-react';
+import { ArrowRight, FileText, ArrowLeft, BookOpen } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useFirebase } from '@/firebase';
+import { motion } from 'framer-motion';
+import { PageHeader } from '../components/page-header';
 
 export default function EducationArticlesPage() {
     const [articles, setArticles] = useState<Article[]>([]);
@@ -42,57 +44,53 @@ export default function EducationArticlesPage() {
     }, [articles, selectedCategory]);
 
     return (
-        <div className="flex flex-col gap-8">
-            {/* Header */}
-            <div className="flex flex-col gap-4">
-                <Link href="/education" className="inline-flex items-center text-sm text-slate-600 hover:text-primary transition-colors w-fit">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    กลับหน้าหลัก
-                </Link>
+        <div className="flex flex-col gap-6">
+            {/* Beautiful Page Header */}
+            <PageHeader
+                title="บทความน่าอ่าน"
+                description="รวมบทความกฎหมายที่น่าสนใจสำหรับนักศึกษาและทนายความ พร้อมเคล็ดลับการเตรียมสอบ"
+                icon={BookOpen}
+                theme="emerald"
+                backLink="/education"
+                backLabel="กลับหน้าหลัก"
+                badge={`${articles.length} บทความ`}
+            >
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="w-full md:w-[200px] bg-white/90 border-0 shadow-md">
+                        <SelectValue placeholder="เลือกหมวดหมู่" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {categories.map(category => (
+                            <SelectItem key={category} value={category}>
+                                {category === 'all' ? 'ทุกหมวดหมู่' : category}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </PageHeader>
 
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-slate-900">บทความน่าอ่าน</h1>
-                        <p className="text-slate-600 mt-1">รวมบทความกฎหมายที่น่าสนใจสำหรับนักศึกษาและทนายความ</p>
-                    </div>
-
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger className="w-full md:w-[200px]">
-                            <SelectValue placeholder="เลือกหมวดหมู่" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {categories.map(category => (
-                                <SelectItem key={category} value={category}>
-                                    {category === 'all' ? 'ทุกหมวดหมู่' : category}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* Category Pills */}
-                <div className="flex flex-wrap gap-2">
-                    {categories.filter(c => c !== 'all').map(category => (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${selectedCategory === category
-                                ? 'bg-slate-900 text-white'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                }`}
-                        >
-                            {category}
-                        </button>
-                    ))}
-                    {selectedCategory !== 'all' && (
-                        <button
-                            onClick={() => setSelectedCategory('all')}
-                            className="px-4 py-1.5 rounded-full text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
-                        >
-                            ล้างตัวกรอง
-                        </button>
-                    )}
-                </div>
+            {/* Category Pills */}
+            <div className="flex flex-wrap gap-2">
+                {categories.filter(c => c !== 'all').map(category => (
+                    <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${selectedCategory === category
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                    >
+                        {category}
+                    </button>
+                ))}
+                {selectedCategory !== 'all' && (
+                    <button
+                        onClick={() => setSelectedCategory('all')}
+                        className="px-4 py-1.5 rounded-full text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        ล้างตัวกรอง
+                    </button>
+                )}
             </div>
 
             {/* Articles Grid */}
@@ -103,42 +101,63 @@ export default function EducationArticlesPage() {
                     ))}
                 </div>
             ) : filteredArticles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredArticles.map((article) => (
-                        <Card key={article.id} className="overflow-hidden h-full flex flex-col group rounded-2xl shadow-sm hover:shadow-lg transition-all">
-                            <Link href={`/education/articles/${article.slug}`} className="block">
-                                <div className="relative h-48 w-full overflow-hidden">
-                                    <Image
-                                        src={article.imageUrl}
-                                        alt={article.title}
-                                        fill
-                                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                    <Badge variant="secondary" className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm">
-                                        {article.category}
-                                    </Badge>
-                                </div>
-                            </Link>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="line-clamp-2 text-lg">
-                                    <Link href={`/education/articles/${article.slug}`} className="hover:text-primary transition-colors">
-                                        {article.title}
-                                    </Link>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="flex-grow">
-                                <CardDescription className="line-clamp-2">{article.description}</CardDescription>
-                            </CardContent>
-                            <div className="p-6 pt-0">
-                                <Link href={`/education/articles/${article.slug}`}>
-                                    <Button variant="link" className="p-0 text-slate-600 hover:text-primary">
-                                        อ่านต่อ <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
+                <motion.div
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                        hidden: { opacity: 0 },
+                        visible: {
+                            opacity: 1,
+                            transition: { staggerChildren: 0.1 }
+                        }
+                    }}
+                >
+                    {filteredArticles.map((article, index) => (
+                        <motion.div
+                            key={article.id}
+                            variants={{
+                                hidden: { opacity: 0, y: 20 },
+                                visible: { opacity: 1, y: 0 }
+                            }}
+                            whileHover={{ y: -5 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <Card className="overflow-hidden h-full flex flex-col group rounded-2xl shadow-sm hover:shadow-lg transition-all">
+                                <Link href={`/education/articles/${article.slug}`} className="block">
+                                    <div className="relative h-48 w-full overflow-hidden">
+                                        <Image
+                                            src={article.imageUrl}
+                                            alt={article.title}
+                                            fill
+                                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                        />
+                                        <Badge variant="secondary" className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm">
+                                            {article.category}
+                                        </Badge>
+                                    </div>
                                 </Link>
-                            </div>
-                        </Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="line-clamp-2 text-lg">
+                                        <Link href={`/education/articles/${article.slug}`} className="hover:text-primary transition-colors">
+                                            {article.title}
+                                        </Link>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex-grow">
+                                    <CardDescription className="line-clamp-2">{article.description}</CardDescription>
+                                </CardContent>
+                                <div className="p-6 pt-0">
+                                    <Link href={`/education/articles/${article.slug}`}>
+                                        <Button variant="link" className="p-0 text-slate-600 hover:text-primary">
+                                            อ่านต่อ <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </Card>
+                        </motion.div>
                     ))}
-                </div>
+                </motion.div>
             ) : (
                 <div className="text-center py-16 bg-slate-50 rounded-2xl">
                     <FileText className="mx-auto h-12 w-12 text-slate-400" />

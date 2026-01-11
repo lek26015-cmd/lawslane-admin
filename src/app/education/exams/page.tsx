@@ -3,9 +3,11 @@
 import { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, AlertCircle, Filter, X, ArrowLeft } from "lucide-react";
+import { Clock, CheckCircle2, AlertCircle, Filter, X, ArrowLeft, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { motion } from 'framer-motion';
+import { PageHeader } from '../components/page-header';
 
 // Types
 interface Exam {
@@ -158,18 +160,17 @@ export default function ExamListingPage() {
     const hasActiveFilters = yearFilter !== 'ทั้งหมด' || lawCategoryFilter !== 'ทั้งหมด' || difficultyFilter !== 'ทั้งหมด';
 
     return (
-        <div className="flex flex-col gap-8">
-            {/* Header */}
-            <div className="flex flex-col gap-2">
-                <Link href="/education" className="inline-flex items-center text-sm text-slate-600 hover:text-primary transition-colors w-fit">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    กลับหน้าหลัก
-                </Link>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">คลังข้อสอบ</h1>
-                <p className="text-slate-600">
-                    ฝึกฝนให้มั่นใจกับระบบจำลองสอบเสมือนจริง
-                </p>
-            </div>
+        <div className="flex flex-col gap-6">
+            {/* Beautiful Page Header */}
+            <PageHeader
+                title="คลังข้อสอบ"
+                description="ฝึกฝนให้มั่นใจกับระบบจำลองสอบเสมือนจริง ทั้งข้อสอบปรนัยและอัตนัยพร้อมธงคำตอบ"
+                icon="GraduationCap"
+                theme="blue"
+                backLink="/education"
+                backLabel="กลับหน้าหลัก"
+                badge={`${filteredExams.length} ชุดข้อสอบ`}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 {/* Sidebar Filters */}
@@ -257,10 +258,30 @@ export default function ExamListingPage() {
                     </div>
 
                     {/* Exam List */}
-                    <div className="space-y-4">
+                    <motion.div
+                        className="space-y-4"
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                            hidden: { opacity: 0 },
+                            visible: {
+                                opacity: 1,
+                                transition: { staggerChildren: 0.1 }
+                            }
+                        }}
+                    >
                         {filteredExams.length > 0 ? (
                             filteredExams.map((exam) => (
-                                <div key={exam.id} className="group relative flex flex-col sm:flex-row gap-6 p-6 border rounded-xl bg-white hover:border-purple-300 transition-all hover:shadow-md">
+                                <motion.div
+                                    key={exam.id}
+                                    variants={{
+                                        hidden: { opacity: 0, x: -20 },
+                                        visible: { opacity: 1, x: 0 }
+                                    }}
+                                    whileHover={{ x: 5 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="group relative flex flex-col sm:flex-row gap-6 p-6 border rounded-xl bg-white hover:border-purple-300 transition-all hover:shadow-md"
+                                >
                                     <div className="flex-1 space-y-3">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <Badge variant={exam.price === 0 ? "default" : "outline"} className={exam.price === 0 ? "bg-green-600 hover:bg-green-700" : ""}>
@@ -310,10 +331,14 @@ export default function ExamListingPage() {
                                             </Button>
                                         </Link>
                                     </div>
-                                </div>
+                                </motion.div>
                             ))
                         ) : (
-                            <div className="text-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200"
+                            >
                                 <div className="bg-white p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
                                     <Filter className="h-8 w-8 text-slate-400" />
                                 </div>
@@ -324,9 +349,9 @@ export default function ExamListingPage() {
                                 <Button variant="outline" className="mt-6" onClick={clearFilters}>
                                     ล้างตัวกรองทั้งหมด
                                 </Button>
-                            </div>
+                            </motion.div>
                         )}
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </div>

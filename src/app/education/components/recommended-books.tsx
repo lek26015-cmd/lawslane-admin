@@ -1,106 +1,84 @@
-'use client';
-
-import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BookOpen } from 'lucide-react';
-import { Book } from '@/lib/education-types';
+import { ArrowRight } from 'lucide-react';
+import { getAllBooks } from '@/lib/education-data-admin';
+import { BookCard } from './book-card';
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious
+} from "@/components/ui/carousel";
 
-// Reuse mock data or fetch
-const RECOMMENDED_BOOKS: Book[] = [
-    {
-        id: "1",
-        title: "คู่มือเตรียมสอบใบอนุญาตว่าความ (ภาคทฤษฎี)",
-        description: "สรุปเนื้อหาสำคัญสำหรับสอบภาคทฤษฎี ครบถ้วน เข้าใจง่าย พร้อมตัวอย่างข้อสอบ",
-        price: 350,
-        coverUrl: "https://placehold.co/400x600/e2e8f0/1e293b?text=Lawyer+License",
-        author: "อ.สมชาย กฎหมายแม่น",
-        stock: 50,
-        isDigital: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-    {
-        id: "2",
-        title: "รวมข้อสอบตั๋วทนาย 10 ปีย้อนหลัง",
-        description: "เจาะลึกข้อสอบเก่า พร้อมเฉลยละเอียดและวิเคราะห์ประเด็นสำคัญ",
-        price: 450,
-        coverUrl: "https://placehold.co/400x600/e2e8f0/1e293b?text=Exam+History",
-        author: "ทีมงาน Lawlanes",
-        stock: 20,
-        isDigital: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-    {
-        id: "3",
-        title: "E-Book: เทคนิคการร่างฟ้องและคำร้อง",
-        description: "เทคนิคระดับมือโปรสำหรับการร่างเอกสารทางกฎหมาย (รูปแบบ PDF)",
-        price: 199,
-        coverUrl: "https://placehold.co/400x600/e2e8f0/1e293b?text=E-Book",
-        author: "ทนายวิชัย",
-        stock: 999,
-        isDigital: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    }
-];
+export async function RecommendedBooksSection() {
+    const allBooks = await getAllBooks();
+    const books = allBooks.slice(0, 8); // Show first 8 books
 
-export function RecommendedBooksSection() {
     return (
-        <section className="py-8">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2">
-                    <BookOpen className="w-6 h-6 text-slate-600" />
-                    <h2 className="text-2xl font-bold text-slate-900">หนังสือน่าอ่าน</h2>
-                </div>
-                <Link href="/education/books">
-                    <Button variant="link" className="text-slate-600 hover:text-primary">
-                        ดูทั้งหมด <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </Link>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {RECOMMENDED_BOOKS.map((book) => (
-                    <Card key={book.id} className="flex flex-col h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden border-slate-200">
-                        <div className="relative aspect-[2/3] w-full bg-slate-100 overflow-hidden">
-                            {/* In a real app, use Image component with proper optimization */}
-                            <img
-                                src={book.coverUrl}
-                                alt={book.title}
-                                className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
-                            />
-                            {book.isDigital && (
-                                <Badge className="absolute top-2 right-2 bg-blue-600 shadow-sm">E-Book</Badge>
-                            )}
+        <section className="py-12 bg-slate-50 border-y border-slate-200">
+            <div className="container mx-auto px-4">
+                <div className="flex flex-col lg:flex-row gap-8 items-stretch">
+                    {/* Left Column: Header & Intro */}
+                    <div className="lg:w-1/4 flex flex-col justify-center space-y-6">
+                        <div>
+                            <span className="text-pink-500 font-bold text-sm tracking-wider uppercase mb-2 block">ร้านหนังสือออนไลน์</span>
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">
+                                หนังสือเรียน<br />แนะนำ
+                            </h2>
                         </div>
-                        <CardContent className="flex-1 p-5">
-                            <h3 className="font-bold text-lg leading-tight mb-2 line-clamp-2 min-h-[3.5rem] text-slate-900">
-                                {book.title}
-                            </h3>
-                            <p className="text-sm text-slate-500 mb-3 line-clamp-2">
-                                {book.description}
-                            </p>
-                            <div className="text-xs font-medium text-slate-400 bg-slate-50 inline-block px-2 py-1 rounded-md">
-                                โดย {book.author}
+                        <p className="text-slate-600 text-lg leading-relaxed">
+                            LAWLANES ผู้นำด้านนวัตกรรมการศึกษากฎหมายรูปแบบใหม่ ผสานเทคโนโลยีเข้ากับการเรียน
+                            เพื่อผลลัพธ์ทางการเรียนการสอนที่มีประสิทธิภาพที่สุด
+                        </p>
+                        <Link href="/education/books">
+                            <Button className="bg-[#10B981] hover:bg-[#059669] text-white rounded-full px-8 py-6 text-lg font-bold shadow-lg hover:shadow-xl transition-all w-fit group">
+                                ดูหนังสือทั้งหมด
+                                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                        </Link>
+                    </div>
+
+                    {/* Right Column: Carousel */}
+                    <div className="lg:w-3/4 min-w-0">
+                        <Carousel
+                            opts={{
+                                align: "start",
+                                loop: true,
+                            }}
+                            className="w-full"
+                        >
+                            <CarouselContent className="-ml-4 pb-4">
+                                {books.map((book, idx) => (
+                                    <CarouselItem key={book.id} className="pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
+                                        <div className="h-full py-2">
+                                            <BookCard
+                                                id={book.id}
+                                                title={book.title}
+                                                coverUrl={book.coverUrl}
+                                                price={book.price}
+                                                originalPrice={Math.round(book.price * 1.2)} // Mock original price
+                                                rating={4.5 + (idx % 5) / 10} // Mock rating
+                                                badges={[
+                                                    idx === 0 ? { text: "แนะนำ NEW!!", color: "text-green-600", icon: "thumbs-up" } :
+                                                        idx === 1 ? { text: "ขายดี!!", color: "text-yellow-500", icon: "zap" } :
+                                                            idx === 2 ? { text: "ขายดี!!", color: "text-yellow-500", icon: "zap" } :
+                                                                { text: "ยอดนิยม", color: "text-blue-500" }
+                                                ]}
+                                                isEbook={book.isDigital}
+                                                href={`/education/books/${book.id}`}
+                                            />
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <div className="flex justify-center mt-6 lg:justify-end gap-2">
+                                <CarouselPrevious className="static translate-y-0 h-12 w-12 bg-white shadow-md border-0 text-slate-800 hover:bg-slate-50 hover:text-primary" />
+                                <CarouselNext className="static translate-y-0 h-12 w-12 bg-white shadow-md border-0 text-slate-800 hover:bg-slate-50 hover:text-primary" />
                             </div>
-                        </CardContent>
-                        <CardFooter className="p-5 pt-0 flex items-center justify-between mt-auto">
-                            <span className="text-xl font-bold text-indigo-700">
-                                ฿{book.price.toLocaleString()}
-                            </span>
-                            <Link href={`/education/books/${book.id}`}>
-                                <Button size="sm" className="bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
-                                    ดูรายละเอียด
-                                </Button>
-                            </Link>
-                        </CardFooter>
-                    </Card>
-                ))}
+                        </Carousel>
+                    </div>
+                </div>
             </div>
         </section>
     );

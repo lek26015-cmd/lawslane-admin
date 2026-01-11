@@ -13,13 +13,6 @@ import {
 
 export function Toaster({ viewportClassName }: { viewportClassName?: string }) {
   const { toasts } = useToast()
-  const [mounted, setMounted] = React.useState(false)
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) return null
 
   return (
     <ToastProvider>

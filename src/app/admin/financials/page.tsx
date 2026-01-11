@@ -97,6 +97,18 @@ type SlipVerificationItem = {
   lawyerId?: string;
 };
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 export default function AdminFinancialsPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -116,6 +128,11 @@ export default function AdminFinancialsPage() {
   const [isVerifierOpen, setIsVerifierOpen] = React.useState(false);
   const [selectedSlip, setSelectedSlip] = React.useState<{ url: string, amount: number, lawyerName: string } | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Manual Release State
+  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = React.useState(false);
+  const [releaseTicketId, setReleaseTicketId] = React.useState('');
+  const [selectedReleaseTransactionId, setSelectedReleaseTransactionId] = React.useState<string | null>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -510,6 +527,55 @@ export default function AdminFinancialsPage() {
     }
   };
 
+  const handleReleaseFund = async () => {
+    if (!firestore || !selectedReleaseTransactionId || !releaseTicketId) return;
+
+    // Determine collection (Appointment or Chat) based on ID or try both
+    // In our simplified transaction list, we don't store the source collection directly in the Transaction object easily reachable here
+    // But we can try to find it. Or we can just try to update both collections and see which works, or look at the ID format if distinct.
+    // For safety, let's try to fetch from 'appointments' first, if not exists, then 'chats'.
+
+    try {
+      let collectionName = 'appointments';
+      let docRef = doc(firestore, 'appointments', selectedReleaseTransactionId);
+      let docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        collectionName = 'chats';
+        docRef = doc(firestore, 'chats', selectedReleaseTransactionId);
+        docSnap = await getDoc(docRef);
+      }
+
+      if (!docSnap.exists()) {
+        toast({ variant: 'destructive', title: 'ไม่พบรายการ', description: 'ไม่พบเอกสารอ้างอิงของธุรกรรมนี้' });
+        return;
+      }
+
+      const updateData = {
+        status: collectionName === 'appointments' ? 'completed' : 'closed', // 'completed' for appointment, 'closed' for chat (funds released)
+        releasedByAdmin: true,
+        adminReleaseTicketId: releaseTicketId,
+        releasedAt: serverTimestamp()
+      };
+
+      await updateDoc(docRef, updateData);
+
+      toast({
+        title: 'ปล่อยเงินสำเร็จ',
+        description: `ปล่อยเงินเรียบร้อยแล้ว (Ref Ticket: ${releaseTicketId})`,
+      });
+
+      setIsReleaseDialogOpen(false);
+      setReleaseTicketId('');
+      setSelectedReleaseTransactionId(null);
+      fetchTransactions(); // Refresh list
+
+    } catch (error) {
+      console.error("Error releasing funds manually:", error);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถทำรายการได้' });
+    }
+  };
+
   const { totalServiceValue, platformRevenueThisMonth, platformTotalRevenue, monthlyData } = stats;
 
   return (
@@ -770,12 +836,13 @@ export default function AdminFinancialsPage() {
                         <TableHead>ประเภท</TableHead>
                         <TableHead>สถานะ</TableHead>
                         <TableHead className="text-right">จำนวนเงิน</TableHead>
+                        <TableHead className="text-right">การดำเนินการ</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">กำลังโหลด...</TableCell>
+                          <TableCell colSpan={6} className="text-center">กำลังโหลด...</TableCell>
                         </TableRow>
                       ) : transactions.length > 0 ? (
                         transactions.map((t) => (
@@ -801,11 +868,26 @@ export default function AdminFinancialsPage() {
                             <TableCell className="text-right font-medium">
                               ฿{t.amount.toLocaleString()}
                             </TableCell>
+                            <TableCell className="text-right">
+                              {t.status === 'pending' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-blue-600 hover:text-blue-800"
+                                  onClick={() => {
+                                    setSelectedReleaseTransactionId(t.id);
+                                    setIsReleaseDialogOpen(true);
+                                  }}
+                                >
+                                  ปล่อยเงิน
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">ไม่มีข้อมูลธุรกรรม</TableCell>
+                          <TableCell colSpan={6} className="text-center">ไม่มีรายการธุรกรรม</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
@@ -813,6 +895,46 @@ export default function AdminFinancialsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Release Fund Dialog */}
+            <AlertDialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>ยืนยันการปล่อยเงิน (Admin Override)</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    คุณกำลังจะทำการปล่อยเงินจาก Escrow ให้กับทนายความด้วยตนเอง
+                    <br /><br />
+                    <span className="font-bold text-destructive">เงื่อนไข: กรุณากรอก "Ticket ID" ที่แจ้งปัญหาเข้ามาเพื่อใช้อ้างอิงในการทำรายการนี้</span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-2">
+                  <div className="grid gap-2">
+                    <label htmlFor="ticket-id" className="text-sm font-medium">Reference Ticket ID:</label>
+                    <input
+                      id="ticket-id"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Ex. TICKET-1234..."
+                      value={releaseTicketId}
+                      onChange={(e) => setReleaseTicketId(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => {
+                    setIsReleaseDialogOpen(false);
+                    setReleaseTicketId('');
+                    setSelectedReleaseTransactionId(null);
+                  }}>ยกเลิก</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleReleaseFund}
+                    disabled={!releaseTicketId.trim()}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    ยืนยันการปล่อยเงิน
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <TabsContent value="withdrawals">
               <Card className="rounded-xl">
