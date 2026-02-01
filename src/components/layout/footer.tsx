@@ -13,6 +13,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
 
   let quickLinks = [
     { href: `/${locale}`, label: t('quickLinks.home') },
+    { href: `/${locale}/about`, label: t('quickLinks.about') },
     { href: `/${locale}/articles`, label: t('quickLinks.articles') },
     { href: `/${locale}/lawyers`, label: t('quickLinks.findLawyer') },
     { href: `/verify-lawyer`, label: t('quickLinks.verifyLawyer') },
@@ -113,6 +114,7 @@ export default function Footer({ userRole }: { userRole: string | null }) {
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-6 text-center text-sm text-gray-500">
+          {/* Copyright Section */}
           <p>{t('copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </div>

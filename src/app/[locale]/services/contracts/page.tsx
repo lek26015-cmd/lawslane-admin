@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FadeIn } from '@/components/fade-in';
-import { FileSignature, Briefcase, Home, Scroll, Scale, File, Upload, Calculator, FileCheck } from 'lucide-react';
+import { FileSignature, Briefcase, Home, Scroll, Scale, File, Upload, Calculator, FileCheck, Camera } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
@@ -143,10 +143,16 @@ export default function ContractsServicePage() {
                             </p>
                         </div>
 
-                        <div className="pt-4">
+                        <div className="pt-4 flex flex-col md:flex-row gap-4 justify-center">
                             <Link href="/services/contracts/request">
                                 <Button size="lg" className="bg-[#0B3979] hover:bg-[#082a5a] text-white rounded-full px-10 h-14 text-lg font-semibold shadow-xl shadow-blue-900/20">
                                     {t('pricing.cta')}
+                                </Button>
+                            </Link>
+                            <Link href="/services/contracts/screenshot">
+                                <Button size="lg" variant="outline" className="border-[#0B3979] text-[#0B3979] hover:bg-blue-50 rounded-full px-10 h-14 text-lg font-semibold">
+                                    <Camera className="w-5 h-5 mr-2" />
+                                    Screenshot to Contract
                                 </Button>
                             </Link>
                         </div>

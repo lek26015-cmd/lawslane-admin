@@ -67,13 +67,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 }) => {
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
-    const servicesAvailable = !!(firebaseApp && firestore && auth && storage);
+    // We consider services available if at least the App and Firestore are present
+    const servicesAvailable = !!(firebaseApp && firestore);
+
     return {
       areServicesAvailable: servicesAvailable,
-      firebaseApp: servicesAvailable ? firebaseApp : null,
-      firestore: servicesAvailable ? firestore : null,
-      auth: servicesAvailable ? auth : null,
-      storage: servicesAvailable ? storage : null,
+      firebaseApp: firebaseApp || null,
+      firestore: firestore || null,
+      auth: auth || null,
+      storage: storage || null,
       user,
       isUserLoading,
       userError,

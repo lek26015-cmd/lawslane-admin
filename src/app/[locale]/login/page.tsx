@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,6 +54,8 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
   // const params = useParams(); // Removed lang param
   // const lang = params.lang as Locale; // Removed lang param
   const { auth, firestore } = useFirebase();
@@ -165,9 +167,9 @@ export default function LoginPage() {
           await signOut(auth);
           return;
         }
-        router.push('/lawyer-dashboard');
+        router.push(redirectUrl || '/lawyer-dashboard');
       } else {
-        router.push('/dashboard');
+        router.push(redirectUrl || '/dashboard');
       }
     } catch (error: any) {
       console.error(error);
@@ -227,9 +229,9 @@ export default function LoginPage() {
       });
 
       if (role === 'lawyer') {
-        router.push('/lawyer-dashboard');
+        router.push(redirectUrl || '/lawyer-dashboard');
       } else {
-        router.push('/dashboard');
+        router.push(redirectUrl || '/dashboard');
       }
 
     } catch (error: any) {

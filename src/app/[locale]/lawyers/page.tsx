@@ -34,7 +34,11 @@ function LawyersPageContent() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!firestore) return;
+      if (!firestore) {
+        console.warn("Firestore not available in LawyersPage");
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       const lawyers = await getApprovedLawyers(firestore);
 

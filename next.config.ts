@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 // Force restart
 
+// @ts-check
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n.ts');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Sparkles, X, Loader2 } from 'lucide-react';
+import { Send, Sparkles, X, Loader2, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { chat, type ChatResponse } from '@/ai/flows/chat-flow';
 import type { ChatMessage } from '@/lib/types';
 import { z } from 'zod';
@@ -54,6 +54,8 @@ export default function ChatModal() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reset welcome message when locale changes
   useEffect(() => {
@@ -103,11 +105,99 @@ export default function ChatModal() {
     await processChat(question);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
 
     setIsLoading(true);
+
+    // Handle Image Upload Case (Screenshot to Contract)
+    if (selectedImage) {
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: input || 'ช่วยวิเคราะห์รูปนี้ให้หน่อยครับ',
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      const imagePayload = selectedImage; // Store current image to send
+      const currentInput = input;
+
+      setInput('');
+      setSelectedImage(null); // Clear image immediately from UI
+
+      try {
+        const response = await fetch('/api/ai/contract-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: imagePayload }),
+        });
+
+        if (!response.ok) throw new Error('Failed to process image');
+
+        const data = await response.json();
+
+        // Format the AI response
+        let responseText = `ผมวิเคราะห์ข้อมูลจากรูปภาพให้แล้วครับ:
+
+**ผู้ว่าจ้าง:** ${data.employer}
+**เนื้องาน:** ${data.task}
+**ราคา:** ${data.price.toLocaleString()} บาท ${data.deposit > 0 ? `(มัดจำ ${data.deposit.toLocaleString()})` : ''}
+**กำหนดส่ง:** ${data.deadline}
+
+`;
+        if (data.missingInfo.length > 0) {
+          responseText += `\n⚠️ **ข้อมูลที่ขาดหายไป:**\n${data.missingInfo.map((info: string) => `- ${info}`).join('\n')}`;
+        }
+
+        if (data.riskyTerms.length > 0) {
+          responseText += `\n\n⛔️ **ความเสี่ยงที่พบ:**\n${data.riskyTerms.map((term: string) => `- ${term}`).join('\n')}\n\n⚠️ แนะนำให้ปรึกษาทนายความเพื่อตรวจทานสัญญาครับ`;
+        } else {
+          responseText += `\n\n✅ **ร่างสัญญาเบื้องต้นดูครบถ้วนดีครับ** หากต้องการให้ทนายตรวจทานอีกครั้งเพื่อความชัวร์ สามารถกดปุ่มปรึกษาทนายได้เลยครับ`;
+        }
+
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: responseText,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+      } catch (error) {
+        console.error(error);
+        const errorMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "ขออภัยครับ เกิดข้อผิดพลาดในการอ่านรูปภาพ โปรดลองใหม่อีกครั้ง",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+      return;
+    }
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -154,7 +244,6 @@ export default function ChatModal() {
       <DialogContent
         hideCloseButton={true}
         className="fixed inset-0 w-full h-full max-w-none translate-x-0 translate-y-0 rounded-none xl:inset-auto xl:bottom-[88px] xl:right-6 xl:w-[420px] xl:h-[75vh] xl:rounded-2xl bg-white shadow-2xl border z-50 p-0 flex flex-col origin-bottom-right data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-0 transition-all duration-300"
-
       >
         <DialogHeader className="flex flex-row justify-between items-center p-4 border-b bg-foreground text-background sm:rounded-t-2xl">
           <DialogTitle asChild>
@@ -247,15 +336,44 @@ export default function ChatModal() {
         </div>
 
         <div className="p-4 border-t bg-white sm:rounded-b-2xl">
+          {selectedImage && (
+            <div className="mb-2 relative inline-block">
+              <img src={selectedImage} alt="Selected" className="h-16 w-auto rounded-lg border object-cover" />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-sm"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              disabled={isLoading}
+              onClick={() => fileInputRef.current?.click()}
+              className="p-3 rounded-full border-2 border-gray-200 hover:bg-gray-100 transition w-11 h-11 flex-shrink-0"
+            >
+              <ImageIcon className="w-5 h-5 text-gray-500" />
+            </Button>
             <Input
               value={input}
               onChange={handleInputChange}
-              placeholder={t('inputPlaceholder')}
+              placeholder={selectedImage ? "ถามเพิ่มเติมเกี่ยวกับรูปนี้..." : t('inputPlaceholder')}
               disabled={isLoading}
               className="flex-grow px-4 py-3 rounded-full bg-gray-100 border-2 border-transparent focus:bg-white focus:border-primary transition outline-none"
             />
-            <Button type="submit" size="icon" disabled={isLoading} className="p-3 rounded-full bg-foreground text-background hover:bg-foreground/90 transition shadow-lg w-11 h-11">
+            <Button type="submit" size="icon" disabled={isLoading} className="p-3 rounded-full bg-foreground text-background hover:bg-foreground/90 transition shadow-lg w-11 h-11 flex-shrink-0">
               <Send className="w-5 h-5" />
             </Button>
           </form>

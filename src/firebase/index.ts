@@ -67,7 +67,17 @@ export function initializeFirebase() {
     }
   } else {
     // For development, use the hardcoded config file
-    firebaseApp = initializeApp(devFirebaseConfig);
+    try {
+      firebaseApp = initializeApp(devFirebaseConfig);
+    } catch (e) {
+      // But we can prevent the white screen by returning nulls for services.
+      return {
+        firebaseApp: null,
+        auth: null,
+        firestore: null,
+        storage: null
+      };
+    }
   }
 
   return getSdks(firebaseApp);
@@ -79,7 +89,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
     auth = getAuth(firebaseApp);
   } catch (e) {
     // Auth might fail on server side, which is fine if we only need Firestore
-    console.warn("Firebase Auth initialization failed (this is expected on server-side):", e);
+    console.warn("Firebase Auth initialization failed:", e);
   }
 
   let storage;
