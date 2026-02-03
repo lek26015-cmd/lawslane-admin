@@ -735,5 +735,104 @@
             "errorTitle": "发生错误",
             "errorDesc": "无法发送信息。请重试。"
         }
+    },
+    "AboutPage": {
+        "title": "关于 Lawslane",
+        "subtitle": "在线法律咨询平台，连接您与全国专业律师",
+        "subtitleEn": "Online legal consultation platform connecting you with professional lawyers nationwide",
+        "quote": "\"商业问题需要时间解决，但态度可以立即改变\"",
+        "quoteDesc": "这句话最能代表我们 Lawslane 团队",
+        "story": {
+            "intro": "当谈到\"法律\"和\"商业\"时，每个人看到的都是严肃、是成年人的事、是需要几十年积累的经验... 我们承认这需要\"时间\"",
+            "question": "\"但如果你问，为什么年轻人敢聚在一起在最困难的行业如 Legal Tech 做创业？\"",
+            "answer": "答案在于后半句... \"态度可以立即改变\"",
+            "whoWeAre": "我们是一群与科技一起成长的年轻人。我们看到了中小企业主或小企业主面临的同样痛点：",
+            "painPoints": {
+                "fear": "害怕法律，不敢行动",
+                "expensive": "害怕聘请律师因为觉得太贵",
+                "disadvantage": "因为缺乏知识而在合同中处于劣势"
+            },
+            "solution": "我们无法忍受看着这个问题\"等待时间来解决\"。所以我们选择用\"态度\"来引领。",
+            "belief1": "相信\"技术可以让正义更容易获得\"的态度",
+            "belief2": "相信\"法律不应该是苦药，而应该是保护企业的盾牌\"的态度",
+            "whatWeDo": "Lawslane 诞生于我们的聚集——一个小而充满热情的创业团队。我们写代码，我们训练 AI，我们与律师交流，我们研究企业家的痛点，以创建一个最容易连接\"专业律师\"与\"企业主\"的平台。",
+            "experience": "我们可能没有20年的法庭经验（那是我们律师合作伙伴的工作），但我们有一颗想要看到泰国法律生态系统变得更好的心... 就在现在。",
+            "mission": "这是我们旅程的第一步，建立 Lawslane 成为每个人信赖的法律助手。"
+        },
+        "findLawyer": "查找律师",
+        "values": {
+            "title": "我们的核心价值观",
+            "subtitle": "Our Core Values",
+            "trustworthy": {
+                "title": "值得信赖",
+                "titleEn": "Trustworthy",
+                "description": "我们致力于在所有运营中保持透明和诚实。"
+            },
+            "professionalism": {
+                "title": "专业精神",
+                "titleEn": "Professionalism",
+                "description": "拥有经验和专业知识的专家团队。"
+            },
+            "care": {
+                "title": "用心服务",
+                "titleEn": "Care",
+                "description": "我们用心服务，关注每一个客户细节。"
+            },
+            "accessibility": {
+                "title": "易于访问",
+                "titleEn": "Accessibility",
+                "description": "让法律服务对每个人都易于获得。"
+            }
+        },
+        "teamQuote": {
+            "message": "请关注并支持我们，因为我们帮助您解决的每一个商业法律问题都是让我们继续前进的优质燃料。",
+            "slogan": "\"Team Lawslane 小团队，大使命。\""
+        },
+        "journey": {
+            "title": "我们的旅程",
+            "subtitle": "Our Journey"
+        },
+        "milestones": {
+            "founded": {
+                "year": "2025",
+                "title": "Lawslane 成立",
+                "titleEn": "Lawslane Founded",
+                "description": "从让法律易于获取的理念开始。"
+            },
+            "launch": {
+                "year": "2026年初",
+                "title": "平台上线",
+                "titleEn": "Platform Launch",
+                "description": "推出在线律师咨询平台。"
+            },
+            "expansion": {
+                "year": "2026年中",
+                "title": "服务扩展",
+                "titleEn": "Service Expansion",
+                "description": "增加 AI 初步法律分析服务。"
+            }
+        },
+        "contact": {
+            "title": "联系我们",
+            "subtitle": "Contact Us",
+            "email": {
+                "title": "电子邮件",
+                "value": "support@lawslane.com"
+            },
+            "phone": {
+                "title": "电话",
+                "value": "02-123-4567"
+            },
+            "office": {
+                "title": "办公室",
+                "value": "曼谷，泰国"
+            },
+            "sendMessage": "发送消息给我们"
+        },
+        "cta": {
+            "title": "准备好咨询律师了吗？",
+            "subtitle": "Ready to consult with a lawyer?",
+            "button": "查找律师"
+        }
     }
 }

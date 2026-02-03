@@ -734,5 +734,104 @@
             "errorTitle": "An Error Occurred",
             "errorDesc": "Could not send information. Please try again."
         }
+    },
+    "AboutPage": {
+        "title": "About Lawslane",
+        "subtitle": "Online legal consultation platform connecting you with professional lawyers nationwide",
+        "subtitleEn": "Online legal consultation platform connecting you with professional lawyers nationwide",
+        "quote": "\"Business problems take time to solve, but attitude can be fixed right now\"",
+        "quoteDesc": "This quote reflects who we are at Team Lawslane",
+        "story": {
+            "intro": "When it comes to \"law\" and \"business\", what everyone sees is seriousness, it's an adult matter, it's experience that must be accumulated over decades... which we accept requires \"time\"",
+            "question": "\"But if you ask, why are young people coming together to build a Startup in the most challenging industry like Legal Tech?\"",
+            "answer": "The answer lies in the latter sentence... \"Attitude can be fixed right now\"",
+            "whoWeAre": "We are a group of young people who grew up with technology. We see the same Pain Points that SME entrepreneurs or small business owners face:",
+            "painPoints": {
+                "fear": "Fear of the law to the point of not daring to move",
+                "expensive": "Afraid to hire a lawyer because they think it's expensive",
+                "disadvantage": "Disadvantaged in contracts due to lack of knowledge"
+            },
+            "solution": "We couldn't stand watching this problem \"waiting for time to fix\". So we chose to use \"attitude\" to lead the way.",
+            "belief1": "An attitude that believes \"technology can make justice more accessible\"",
+            "belief2": "An attitude that believes \"law shouldn't be bitter medicine, but should be a shield protecting businesses\"",
+            "whatWeDo": "Lawslane was born from the gathering of us—a small but passionate Startup team. We write code, we train AI, we talk to lawyers, we study Pain Points of entrepreneurs, to create a platform that connects the world of \"professional lawyers\" with \"business owners\" most easily.",
+            "experience": "We may not have 20 years of courtroom experience (that's the job of our lawyer partners), but we have the heart to see Thailand's Legal Ecosystem change for the better... right now.",
+            "mission": "This is the first step of our journey to build Lawslane as a trusted legal assistant for everyone."
+        },
+        "findLawyer": "Find a Lawyer",
+        "values": {
+            "title": "Our Core Values",
+            "subtitle": "Our Core Values",
+            "trustworthy": {
+                "title": "Trustworthy",
+                "titleEn": "Trustworthy",
+                "description": "We are committed to transparency and honesty in all our operations."
+            },
+            "professionalism": {
+                "title": "Professionalism",
+                "titleEn": "Professionalism",
+                "description": "Expert team with experience and specialized knowledge."
+            },
+            "care": {
+                "title": "Care",
+                "titleEn": "Care",
+                "description": "We serve with heart, attentive to every client detail."
+            },
+            "accessibility": {
+                "title": "Accessibility",
+                "titleEn": "Accessibility",
+                "description": "Making legal services accessible for everyone."
+            }
+        },
+        "teamQuote": {
+            "message": "Please follow and support us, because every business legal problem we help you solve is quality fuel that makes us want to keep going.",
+            "slogan": "\"Team Lawslane Small Team, Big Mission.\""
+        },
+        "journey": {
+            "title": "Our Journey",
+            "subtitle": "Our Journey"
+        },
+        "milestones": {
+            "founded": {
+                "year": "2025",
+                "title": "Lawslane Founded",
+                "titleEn": "Lawslane Founded",
+                "description": "Started with the idea of making law accessible."
+            },
+            "launch": {
+                "year": "Early 2026",
+                "title": "Platform Launch",
+                "titleEn": "Platform Launch",
+                "description": "Launched online lawyer consultation platform."
+            },
+            "expansion": {
+                "year": "Mid 2026",
+                "title": "Service Expansion",
+                "titleEn": "Service Expansion",
+                "description": "Added AI for preliminary legal analysis."
+            }
+        },
+        "contact": {
+            "title": "Contact Us",
+            "subtitle": "Contact Us",
+            "email": {
+                "title": "Email",
+                "value": "support@lawslane.com"
+            },
+            "phone": {
+                "title": "Phone",
+                "value": "02-123-4567"
+            },
+            "office": {
+                "title": "Office",
+                "value": "Bangkok, Thailand"
+            },
+            "sendMessage": "Send us a message"
+        },
+        "cta": {
+            "title": "Ready to consult with a lawyer?",
+            "subtitle": "Ready to consult with a lawyer?",
+            "button": "Find a Lawyer"
+        }
     }
 }
