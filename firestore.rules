@@ -65,7 +65,7 @@ service cloud.firestore {
                  request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
         }
 
-        allow get, list: if isChatParticipant();
+        allow get, list: if isChatParticipant() || isAdmin();
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
       }

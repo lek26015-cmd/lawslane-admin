@@ -71,6 +71,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [userRole, setUserRole] = useState<string | null>(null);
 
+    // Mobile Menu State
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     // State for collapsible sections, default "ภาพรวม" open
     const [openSection, setOpenSection] = useState<string | null>("ภาพรวม");
 
@@ -415,7 +418,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-col overflow-auto bg-muted/40">
                 <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6 lg:h-[60px]">
-                    <Sheet>
+                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                         <SheetTrigger asChild>
                             <Button variant="outline" size="icon" className="shrink-0 md:hidden">
                                 <Menu className="h-5 w-5" />
@@ -441,8 +444,10 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                             {/* Scrollable Nav */}
                             <nav className="flex-1 overflow-y-auto p-4 space-y-2">
                                 {/* Dashboard Link */}
+                                {/* Dashboard Link */}
                                 <Link
                                     href="/admin"
+                                    onClick={() => setIsMobileMenuOpen(false)}
                                     className={cn("flex items-center gap-3 rounded-lg px-3 py-3 text-slate-100 transition-all hover:bg-slate-800",
                                         pathname === "/admin" && "bg-slate-800 text-white font-medium"
                                     )}
@@ -468,6 +473,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                                 <Link
                                                     key={item.label}
                                                     href={item.href}
+                                                    onClick={() => setIsMobileMenuOpen(false)}
                                                     className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sky-300 transition-all hover:bg-slate-800 hover:text-white text-sm",
                                                         isActive(item.href) && "bg-slate-800 text-white"
                                                     )}
@@ -483,6 +489,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                 <div className="border-t border-slate-700 my-3" />
                                 <Link
                                     href={getMainLink()}
+                                    onClick={() => setIsMobileMenuOpen(false)}
                                     className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-all hover:bg-slate-800 hover:text-white"
                                 >
                                     <ArrowLeftCircle className="h-5 w-5" />

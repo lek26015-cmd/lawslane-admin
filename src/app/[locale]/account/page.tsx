@@ -587,7 +587,7 @@ export default function AccountPage() {
                           {banks.map(bank => (
                             <SelectItem key={bank.name} value={bank.name}>
                               <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 relative rounded-full overflow-hidden border bg-white flex items-center justify-center">
+                                <div className="w-8 h-8 relative rounded-lg overflow-hidden border bg-white flex items-center justify-center">
                                   <Image
                                     src={bank.logo}
                                     alt={bank.name}

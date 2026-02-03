@@ -427,7 +427,7 @@ export default function ForLawyersPage() {
                 </div>
               ))}
             </div>
-            <div className="pt-6">
+            <div className="pt-6 hidden lg:block">
               <Button asChild size="lg" variant="outline" className="w-full md:w-auto rounded-full">
                 <Link href="/lawyer-login">เข้าสู่ระบบสำหรับทนายที่มีบัญชีแล้ว</Link>
               </Button>
@@ -758,7 +758,7 @@ export default function ForLawyersPage() {
                               {banks.map(bank => (
                                 <SelectItem key={bank.name} value={bank.name}>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 relative rounded-full overflow-hidden border bg-white flex items-center justify-center">
+                                    <div className="w-8 h-8 relative rounded-lg overflow-hidden border bg-white flex items-center justify-center">
                                       <Image
                                         src={bank.logo}
                                         alt={bank.name}
@@ -854,6 +854,11 @@ export default function ForLawyersPage() {
                 </Form>
               </CardContent>
             </Card>
+            <div className="mt-8 lg:hidden">
+              <Button asChild size="lg" variant="outline" className="w-full rounded-full bg-white">
+                <Link href="/lawyer-login">เข้าสู่ระบบสำหรับทนายที่มีบัญชีแล้ว</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
