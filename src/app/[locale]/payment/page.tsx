@@ -51,10 +51,17 @@ function PaymentPageContent() {
     const [slipFile, setSlipFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Coupon State
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null); // Type should be Coupon but using any for quick integration or import it
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
+
 
     const appointmentFee = 3500;
     const chatTicketFee = 500;
     const fee = paymentType === 'chat' ? chatTicketFee : appointmentFee;
+    const finalFee = Math.max(0, fee - discountAmount);
     const title = paymentType === 'chat' ? 'ยืนยันการเปิด Ticket สนทนา' : 'ยืนยันการนัดหมายและชำระเงิน';
     const descriptionText = paymentType === 'chat' ? 'กรุณาตรวจสอบรายละเอียดและดำเนินการชำระเงินค่าเปิด Ticket' : 'กรุณาตรวจสอบรายละเอียดและดำเนินการชำระเงินค่าปรึกษา';
 
@@ -91,15 +98,81 @@ function PaymentPageContent() {
     useEffect(() => {
         // Use configured PromptPay number or default to company number
         const mobileNumber = process.env.NEXT_PUBLIC_PROMPTPAY_NUMBER || '081-234-5678';
-        const payload = generatePayload(mobileNumber, { amount: fee });
+        const payload = generatePayload(mobileNumber, { amount: finalFee });
         setPromptPayPayload(payload);
-    }, [fee]);
+    }, [finalFee]);
 
     const uploadSlip = async (file: File, userId: string) => {
         const formData = new FormData();
         formData.append('file', file);
         // Use generic R2 upload action
         return await uploadToR2(formData, 'payment-slips');
+    };
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode || !firestore) return;
+        setIsCheckingCoupon(true);
+        try {
+            const q = query(
+                collection(firestore, 'coupons'),
+                where('code', '==', couponCode.toUpperCase()),
+                where('isActive', '==', true)
+            );
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                toast({ variant: 'destructive', title: 'ไม่พบคูปอง', description: 'รหัสคูปองไม่ถูกต้องหรือหมดอายุ' });
+                setAppliedCoupon(null);
+                setDiscountAmount(0);
+                setIsCheckingCoupon(false);
+                return;
+            }
+
+            const couponData = snapshot.docs[0].data();
+            const couponId = snapshot.docs[0].id;
+
+            // Validate Expiry
+            if (couponData.expiryDate && couponData.expiryDate.toDate() < new Date()) {
+                toast({ variant: 'destructive', title: 'คูปองหมดอายุ', description: 'คูปองนี้หมดอายุแล้ว' });
+                setAppliedCoupon(null);
+                setDiscountAmount(0);
+                setIsCheckingCoupon(false);
+                return;
+            }
+
+            // Validate Usage Limit
+            if (couponData.usageLimit && couponData.usedCount >= couponData.usageLimit) {
+                toast({ variant: 'destructive', title: 'คูปองครบจำนวนสิทธิ์แล้ว', description: 'คูปองนี้ถูกใช้จนครบจำนวนสิทธิ์แล้ว' });
+                setAppliedCoupon(null);
+                setDiscountAmount(0);
+                setIsCheckingCoupon(false);
+                return;
+            }
+
+            // Calculate Discount
+            let discount = 0;
+            if (couponData.type === 'fixed') {
+                discount = couponData.value;
+            } else if (couponData.type === 'percent') {
+                discount = (fee * couponData.value) / 100;
+            }
+
+            setDiscountAmount(discount);
+            setAppliedCoupon({ id: couponId, ...couponData });
+            toast({ title: 'ใช้คูปองสำเร็จ', description: `คุณได้รับส่วนลด ${new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(discount)}` });
+
+        } catch (error) {
+            console.error("Error checking coupon:", error);
+            toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถตรวจสอบคูปองได้' });
+        } finally {
+            setIsCheckingCoupon(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setCouponCode('');
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
     };
 
     const processPayment = async (isManualTransfer = false) => {
@@ -172,7 +245,11 @@ function PaymentPageContent() {
                     userId: user.uid, // Add userId for easier querying
                     lastMessage: initialMessage,
                     lastMessageAt: serverTimestamp(),
-                    amount: fee // Store the payment amount
+                    amount: finalFee, // Store the payment amount
+                    originalFee: fee,
+                    discount: discountAmount,
+                    couponCode: appliedCoupon?.code || null,
+                    couponId: appliedCoupon?.id || null
                 };
 
                 console.log("Creating chat document...", chatPayload);
@@ -233,6 +310,18 @@ function PaymentPageContent() {
                         });
                     });
                 }
+                if (appliedCoupon) {
+                    // Update Coupon Usage
+                    // Ideally this should be a transaction to be safe concurrently
+                    try {
+                        const couponRef = doc(firestore, 'coupons', appliedCoupon.id);
+                        // We do a simple increment here for MVP. Real app should use transaction/increment
+                        await import('firebase/firestore').then(({ increment, updateDoc }) => {
+                            updateDoc(couponRef, { usedCount: increment(1) });
+                        });
+                    } catch (e) { console.error("Failed to update coupon usage", e); }
+                }
+
             } else if (paymentType === 'appointment' && dateStr) {
                 console.log("Processing appointment payment...");
                 const appointmentRef = collection(firestore, 'appointments');
@@ -244,9 +333,15 @@ function PaymentPageContent() {
                     lawyerImageUrl: lawyer.imageUrl,
                     appointmentDate: new Date(dateStr),
                     description: description,
-                    status: isManualTransfer ? 'pending_payment' : 'pending',
+                    status: (isManualTransfer && finalFee > 0) ? 'pending_payment' : 'pending', // If 0 fee, go straight to pending (awaiting confirmation/acceptance by lawyer, but paid)
                     createdAt: serverTimestamp(),
-                    ...(isManualTransfer && { slipUrl })
+                    ...(isManualTransfer && { slipUrl }),
+                    amount: finalFee,
+                    originalFee: fee,
+                    discount: discountAmount,
+                    couponCode: appliedCoupon?.code || null,
+                    couponId: appliedCoupon?.id || null,
+                    isFree: finalFee === 0
                 };
 
                 console.log("Creating appointment...", appointmentPayload);
@@ -279,6 +374,15 @@ function PaymentPageContent() {
                             type: 'Appointment'
                         });
                     });
+                }
+
+                if (appliedCoupon) {
+                    try {
+                        const couponRef = doc(firestore, 'coupons', appliedCoupon.id);
+                        await import('firebase/firestore').then(({ increment, updateDoc }) => {
+                            updateDoc(couponRef, { usedCount: increment(1) });
+                        });
+                    } catch (e) { console.error("Failed to update coupon usage", e); }
                 }
             }
         } catch (error) {
@@ -432,10 +536,39 @@ function PaymentPageContent() {
                                 )}
                             </div>
                         </CardContent>
-                        <CardFooter className="bg-secondary">
-                            <div className="w-full flex justify-between items-center font-bold">
-                                <span>ค่าบริการ</span>
+                        <CardFooter className="bg-secondary flex-col gap-2">
+                            <div className="w-full flex justify-between items-center text-sm">
+                                <span>ค่าบริการปกติ</span>
                                 <span>{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(fee)}</span>
+                            </div>
+                            {appliedCoupon && (
+                                <div className="w-full flex justify-between items-center text-sm text-green-600">
+                                    <span>ส่วนลด ({appliedCoupon.code})</span>
+                                    <span>-{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(discountAmount)}</span>
+                                </div>
+                            )}
+                            <div className="w-full flex justify-between items-center font-bold text-lg border-t pt-2 mt-2">
+                                <span>ยอดที่ต้องชำระ</span>
+                                <span>{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(finalFee)}</span>
+                            </div>
+
+                            {/* Coupon Input */}
+                            <div className="w-full flex gap-2 pt-2">
+                                <Input
+                                    placeholder="รหัสคูปองส่วนลด"
+                                    value={couponCode}
+                                    onChange={(e) => setCouponCode(e.target.value)}
+                                    disabled={!!appliedCoupon || isCheckingCoupon}
+                                />
+                                {appliedCoupon ? (
+                                    <Button variant="outline" onClick={handleRemoveCoupon} className="shrink-0 text-red-500 hover:text-red-600">
+                                        ยกเลิก
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" onClick={handleApplyCoupon} disabled={!couponCode || isCheckingCoupon} className="shrink-0">
+                                        {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'ใช้คูปอง'}
+                                    </Button>
+                                )}
                             </div>
                         </CardFooter>
                     </Card>
@@ -443,85 +576,97 @@ function PaymentPageContent() {
 
                 <div className="space-y-4">
                     <h3 className="font-semibold text-lg">เลือกวิธีการชำระเงิน</h3>
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-1">
-                            {/* <TabsTrigger value="credit-card" disabled={isWaitingForPayment}><CreditCard className="mr-2 h-4 w-4" /> บัตรเครดิต</TabsTrigger> */}
-                            {/* <TabsTrigger value="promptpay" disabled={isWaitingForPayment}><QrCode className="mr-2 h-4 w-4" /> PromptPay</TabsTrigger> */}
-                            <TabsTrigger value="bank-transfer" disabled={isWaitingForPayment}><Landmark className="mr-2 h-4 w-4" /> โอนเงิน</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="credit-card" className="mt-4">
-                            <div className="text-center py-8 text-muted-foreground">
-                                <p>ระบบตัดบัตรเครดิตอยู่ระหว่างการปรับปรุง</p>
-                                <p>กรุณาเลือกช่องทาง "โอนเงิน" หรือ "PromptPay"</p>
-                            </div>
-                        </TabsContent>
-                        <TabsContent value="promptpay" className="mt-4">
-                            <div className="flex flex-col items-center justify-center space-y-4 p-4 border rounded-md bg-white">
-                                {isWaitingForPayment ? (
-                                    <div className="flex flex-col items-center justify-center space-y-4 h-[300px]">
-                                        <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                                        <p className="font-semibold text-lg">กำลังรอการชำระเงิน</p>
-                                        <p className="text-sm text-muted-foreground text-center">กรุณาชำระเงินและแนบสลิป</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <p className="font-semibold">สแกน QR Code เพื่อชำระเงิน</p>
-                                        <div className="p-4 bg-white rounded-lg border">
-                                            <QRCode value={promptPayPayload} size={180} />
+
+                    {finalFee === 0 ? (
+                        <div className="p-6 border rounded-md bg-white text-center space-y-4">
+                            <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                            <h4 className="font-bold text-lg">ไม่ต้องชำระเงิน</h4>
+                            <p className="text-muted-foreground">คุณได้รับส่วนลดเต็มจำนวน สามารถยืนยันการทำรายการได้ทันที</p>
+                            <Button onClick={() => processPayment(true)} className="w-full" size="lg" disabled={isProcessing}>
+                                {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังยืนยัน...</> : 'ยืนยันการทำรายการ'}
+                            </Button>
+                        </div>
+                    ) : (
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-1">
+                                {/* <TabsTrigger value="credit-card" disabled={isWaitingForPayment}><CreditCard className="mr-2 h-4 w-4" /> บัตรเครดิต</TabsTrigger> */}
+                                {/* <TabsTrigger value="promptpay" disabled={isWaitingForPayment}><QrCode className="mr-2 h-4 w-4" /> PromptPay</TabsTrigger> */}
+                                <TabsTrigger value="bank-transfer" disabled={isWaitingForPayment}><Landmark className="mr-2 h-4 w-4" /> โอนเงิน</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="credit-card" className="mt-4">
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <p>ระบบตัดบัตรเครดิตอยู่ระหว่างการปรับปรุง</p>
+                                    <p>กรุณาเลือกช่องทาง "โอนเงิน" หรือ "PromptPay"</p>
+                                </div>
+                            </TabsContent>
+                            <TabsContent value="promptpay" className="mt-4">
+                                <div className="flex flex-col items-center justify-center space-y-4 p-4 border rounded-md bg-white">
+                                    {isWaitingForPayment ? (
+                                        <div className="flex flex-col items-center justify-center space-y-4 h-[300px]">
+                                            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                                            <p className="font-semibold text-lg">กำลังรอการชำระเงิน</p>
+                                            <p className="text-sm text-muted-foreground text-center">กรุณาชำระเงินและแนบสลิป</p>
                                         </div>
-                                        <p className="text-sm text-muted-foreground">ยอดชำระ: {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(fee)}</p>
-                                        <p className="text-xs text-muted-foreground text-center">ใช้แอปพลิเคชันธนาคารของคุณสแกน QR Code นี้เพื่อชำระเงิน เมื่อชำระเงินแล้ว ระบบจะตรวจสอบอัตโนมัติ</p>
-                                        <Button onClick={handlePromptPaySelect} className="w-full mt-4" size="lg">
-                                            แนบสลิปการโอนเงิน
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                        </TabsContent>
-                        <TabsContent value="bank-transfer" className="mt-4">
-                            <div className="space-y-4 p-4 border rounded-md bg-white">
-                                <p className="font-semibold text-center">โอนเงินเพื่อชำระค่าบริการ</p>
-                                <div className="p-4 bg-gray-100 rounded-lg text-center space-y-1">
-                                    <p className="text-sm text-muted-foreground">ธนาคารกสิกรไทย</p>
-                                    <p className="font-bold text-lg tracking-widest">144-3-46310-7</p>
-                                    <p className="font-semibold">วิศรุต บุ่งอุทุม</p>
-                                </div>
-                                <div className="text-center font-bold text-lg">
-                                    ยอดที่ต้องชำระ: {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(fee)}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="slip-upload">แนบสลิปการโอนเงิน</Label>
-                                    <div
-                                        className="flex items-center justify-center w-full p-4 border-2 border-dashed rounded-lg cursor-pointer"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        {slipFile ? (
-                                            <span className="text-sm font-medium text-green-600">{slipFile.name}</span>
-                                        ) : (
-                                            <div className="text-center text-muted-foreground text-sm">
-                                                <Upload className="mx-auto w-6 h-6 mb-1" />
-                                                คลิกเพื่ออัปโหลด
+                                    ) : (
+                                        <>
+                                            <p className="font-semibold">สแกน QR Code เพื่อชำระเงิน</p>
+                                            <div className="p-4 bg-white rounded-lg border">
+                                                <QRCode value={promptPayPayload} size={180} />
                                             </div>
-                                        )}
-                                    </div>
-                                    <input
-                                        ref={fileInputRef}
-                                        id="slip-upload"
-                                        type="file"
-                                        accept="image/*,.pdf"
-                                        className="hidden"
-                                        onChange={handleFileChange}
-                                    />
+                                            <p className="text-sm text-muted-foreground">ยอดชำระ: {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(finalFee)}</p>
+                                            <p className="text-xs text-muted-foreground text-center">ใช้แอปพลิเคชันธนาคารของคุณสแกน QR Code นี้เพื่อชำระเงิน เมื่อชำระเงินแล้ว ระบบจะตรวจสอบอัตโนมัติ</p>
+                                            <Button onClick={handlePromptPaySelect} className="w-full mt-4" size="lg">
+                                                แนบสลิปการโอนเงิน
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
-                                <Button onClick={handleBankTransferSubmit} className="w-full" size="lg" disabled={isProcessing || !slipFile}>
-                                    {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังส่งข้อมูล...</> : 'แจ้งการชำระเงิน'}
-                                </Button>
-                            </div>
-                        </TabsContent>
-                    </Tabs>
+                            </TabsContent>
+                            <TabsContent value="bank-transfer" className="mt-4">
+                                <div className="space-y-4 p-4 border rounded-md bg-white">
+                                    <p className="font-semibold text-center">โอนเงินเพื่อชำระค่าบริการ</p>
+                                    <div className="p-4 bg-gray-100 rounded-lg text-center space-y-1">
+                                        <p className="text-sm text-muted-foreground">ธนาคารกสิกรไทย</p>
+                                        <p className="font-bold text-lg tracking-widest">144-3-46310-7</p>
+                                        <p className="font-semibold">วิศรุต บุ่งอุทุม</p>
+                                    </div>
+                                    <div className="text-center font-bold text-lg">
+                                        ยอดที่ต้องชำระ: {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(finalFee)}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="slip-upload">แนบสลิปการโอนเงิน</Label>
+                                        <div
+                                            className="flex items-center justify-center w-full p-4 border-2 border-dashed rounded-lg cursor-pointer"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            {slipFile ? (
+                                                <span className="text-sm font-medium text-green-600">{slipFile.name}</span>
+                                            ) : (
+                                                <div className="text-center text-muted-foreground text-sm">
+                                                    <Upload className="mx-auto w-6 h-6 mb-1" />
+                                                    คลิกเพื่ออัปโหลด
+                                                </div>
+                                            )}
+                                        </div>
+                                        <input
+                                            ref={fileInputRef}
+                                            id="slip-upload"
+                                            type="file"
+                                            accept="image/*,.pdf"
+                                            className="hidden"
+                                            onChange={handleFileChange}
+                                        />
+                                    </div>
+                                    <Button onClick={handleBankTransferSubmit} className="w-full" size="lg" disabled={isProcessing || !slipFile}>
+                                        {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังส่งข้อมูล...</> : 'แจ้งการชำระเงิน'}
+                                    </Button>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+                    )}
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 }
 

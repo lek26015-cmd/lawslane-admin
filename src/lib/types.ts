@@ -325,3 +325,15 @@ export interface LegalForm {
   downloads: number;
   createdAt: any;
 }
+
+export interface Coupon {
+  id: string; // The specific coupon code itself or auto-generated
+  code: string;
+  type: 'fixed' | 'percent';
+  value: number;
+  expiryDate: any; // Timestamp
+  usageLimit?: number;
+  usedCount: number;
+  isActive: boolean;
+  createdAt: any;
+}

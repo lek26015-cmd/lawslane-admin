@@ -258,6 +258,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
             title: "ระบบและสนับสนุน",
             items: [
                 { href: "/admin/financials", icon: <Landmark className="h-4 w-4" />, label: "การเงิน" },
+                { href: "/admin/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด" },
                 { href: "/admin/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
                 { href: "/admin/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
             ]

@@ -173,5 +173,13 @@ service cloud.firestore {
         allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
+    match /coupons/{couponId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      // Allow admin to update everything. 
+      // Allow any signed-in user to update ONLY usedCount (for applying coupon)
+      allow update: if isAdmin() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount']));
+      allow list: if isSignedIn();
+    }
   }
 }
