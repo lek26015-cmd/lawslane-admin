@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Users, ShieldCheck, ArrowRight, Briefcase, UserCheck, FileText, Download, Check } from 'lucide-react';
+import { MessageSquare, Users, ShieldCheck, ArrowRight, Briefcase, UserCheck, FileText, Download, Check, Camera } from 'lucide-react';
 import Image from 'next/image';
 import { Link } from '@/navigation';
 import { getApprovedLawyers, getAllArticles, getAdsByPlacement, getImageUrl, getImageHint } from '@/lib/data';
@@ -135,6 +135,82 @@ export default function Home() {
                       <span className="text-slate-700 font-medium text-lg">{item}</span>
                     </div>
                   ))}
+                </div>
+              </FadeIn>
+            </div>
+          </div>
+        </section>
+
+        {/* Cap and Deal CTA Section */}
+        <section className="w-full py-16 md:py-24 bg-[#0B3979] text-white relative overflow-hidden">
+          {/* Decorative background shapes */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
+          <div className="container relative z-10 mx-auto px-4 md:px-6">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left: Visual */}
+              <FadeIn direction="right">
+                <div className="relative flex items-center justify-center">
+                  {/* Yellow glow behind card */}
+                  <div className="absolute inset-0 bg-yellow-400/20 rounded-[3rem] blur-2xl scale-105" />
+                  <div className="relative w-full max-w-md mx-auto bg-white rounded-3xl shadow-2xl p-8 border-2 border-yellow-300/50">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/30">
+                        <Camera className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg text-[#0B3979]">แคปแล้วดีล</p>
+                        <p className="text-sm text-slate-500">Screenshot → Contract</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 rounded-2xl p-4 text-sm text-slate-700 max-w-[75%] border border-blue-100">
+                        ตกลงนะคะ ราคา 15,000 บาท ส่งมอบภายใน 7 วัน
+                      </div>
+                      <div className="bg-emerald-50 rounded-2xl p-4 text-sm text-slate-700 max-w-[75%] ml-auto text-right border border-emerald-100">
+                        ตกลงครับ มัดจำ 50% โอนวันนี้
+                      </div>
+                    </div>
+                    <div className="mt-6 flex items-center justify-center">
+                      <div className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-[#0B3979] rounded-full text-sm font-bold shadow-lg shadow-yellow-400/30 animate-pulse">
+                        <ArrowRight className="w-4 h-4" />
+                        AI กำลังสร้างสัญญา...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </FadeIn>
+
+              {/* Right: Text Content */}
+              <FadeIn direction="left" delay={200}>
+                <div className="space-y-6">
+                  <h2 className="text-3xl md:text-4xl font-bold font-headline text-white">
+                    {t('capAndDeal.title')}
+                  </h2>
+                  <p className="text-blue-100 text-lg leading-relaxed">
+                    {t('capAndDeal.description')}
+                  </p>
+                  <div className="space-y-4">
+                    {[
+                      t('capAndDeal.features.ai'),
+                      t('capAndDeal.features.fast'),
+                      t('capAndDeal.features.legal')
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-center gap-4 bg-white/10 backdrop-blur-sm px-6 py-5 rounded-2xl border border-white/20 hover:bg-white/20 transition-all hover:-translate-y-1">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-yellow-400/50 shadow-sm">
+                          <Check className="w-5 h-5 text-yellow-400" />
+                        </div>
+                        <span className="text-white font-medium text-lg">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-2">
+                    <Link href="/services/contracts/screenshot" className="inline-flex items-center justify-center px-8 py-3 text-base font-bold text-white bg-yellow-500 rounded-full hover:bg-yellow-600 shadow-lg shadow-yellow-400/30 hover:shadow-xl transition-all duration-300 group">
+                      {t('capAndDeal.cta')}
+                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
               </FadeIn>
             </div>

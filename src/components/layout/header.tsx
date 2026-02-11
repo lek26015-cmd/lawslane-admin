@@ -7,7 +7,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
 import { Input } from '@/components/ui/input';
-import { Search, Menu, User, ChevronDown, LogOut, LayoutDashboard } from 'lucide-react';
+import { Search, Menu, User, ChevronDown, LogOut, LayoutDashboard, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -224,6 +224,9 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
             <Link href={getMainLink('/forms')} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
               {t('forms')}
             </Link>
+            <Link href={getMainLink('/services/contracts/screenshot')} className={pathname.startsWith(`/services/contracts/screenshot`) ? activeNavLinkClasses : navLinkClasses}>
+              <span className="flex items-center gap-1"><Camera className="h-4 w-4" />{t('capAndDeal')}</span>
+            </Link>
             <Link href={getMainLink('/for-lawyers')} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
               {t('forLawyers')}
             </Link>
@@ -378,6 +381,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
 
                   <Link href={getMainLink('/articles')} className="hover:text-primary">{t('articles')}</Link>
                   <Link href={getMainLink('/forms')} className="hover:text-primary">{t('forms')}</Link>
+                  <Link href={getMainLink('/services/contracts/screenshot')} className="flex items-center gap-2 hover:text-primary"><Camera className="h-5 w-5" />{t('capAndDeal')}</Link>
                   <Link href={getMainLink('/for-lawyers')} className="hover:text-primary">{t('forLawyers')}</Link>
                   <Link href={getMainLink('/lawyers')} className="hover:text-primary">{t('findLawyer')}</Link>
                   <Link href={getMainLink('/verify-lawyer')} className="hover:text-primary">{t('verifyLawyer')}</Link>

@@ -111,6 +111,16 @@
             "experts": "Expert Lawyers",
             "247": "24/7 Service",
             "satisfaction": "Satisfaction"
+        },
+        "capAndDeal": {
+            "title": "Cap & Deal: Create Contracts from Chat",
+            "description": "Just screenshot your chat agreement and our AI will automatically generate a legally binding contract. No drafting needed, no lawyer required.",
+            "features": {
+                "ai": "AI analyzes chat and generates contracts automatically",
+                "fast": "Takes less than 1 minute, ready to use instantly",
+                "legal": "Legally valid and enforceable contracts"
+            },
+            "cta": "Start Cap & Deal Now"
         }
     },
     "Navigation": {
@@ -135,6 +145,7 @@
             "registration": "Registration & Licenses",
             "dispute": "Business Dispute Resolution"
         },
+        "capAndDeal": "Cap & Deal",
         "scrollToTop": "Scroll to Top"
     },
     "VerifyLawyer": {
