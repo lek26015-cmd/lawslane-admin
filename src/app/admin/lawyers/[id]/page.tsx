@@ -47,7 +47,7 @@ import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { getLawyerById } from '@/lib/data'
-import type { LawyerProfile } from '@/lib/types'
+import type { LawyerProfile, GpCoupon } from '@/lib/types'
 import { useToast } from '@/hooks/use-toast'
 import {
   AlertDialog,
@@ -61,7 +61,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useFirebase } from '@/firebase'
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
+import { doc, updateDoc, collection, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore'
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -83,6 +83,25 @@ export default function AdminLawyerDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [duplicateLawyers, setDuplicateLawyers] = React.useState<LawyerProfile[]>([]);
+
+  // GP Coupon state
+  const [gpCoupons, setGpCoupons] = React.useState<GpCoupon[]>([]); // all active coupons
+  const [assignedCoupons, setAssignedCoupons] = React.useState<GpCoupon[]>([]); // coupons assigned to this lawyer
+  const [isGpDialogOpen, setIsGpDialogOpen] = React.useState(false);
+  const [selectedGpCouponId, setSelectedGpCouponId] = React.useState<string>('');
+  const [isAssigning, setIsAssigning] = React.useState(false);
+
+  const fetchGpCoupons = React.useCallback(async () => {
+    if (!firestore || !id) return;
+    try {
+      const snapshot = await getDocs(collection(firestore, 'gpCoupons'));
+      const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as GpCoupon[];
+      setGpCoupons(all.filter(c => c.isActive));
+      setAssignedCoupons(all.filter(c => c.assignedTo?.includes(id as string)));
+    } catch (e) {
+      console.error('Error fetching GP coupons:', e);
+    }
+  }, [firestore, id]);
 
   React.useEffect(() => {
     setCurrentDate(new Date().toISOString());
@@ -127,7 +146,41 @@ export default function AdminLawyerDetailPage() {
       });
     });
 
-  }, [id, firestore]);
+    fetchGpCoupons();
+  }, [id, firestore, fetchGpCoupons]);
+
+  const handleAssignGpCoupon = async () => {
+    if (!firestore || !selectedGpCouponId || !id) return;
+    setIsAssigning(true);
+    try {
+      await updateDoc(doc(firestore, 'gpCoupons', selectedGpCouponId), {
+        assignedTo: arrayUnion(id as string)
+      });
+      toast({ title: 'สำเร็จ', description: 'มอบหมายคูปอง GP เรียบร้อยแล้ว' });
+      setIsGpDialogOpen(false);
+      setSelectedGpCouponId('');
+      fetchGpCoupons();
+    } catch (e) {
+      console.error('Error assigning GP coupon:', e);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถมอบหมายคูปองได้' });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleUnassignGpCoupon = async (couponId: string) => {
+    if (!firestore || !id) return;
+    try {
+      await updateDoc(doc(firestore, 'gpCoupons', couponId), {
+        assignedTo: arrayRemove(id as string)
+      });
+      toast({ title: 'สำเร็จ', description: 'ยกเลิกการมอบหมายคูปอง GP แล้ว' });
+      fetchGpCoupons();
+    } catch (e) {
+      console.error('Error unassigning GP coupon:', e);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถยกเลิกคูปองได้' });
+    }
+  };
 
   const handleStatusChange = (newStatus: LawyerProfile['status']) => {
     if (!lawyer || !firestore) return;
@@ -414,7 +467,7 @@ export default function AdminLawyerDetailPage() {
           </CardContent>
         </Card>
       </div>
-      <div>
+      <div className="grid gap-4">
         <Card className="rounded-xl overflow-hidden">
           <CardHeader className="flex flex-row items-start bg-muted/50">
             <div className="grid gap-0.5">
@@ -457,6 +510,119 @@ export default function AdminLawyerDetailPage() {
             </div>
           </CardFooter>
         </Card>
+
+        {/* GP Coupon Card */}
+        <Card className="rounded-xl">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  ค่า GP และคูปองพิเศษ
+                </CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  GP ปัจจุบัน: <strong>{((lawyer.pricing?.platformFeeRate ?? 0.15) * 100).toFixed(1)}%</strong>
+                </CardDescription>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setIsGpDialogOpen(true)}>
+                มอบหมายคูปอง GP
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {assignedCoupons.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">
+                ยังไม่มีคูปอง GP ที่มอบหมายให้ทนายคนนี้
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {assignedCoupons.map(coupon => (
+                  <div
+                    key={coupon.id}
+                    className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2"
+                  >
+                    <div>
+                      <p className="font-mono font-semibold text-sm text-primary">{coupon.code}</p>
+                      {coupon.description && (
+                        <p className="text-xs text-muted-foreground">{coupon.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-green-700 bg-green-100 border-green-200 text-xs">
+                        GP {(coupon.gpRate * 100).toFixed(1)}%
+                      </Badge>
+                      {coupon.expiryDate && (
+                        <span className="text-xs text-muted-foreground">
+                          หมดอายุ {format(coupon.expiryDate.toDate(), 'd MMM yy', { locale: th })}
+                        </span>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => handleUnassignGpCoupon(coupon.id)}
+                        title="ยกเลิกการมอบหมาย"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Assign GP Coupon Dialog */}
+        <Dialog open={isGpDialogOpen} onOpenChange={setIsGpDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>มอบหมายคูปอง GP ให้ทนาย</DialogTitle>
+              <DialogDescription>
+                เลือกคูปอง GP ที่ต้องการมอบหมายให้ <strong>{lawyer?.name}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              {gpCoupons.filter(c => !assignedCoupons.find(a => a.id === c.id)).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  ไม่มีคูปอง GP ที่พร้อมใช้งาน กรุณาสร้างคูปองที่{' '}
+                  <a href="/admin/gp-coupons" className="underline text-primary">หน้าจัดการคูปอง GP</a>
+                </p>
+              ) : (
+                gpCoupons
+                  .filter(c => !assignedCoupons.find(a => a.id === c.id))
+                  .map((coupon) => (
+                    <button
+                      key={coupon.id}
+                      onClick={() => setSelectedGpCouponId(coupon.id)}
+                      className={`w-full flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors ${selectedGpCouponId === coupon.id
+                          ? 'border-primary bg-primary/5'
+                          : 'hover:bg-muted/50'
+                        }`}
+                    >
+                      <div>
+                        <p className="font-mono font-semibold text-primary">{coupon.code}</p>
+                        {coupon.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{coupon.description}</p>
+                        )}
+                      </div>
+                      <Badge variant="secondary" className="text-green-700 bg-green-100 border-green-200">
+                        GP {(coupon.gpRate * 100).toFixed(1)}%
+                      </Badge>
+                    </button>
+                  ))
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setIsGpDialogOpen(false); setSelectedGpCouponId(''); }}>ยกเลิก</Button>
+              <Button
+                onClick={handleAssignGpCoupon}
+                disabled={!selectedGpCouponId || isAssigning}
+              >
+                {isAssigning ? 'กำลังมอบหมาย...' : 'ยืนยันการมอบหมาย'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   )

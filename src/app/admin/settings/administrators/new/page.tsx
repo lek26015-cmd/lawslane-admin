@@ -21,11 +21,18 @@ import React from 'react';
 const permissionsConfig = [
   { id: 'customers', label: 'ลูกค้า', actions: ['view', 'create', 'edit', 'delete', 'download'] },
   { id: 'lawyers', label: 'ทนายความ', actions: ['view', 'create', 'edit', 'delete', 'download'] },
-  { id: 'financials', label: 'การเงิน', actions: ['view', 'download'] },
   { id: 'tickets', label: 'Ticket ช่วยเหลือ', actions: ['view', 'reply'] },
   { id: 'ads', label: 'จัดการโฆษณา', actions: ['view', 'create', 'edit', 'delete'] },
   { id: 'content', label: 'จัดการเนื้อหา', actions: ['view', 'create', 'edit', 'delete'] },
-  { id: 'settings', label: 'ตั้งค่าระบบ', actions: ['view', 'edit'] },
+];
+
+const granularPermissionsConfig = [
+  { id: 'financials.overview', label: 'ภาพรวมการเงิน' },
+  { id: 'financials.verification', label: 'ตรวจสอบสลิป' },
+  { id: 'financials.transactions', label: 'รายการธุรกรรม' },
+  { id: 'financials.withdrawals', label: 'คำร้องถอนเงิน' },
+  { id: 'coupons', label: 'คูปองส่วนลด' },
+  { id: 'gp_coupons', label: 'คูปอง GP ทนาย' },
 ];
 
 const actionLabels: { [key: string]: string } = {
@@ -51,6 +58,7 @@ export default function NewAdminPage() {
     lawyers: ['view'],
     tickets: ['view', 'reply']
   });
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
 
   useEffect(() => {
     if (!firestore || !user) return;
@@ -95,11 +103,19 @@ export default function NewAdminPage() {
     });
   }
 
+  const handleGranularPermissionChange = (id: string, checked: boolean) => {
+    setAdminPermissions(prev => {
+      if (checked) return [...prev, id];
+      return prev.filter(p => p !== id);
+    });
+  }
+
   async function handleSubmit(formData: FormData) {
     if (!firestore) return;
     setIsLoading(true);
     formData.append('role', role);
     formData.append('permissions', JSON.stringify(permissions));
+    formData.append('adminPermissions', JSON.stringify(adminPermissions));
 
     try {
       // 1. Create the user via server action
@@ -233,11 +249,32 @@ export default function NewAdminPage() {
               <Separator />
 
               <div className="space-y-4">
-                <Label className="text-base">กำหนดสิทธิ์การเข้าถึง (สำหรับ Admin ทั่วไป)</Label>
+                <Label className="text-base font-semibold">กำหนดสิทธิ์การเข้าถึงเมนู (หน้าเว็บ)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {granularPermissionsConfig.map((item) => (
+                    <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-secondary/30 transition-colors">
+                      <Checkbox
+                        id={`page-${item.id}`}
+                        checked={adminPermissions.includes(item.id)}
+                        onCheckedChange={(checked) => handleGranularPermissionChange(item.id, !!checked)}
+                        disabled={role === 'super_admin'}
+                      />
+                      <Label htmlFor={`page-${item.id}`} className="font-medium cursor-pointer flex-1">
+                        {item.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">สิทธิ์การดำเนินการ (Actions)</Label>
                 {permissionsConfig.map((menu, index) => (
                   <React.Fragment key={menu.id}>
                     <div className="grid gap-2">
-                      <Label className="font-semibold">{menu.label}</Label>
+                      <Label className="font-semibold text-sm text-muted-foreground">{menu.label}</Label>
                       <div className="flex flex-wrap gap-4">
                         {menu.actions.map(action => (
                           <div key={action} className="flex items-center space-x-2">

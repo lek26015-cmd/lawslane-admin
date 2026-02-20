@@ -26,11 +26,18 @@ import type { UserProfile } from '@/lib/types';
 const permissionsConfig = [
   { id: 'customers', label: 'ลูกค้า', actions: ['view', 'create', 'edit', 'delete', 'download'] },
   { id: 'lawyers', label: 'ทนายความ', actions: ['view', 'create', 'edit', 'delete', 'download'] },
-  { id: 'financials', label: 'การเงิน', actions: ['view', 'download'] },
   { id: 'tickets', label: 'Ticket ช่วยเหลือ', actions: ['view', 'reply'] },
   { id: 'ads', label: 'จัดการโฆษณา', actions: ['view', 'create', 'edit', 'delete'] },
   { id: 'content', label: 'จัดการเนื้อหา', actions: ['view', 'create', 'edit', 'delete'] },
-  { id: 'settings', label: 'ตั้งค่าระบบ', actions: ['view', 'edit'] },
+];
+
+const granularPermissionsConfig = [
+  { id: 'financials.overview', label: 'ภาพรวมการเงิน' },
+  { id: 'financials.verification', label: 'ตรวจสอบสลิป' },
+  { id: 'financials.transactions', label: 'รายการธุรกรรม' },
+  { id: 'financials.withdrawals', label: 'คำร้องถอนเงิน' },
+  { id: 'coupons', label: 'คูปองส่วนลด' },
+  { id: 'gp_coupons', label: 'คูปอง GP ทนาย' },
 ];
 
 const actionLabels: { [key: string]: string } = {
@@ -62,6 +69,7 @@ export default function AdminEditAdministratorPage() {
     lawyers: ['view'],
     tickets: ['view', 'reply']
   });
+  const [adminPermissions, setAdminPermissions] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!firestore || !user) return;
@@ -104,6 +112,9 @@ export default function AdminEditAdministratorPage() {
             if (userData.permissions) {
               setPermissions(userData.permissions);
             }
+            if (userData.adminPermissions) {
+              setAdminPermissions(userData.adminPermissions);
+            }
           } else {
             toast({
               variant: "destructive",
@@ -140,6 +151,13 @@ export default function AdminEditAdministratorPage() {
     });
   }
 
+  const handleGranularPermissionChange = (id: string, checked: boolean) => {
+    setAdminPermissions(prev => {
+      if (checked) return [...prev, id];
+      return prev.filter(p => p !== id);
+    });
+  }
+
   const handleSaveChanges = async () => {
     if (!admin || !firestore) return;
 
@@ -148,6 +166,7 @@ export default function AdminEditAdministratorPage() {
       const userDocRef = doc(firestore, "users", admin.uid);
       await updateDoc(userDocRef, {
         permissions,
+        adminPermissions,
         superAdmin: admin.superAdmin,
         role: admin.superAdmin ? 'Super Admin' : 'admin'
       });
@@ -242,9 +261,34 @@ export default function AdminEditAdministratorPage() {
 
           <Card className="rounded-xl">
             <CardHeader>
-              <CardTitle>กำหนดสิทธิ์การเข้าถึง</CardTitle>
+              <CardTitle>กำหนดสิทธิ์การเข้าถึงเมนู (หน้าเว็บ)</CardTitle>
               <CardDescription>
-                เลือกเมนูและกำหนดการกระทำที่ <span className="font-semibold">{admin.name || admin.email}</span> สามารถทำได้
+                เลือกหน้าที่แอดมินคนนี้สามารถมองเห็นและเข้าใช้งานได้
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {granularPermissionsConfig.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-secondary/30 transition-colors">
+                    <Checkbox
+                      id={`page-${item.id}`}
+                      checked={adminPermissions.includes(item.id)}
+                      onCheckedChange={(checked) => handleGranularPermissionChange(item.id, !!checked)}
+                    />
+                    <Label htmlFor={`page-${item.id}`} className="font-medium cursor-pointer flex-1">
+                      {item.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl">
+            <CardHeader>
+              <CardTitle>สิทธิ์การดำเนินการ (Actions)</CardTitle>
+              <CardDescription>
+                กำหนดการกระทำที่สามารถทำได้ในแต่ละหมวด
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,7 +305,7 @@ export default function AdminEditAdministratorPage() {
                               checked={permissions[menu.id]?.includes(action)}
                               onCheckedChange={(checked) => handlePermissionChange(menu.id, action, !!checked)}
                             />
-                            <Label htmlFor={`${menu.id}-${action}`} className="font-normal text-sm">
+                            <Label htmlFor={`${menu.id}-${action}`} className="font-normal text-sm lowercase">
                               {actionLabels[action]}
                             </Label>
                           </div>

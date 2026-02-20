@@ -36,10 +36,11 @@ import {
     GraduationCap,
     Book,
     FileQuestion,
-    Package
+    Package,
+    Percent
 } from 'lucide-react';
 import React, { useState, useEffect, useContext } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FirebaseContext, errorEmitter, FirestorePermissionError } from '@/firebase';
@@ -70,6 +71,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [userRole, setUserRole] = useState<string | null>(null);
+    // null = unrestricted (Super Admin), string[] = specific permissions
+    const [adminPermissions, setAdminPermissions] = useState<string[] | null>(null);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
     // Mobile Menu State
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -160,10 +164,14 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     setUserRole('Super Admin');
                                 });
                         } else if (userData.role === 'admin') {
-                            const role = userData.superAdmin ? 'Super Admin' : 'Administrator';
+                            const isSuper = !!(isSuperAdminUser || userData.superAdmin);
+                            const role = isSuper ? 'Super Admin' : 'Administrator';
                             setIsAdmin(true);
                             setCurrentUser(user);
                             setUserRole(role);
+                            setIsSuperAdmin(isSuper);
+                            // null = no restrictions, array = specific permissions
+                            setAdminPermissions(isSuper ? null : (userData.adminPermissions ?? null));
                         } else {
                             setIsAdmin(false);
                             setCurrentUser(null);
@@ -183,6 +191,8 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 setIsAdmin(false);
                 setCurrentUser(null);
                 setUserRole(null);
+                setAdminPermissions(null);
+                setIsSuperAdmin(false);
                 if (pathname !== '/admin/login') {
                     router.push('/admin/login');
                 }
@@ -210,11 +220,19 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
         href: string;
         icon: React.ReactNode;
         label: string;
+        permission?: string; // if set, only shown when user hasPermission(permission)
     };
 
     type NavSection = {
         title: string;
         items: NavItem[];
+    };
+
+    // null adminPermissions = Super Admin / unrestricted
+    const hasPermission = (permission?: string): boolean => {
+        if (!permission) return true;           // no restriction on this item
+        if (adminPermissions === null) return true;  // Super Admin sees all
+        return adminPermissions.includes(permission);
     };
 
     const navSections: NavSection[] = [
@@ -255,19 +273,37 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
             ]
         },
         {
+            title: "การเงิน",
+            items: [
+                { href: "/admin/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", permission: "financials.overview" },
+                { href: "/admin/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", permission: "financials.verification" },
+                { href: "/admin/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", permission: "financials.transactions" },
+                { href: "/admin/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", permission: "financials.withdrawals" },
+                { href: "/admin/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", permission: "coupons" },
+                { href: "/admin/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", permission: "gp_coupons" },
+            ]
+        },
+        {
             title: "ระบบและสนับสนุน",
             items: [
-                { href: "/admin/financials", icon: <Landmark className="h-4 w-4" />, label: "การเงิน" },
-                { href: "/admin/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด" },
                 { href: "/admin/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
                 { href: "/admin/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
             ]
         }
     ];
 
+    const searchParams = useSearchParams();
     const isActive = (href: string) => {
-        if (href === '/admin') return pathname === href;
-        return pathname.startsWith(href);
+        const [hrefPath, hrefQuery] = href.split('?');
+        if (hrefPath === '/admin') return pathname === hrefPath;
+        if (hrefQuery) {
+            // For links with query params (e.g. ?tab=overview), match both path and query
+            const params = new URLSearchParams(hrefQuery);
+            const tabParam = params.get('tab');
+            if (!pathname.startsWith(hrefPath)) return false;
+            return searchParams.get('tab') === tabParam;
+        }
+        return pathname.startsWith(hrefPath);
     }
 
     const getMainLink = () => {
@@ -337,7 +373,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                         <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", openSection !== section.title && "-rotate-90")} />
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="space-y-1 overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                                        {section.items.map((item) => (
+                                        {section.items.filter(item => hasPermission(item.permission)).map((item) => (
                                             <Link
                                                 key={item.label}
                                                 href={item.href}
@@ -470,7 +506,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                             <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", openSection === section.title && "rotate-90")} />
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="space-y-1 pl-2 pt-1">
-                                            {section.items.map((item) => (
+                                            {section.items.filter(item => hasPermission(item.permission)).map((item) => (
                                                 <Link
                                                     key={item.label}
                                                     href={item.href}

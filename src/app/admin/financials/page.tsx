@@ -28,6 +28,7 @@ import {
   Eye,
   ScanLine,
   FileJson,
+  ShieldAlert,
 } from 'lucide-react';
 
 
@@ -64,6 +65,7 @@ import {
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getFinancialStats } from '@/lib/data';
+import { useSearchParams } from 'next/navigation';
 
 import { SlipVerifier } from '@/components/admin/slip-verifier';
 
@@ -116,7 +118,8 @@ import {
 export default function AdminFinancialsPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = React.useState('overview');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = React.useState(() => searchParams.get('tab') || 'overview');
   const [slipVerifications, setSlipVerifications] = React.useState<
     SlipVerificationItem[]
   >([]);
@@ -141,6 +144,46 @@ export default function AdminFinancialsPage() {
   // Debug State
   const [debugData, setDebugData] = React.useState<any>(null);
   const [isDebugOpen, setIsDebugOpen] = React.useState(false);
+
+  // Permission State
+  const [adminPermissions, setAdminPermissions] = React.useState<string[] | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
+  const [isVerifyingPermission, setIsVerifyingPermission] = React.useState(true);
+
+  React.useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
+  React.useEffect(() => {
+    if (!firestore) return;
+
+    // We should ideally use a context for this, but for now we fetch it here
+    const fetchUserPermissions = async () => {
+      import('firebase/auth').then(({ getAuth, onAuthStateChanged }) => {
+        const auth = getAuth();
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const userDoc = await getDoc(doc(firestore!, 'users', user.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              const isSuper = !!userData.superAdmin || user.email === 'lek.26015@gmail.com';
+              setIsSuperAdmin(isSuper);
+              setAdminPermissions(isSuper ? null : (userData.adminPermissions ?? null));
+            }
+          }
+          setIsVerifyingPermission(false);
+        });
+      });
+    };
+
+    fetchUserPermissions();
+  }, [firestore]);
+
+  const hasPermission = React.useCallback((permission: string) => {
+    if (isSuperAdmin || adminPermissions === null) return true;
+    return adminPermissions.includes(permission);
+  }, [isSuperAdmin, adminPermissions]);
 
   const handleDebug = async (collectionName: string, id: string) => {
     if (!firestore) return;
@@ -628,423 +671,446 @@ export default function AdminFinancialsPage() {
             onValueChange={setActiveTab}
           >
             <TabsList className="mb-4">
-              <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
-              <TabsTrigger value="verification" className="relative">
-                ตรวจสอบสลิป
-                {slipVerifications.length > 0 && activeTab !== 'verification' && (
-                  <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
-                    {slipVerifications.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="transactions">รายการธุรกรรม</TabsTrigger>
-              <TabsTrigger value="withdrawals">คำร้องถอนเงิน</TabsTrigger>
+              {hasPermission('financials.overview') && (
+                <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
+              )}
+              {hasPermission('financials.verification') && (
+                <TabsTrigger value="verification" className="relative">
+                  ตรวจสอบสลิป
+                  {slipVerifications.length > 0 && activeTab !== 'verification' && (
+                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
+                      {slipVerifications.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              )}
+              {hasPermission('financials.transactions') && (
+                <TabsTrigger value="transactions">รายการธุรกรรม</TabsTrigger>
+              )}
+              {hasPermission('financials.withdrawals') && (
+                <TabsTrigger value="withdrawals">คำร้องถอนเงิน</TabsTrigger>
+              )}
             </TabsList>
 
-            <TabsContent value="overview">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <Card className="rounded-xl">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      ยอดค่าบริการรวม
-                    </CardTitle>
-                    <DollarSign className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      ฿
-                      {totalServiceValue.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                      })}
-                    </div>
-                    <CardDescription>มูลค่าธุรกรรมทั้งหมดในระบบ</CardDescription>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      รายได้แพลตฟอร์ม (เดือนนี้)
-                    </CardTitle>
-                    <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-green-600">
-                      ฿
-                      {platformRevenueThisMonth.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                      })}
-                    </div>
-                    <CardDescription>
-                      ส่วนแบ่งรายได้ในเดือนปัจจุบัน
-                    </CardDescription>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      รายได้แพลตฟอร์ม (ทั้งหมด)
-                    </CardTitle>
-                    <HandCoins className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">
-                      ฿
-                      {platformTotalRevenue.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                      })}
-                    </div>
-                    <CardDescription>
-                      ส่วนแบ่งรายได้ทั้งหมดของแพลตฟอร์ม
-                    </CardDescription>
-                  </CardContent>
-                </Card>
+            {isVerifyingPermission ? (
+              <div className="py-20 text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                กำลังตรวจสอบสิทธิ์...
               </div>
-
-              <Card className="rounded-xl">
-                <CardHeader>
-                  <CardTitle>สถิติรายได้แพลตฟอร์มรายเดือน</CardTitle>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="month"
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) =>
-                          `฿${new Intl.NumberFormat('en-US', {
-                            notation: 'compact',
-                            compactDisplay: 'short',
-                          }).format(value as number)}`
-                        }
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius)',
-                        }}
-                        cursor={{ fill: 'hsl(var(--accent))' }}
-                        formatter={(value: number) => [
-                          value.toLocaleString('en-US', {
+            ) : !hasPermission(`financials.${activeTab === 'overview' ? 'overview' : activeTab === 'verification' ? 'verification' : activeTab === 'transactions' ? 'transactions' : 'withdrawals'}`) ? (
+              <div className="py-20 text-center text-muted-foreground">
+                <ShieldAlert className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">ไม่มีสิทธิ์เข้าถึง</h3>
+                <p>คุณไม่มีสิทธิ์เข้าถึงส่วนนี้ กรุณาติดต่อ Super Admin</p>
+              </div>
+            ) : (
+              <>
+                <TabsContent value="overview">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <Card className="rounded-xl">
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">
+                          ยอดค่าบริการรวม
+                        </CardTitle>
+                        <DollarSign className="w-4 h-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          ฿
+                          {totalServiceValue.toLocaleString('en-US', {
                             minimumFractionDigits: 2,
-                          }),
-                          'รายได้',
-                        ]}
-                      />
-                      <Bar
-                        dataKey="total"
-                        fill="hsl(var(--primary))"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="verification">
-              <Card className="rounded-xl">
-                <CardHeader>
-                  <CardTitle>รายการรอตรวจสอบสลิป</CardTitle>
-                  <CardDescription>
-                    ตรวจสอบและอนุมัติรายการที่ลูกค้าชำระเงินโดยการโอน
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-end mb-4">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                    />
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                      <ScanLine className="mr-2 h-4 w-4" />
-                      ทดสอบตรวจสอบสลิป
-                    </Button>
+                          })}
+                        </div>
+                        <CardDescription>มูลค่าธุรกรรมทั้งหมดในระบบ</CardDescription>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-xl">
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">
+                          รายได้แพลตฟอร์ม (เดือนนี้)
+                        </CardTitle>
+                        <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold text-green-600">
+                          ฿
+                          {platformRevenueThisMonth.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                          })}
+                        </div>
+                        <CardDescription>
+                          ส่วนแบ่งรายได้ในเดือนปัจจุบัน
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-xl">
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">
+                          รายได้แพลตฟอร์ม (ทั้งหมด)
+                        </CardTitle>
+                        <HandCoins className="w-4 h-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          ฿
+                          {platformTotalRevenue.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                          })}
+                        </div>
+                        <CardDescription>
+                          ส่วนแบ่งรายได้ทั้งหมดของแพลตฟอร์ม
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>วันที่แจ้ง</TableHead>
-                        <TableHead>ลูกค้า</TableHead>
-                        <TableHead>สำหรับ</TableHead>
-                        <TableHead>ทนายความ</TableHead>
-                        <TableHead>ยอดเงิน</TableHead>
-                        <TableHead className="text-right">
-                          การดำเนินการ
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center">
-                            กำลังโหลด...
-                          </TableCell>
-                        </TableRow>
-                      ) : slipVerifications.length > 0 ? (
-                        slipVerifications.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              {format(item.submittedAt, 'd MMM yyyy, HH:mm', {
-                                locale: th,
-                              })}
-                            </TableCell>
-                            <TableCell>{item.userName}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{item.type}</Badge>
-                            </TableCell>
-                            <TableCell>{item.lawyerName}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                                รออนุมัติ
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              ฿{item.amount.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right space-x-2">
-                              {/* Debug Button */}
-                              <Button variant="ghost" size="sm" onClick={() => handleDebug(item.collectionName, item.id)}>
-                                <FileJson className="h-4 w-4 text-gray-500" />
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => {
-                                setSelectedSlip({
-                                  url: item.slipUrl || '',
-                                  amount: item.amount,
-                                  lawyerName: item.lawyerName
-                                });
-                                setIsVerifierOpen(true);
-                              }} disabled={!item.slipUrl}>
-                                <Eye className="mr-1 h-3 w-3" /> ตรวจสอบสลิป
-                              </Button>
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprovePayment(item)}>
-                                <CheckCircle className="mr-1 h-3 w-3" /> ยืนยัน
-                              </Button>
-                            </TableCell>
+
+                  <Card className="rounded-xl">
+                    <CardHeader>
+                      <CardTitle>สถิติรายได้แพลตฟอร์มรายเดือน</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pl-2">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis
+                            dataKey="month"
+                            stroke="#888888"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis
+                            stroke="#888888"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(value) =>
+                              `฿${new Intl.NumberFormat('en-US', {
+                                notation: 'compact',
+                                compactDisplay: 'short',
+                              }).format(value as number)}`
+                            }
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              borderColor: 'hsl(var(--border))',
+                              borderRadius: 'var(--radius)',
+                            }}
+                            cursor={{ fill: 'hsl(var(--accent))' }}
+                            formatter={(value: number) => [
+                              value.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                              }),
+                              'รายได้',
+                            ]}
+                          />
+                          <Bar
+                            dataKey="total"
+                            fill="hsl(var(--primary))"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="verification">
+                  <Card className="rounded-xl">
+                    <CardHeader>
+                      <CardTitle>รายการรอตรวจสอบสลิป</CardTitle>
+                      <CardDescription>
+                        ตรวจสอบและอนุมัติรายการที่ลูกค้าชำระเงินโดยการโอน
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-end mb-4">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                        />
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                          <ScanLine className="mr-2 h-4 w-4" />
+                          ทดสอบตรวจสอบสลิป
+                        </Button>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>วันที่แจ้ง</TableHead>
+                            <TableHead>ลูกค้า</TableHead>
+                            <TableHead>สำหรับ</TableHead>
+                            <TableHead>ทนายความ</TableHead>
+                            <TableHead>ยอดเงิน</TableHead>
+                            <TableHead className="text-right">
+                              การดำเนินการ
+                            </TableHead>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center">
-                            ไม่มีรายการรอตรวจสอบ
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <SlipVerifier
-              isOpen={isVerifierOpen}
-              onClose={() => setIsVerifierOpen(false)}
-              slipUrl={selectedSlip?.url || ''}
-              expectedAmount={selectedSlip?.amount}
-              expectedLawyerName={selectedSlip?.lawyerName}
-            />
-
-            <TabsContent value="transactions">
-              <Card className="rounded-xl">
-                <CardHeader>
-                  <CardTitle>รายการธุรกรรมทั้งหมด</CardTitle>
-                  <CardDescription>
-                    ประวัติการชำระเงินและรายได้ทั้งหมดในระบบ
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>วันที่</TableHead>
-                        <TableHead>รายการ</TableHead>
-                        <TableHead>ประเภท</TableHead>
-                        <TableHead>สถานะ</TableHead>
-                        <TableHead className="text-right">จำนวนเงิน</TableHead>
-                        <TableHead className="text-right">การดำเนินการ</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center">กำลังโหลด...</TableCell>
-                        </TableRow>
-                      ) : transactions.length > 0 ? (
-                        transactions.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell>{t.date}</TableCell>
-                            <TableCell>{t.description}</TableCell>
-                            <TableCell>
-                              {t.status === 'pending' ? (
-                                <Badge variant="outline" className="text-yellow-700 bg-yellow-50 border-yellow-200">
-                                  เงินพัก (Escrow)
-                                </Badge>
-                              ) : (
-                                <Badge variant={t.type === 'revenue' ? 'default' : 'secondary'}>
-                                  {t.type === 'revenue' ? 'รายรับ' : 'ค่าธรรมเนียม'}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600 border-green-600' : ''}>
-                                {t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              ฿{t.amount.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right space-x-2">
-                              {/* Debug Button */}
-                              <Button variant="ghost" size="sm" onClick={() => handleDebug(t.description.includes('นัดหมาย') ? 'appointments' : 'chats', t.id)}>
-                                <FileJson className="h-4 w-4 text-gray-500" />
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => {
-                                setIsReleaseDialogOpen(true);
-                                setReleaseTicketId('');
-                                setSelectedReleaseTransactionId(t.id);
-                              }}>
-                                ปล่อยเงิน
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center">ไม่มีรายการธุรกรรม</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Release Fund Dialog */}
-            <AlertDialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>ยืนยันการปล่อยเงิน (Admin Override)</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    คุณกำลังจะทำการปล่อยเงินจาก Escrow ให้กับทนายความด้วยตนเอง
-                    <br /><br />
-                    <span className="font-bold text-destructive">เงื่อนไข: กรุณากรอก "Ticket ID" ที่แจ้งปัญหาเข้ามาเพื่อใช้อ้างอิงในการทำรายการนี้</span>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-2">
-                  <div className="grid gap-2">
-                    <label htmlFor="ticket-id" className="text-sm font-medium">Reference Ticket ID:</label>
-                    <input
-                      id="ticket-id"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Ex. TICKET-1234..."
-                      value={releaseTicketId}
-                      onChange={(e) => setReleaseTicketId(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => {
-                    setIsReleaseDialogOpen(false);
-                    setReleaseTicketId('');
-                    setSelectedReleaseTransactionId(null);
-                  }}>ยกเลิก</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleReleaseFund}
-                    disabled={!releaseTicketId.trim()}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    ยืนยันการปล่อยเงิน
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <TabsContent value="withdrawals">
-              <Card className="rounded-xl">
-                <CardHeader>
-                  <CardTitle>คำร้องขอถอนเงิน</CardTitle>
-                  <CardDescription>รายการที่ทนายความแจ้งขอถอนเงิน</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>วันที่แจ้ง</TableHead>
-                        <TableHead>ทนายความ</TableHead>
-                        <TableHead>ธนาคาร</TableHead>
-                        <TableHead>เลขที่บัญชี</TableHead>
-                        <TableHead>ยอดเงิน</TableHead>
-                        <TableHead>สถานะ</TableHead>
-                        <TableHead className="text-right">การดำเนินการ</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center">กำลังโหลด...</TableCell>
-                        </TableRow>
-                      ) : withdrawalRequests.length > 0 ? (
-                        withdrawalRequests.map((req) => (
-                          <TableRow key={req.id}>
-                            <TableCell>
-                              {format(req.requestedAt, 'd MMM yyyy, HH:mm', { locale: th })}
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">{req.lawyerName}</div>
-                              <div className="text-xs text-muted-foreground">ชื่อบัญชี: {req.accountName}</div>
-                            </TableCell>
-                            <TableCell>{req.bankName}</TableCell>
-                            <TableCell>{req.accountNumber}</TableCell>
-                            <TableCell className="font-bold">฿{req.amount.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
-                                className={req.status === 'approved' ? 'bg-green-100 text-green-800' : ''}>
-                                {req.status === 'approved' ? 'โอนแล้ว' : req.status === 'rejected' ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right space-x-2">
-                              {req.status === 'pending' && (
-                                <>
-                                  <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleUpdateWithdrawalStatus(req.id, 'rejected')}>
-                                    ปฏิเสธ
+                        </TableHeader>
+                        <TableBody>
+                          {isLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center">
+                                กำลังโหลด...
+                              </TableCell>
+                            </TableRow>
+                          ) : slipVerifications.length > 0 ? (
+                            slipVerifications.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell>
+                                  {format(item.submittedAt, 'd MMM yyyy, HH:mm', {
+                                    locale: th,
+                                  })}
+                                </TableCell>
+                                <TableCell>{item.userName}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{item.type}</Badge>
+                                </TableCell>
+                                <TableCell>{item.lawyerName}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                    รออนุมัติ
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  ฿{item.amount.toLocaleString()}
+                                </TableCell>
+                                <TableCell className="text-right space-x-2">
+                                  {/* Debug Button */}
+                                  <Button variant="ghost" size="sm" onClick={() => handleDebug(item.collectionName, item.id)}>
+                                    <FileJson className="h-4 w-4 text-gray-500" />
                                   </Button>
-                                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleUpdateWithdrawalStatus(req.id, 'approved')}>
-                                    อนุมัติ (โอนแล้ว)
+                                  <Button variant="outline" size="sm" onClick={() => {
+                                    setSelectedSlip({
+                                      url: item.slipUrl || '',
+                                      amount: item.amount,
+                                      lawyerName: item.lawyerName
+                                    });
+                                    setIsVerifierOpen(true);
+                                  }} disabled={!item.slipUrl}>
+                                    <Eye className="mr-1 h-3 w-3" /> ตรวจสอบสลิป
                                   </Button>
-                                </>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                            ไม่มีรายการคำร้องขอถอนเงิน
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprovePayment(item)}>
+                                    <CheckCircle className="mr-1 h-3 w-3" /> ยืนยัน
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center">
+                                ไม่มีรายการรอตรวจสอบ
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
+                <SlipVerifier
+                  isOpen={isVerifierOpen}
+                  onClose={() => setIsVerifierOpen(false)}
+                  slipUrl={selectedSlip?.url || ''}
+                  expectedAmount={selectedSlip?.amount}
+                  expectedLawyerName={selectedSlip?.lawyerName}
+                />
+
+                <TabsContent value="transactions">
+                  <Card className="rounded-xl">
+                    <CardHeader>
+                      <CardTitle>รายการธุรกรรมทั้งหมด</CardTitle>
+                      <CardDescription>
+                        ประวัติการชำระเงินและรายได้ทั้งหมดในระบบ
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>วันที่</TableHead>
+                            <TableHead>รายการ</TableHead>
+                            <TableHead>ประเภท</TableHead>
+                            <TableHead>สถานะ</TableHead>
+                            <TableHead className="text-right">จำนวนเงิน</TableHead>
+                            <TableHead className="text-right">การดำเนินการ</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {isLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center">กำลังโหลด...</TableCell>
+                            </TableRow>
+                          ) : transactions.length > 0 ? (
+                            transactions.map((t) => (
+                              <TableRow key={t.id}>
+                                <TableCell>{t.date}</TableCell>
+                                <TableCell>{t.description}</TableCell>
+                                <TableCell>
+                                  {t.status === 'pending' ? (
+                                    <Badge variant="outline" className="text-yellow-700 bg-yellow-50 border-yellow-200">
+                                      เงินพัก (Escrow)
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant={t.type === 'revenue' ? 'default' : 'secondary'}>
+                                      {t.type === 'revenue' ? 'รายรับ' : 'ค่าธรรมเนียม'}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600 border-green-600' : ''}>
+                                    {t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  ฿{t.amount.toLocaleString()}
+                                </TableCell>
+                                <TableCell className="text-right space-x-2">
+                                  {/* Debug Button */}
+                                  <Button variant="ghost" size="sm" onClick={() => handleDebug(t.description.includes('นัดหมาย') ? 'appointments' : 'chats', t.id)}>
+                                    <FileJson className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                  <Button variant="outline" size="sm" onClick={() => {
+                                    setIsReleaseDialogOpen(true);
+                                    setReleaseTicketId('');
+                                    setSelectedReleaseTransactionId(t.id);
+                                  }}>
+                                    ปล่อยเงิน
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center">ไม่มีรายการธุรกรรม</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Release Fund Dialog */}
+                <AlertDialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>ยืนยันการปล่อยเงิน (Admin Override)</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        คุณกำลังจะทำการปล่อยเงินจาก Escrow ให้กับทนายความด้วยตนเอง
+                        <br /><br />
+                        <span className="font-bold text-destructive">เงื่อนไข: กรุณากรอก "Ticket ID" ที่แจ้งปัญหาเข้ามาเพื่อใช้อ้างอิงในการทำรายการนี้</span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-2">
+                      <div className="grid gap-2">
+                        <label htmlFor="ticket-id" className="text-sm font-medium">Reference Ticket ID:</label>
+                        <input
+                          id="ticket-id"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="Ex. TICKET-1234..."
+                          value={releaseTicketId}
+                          onChange={(e) => setReleaseTicketId(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => {
+                        setIsReleaseDialogOpen(false);
+                        setReleaseTicketId('');
+                        setSelectedReleaseTransactionId(null);
+                      }}>ยกเลิก</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleReleaseFund}
+                        disabled={!releaseTicketId.trim()}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        ยืนยันการปล่อยเงิน
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <TabsContent value="withdrawals">
+                  <Card className="rounded-xl">
+                    <CardHeader>
+                      <CardTitle>คำร้องขอถอนเงิน</CardTitle>
+                      <CardDescription>รายการที่ทนายความแจ้งขอถอนเงิน</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>วันที่แจ้ง</TableHead>
+                            <TableHead>ทนายความ</TableHead>
+                            <TableHead>ธนาคาร</TableHead>
+                            <TableHead>เลขที่บัญชี</TableHead>
+                            <TableHead>ยอดเงิน</TableHead>
+                            <TableHead>สถานะ</TableHead>
+                            <TableHead className="text-right">การดำเนินการ</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {isLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center">กำลังโหลด...</TableCell>
+                            </TableRow>
+                          ) : withdrawalRequests.length > 0 ? (
+                            withdrawalRequests.map((req) => (
+                              <TableRow key={req.id}>
+                                <TableCell>
+                                  {format(req.requestedAt, 'd MMM yyyy, HH:mm', { locale: th })}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{req.lawyerName}</div>
+                                  <div className="text-xs text-muted-foreground">ชื่อบัญชี: {req.accountName}</div>
+                                </TableCell>
+                                <TableCell>{req.bankName}</TableCell>
+                                <TableCell>{req.accountNumber}</TableCell>
+                                <TableCell className="font-bold">฿{req.amount.toLocaleString()}</TableCell>
+                                <TableCell>
+                                  <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
+                                    className={req.status === 'approved' ? 'bg-green-100 text-green-800' : ''}>
+                                    {req.status === 'approved' ? 'โอนแล้ว' : req.status === 'rejected' ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right space-x-2">
+                                  {req.status === 'pending' && (
+                                    <>
+                                      <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleUpdateWithdrawalStatus(req.id, 'rejected')}>
+                                        ปฏิเสธ
+                                      </Button>
+                                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleUpdateWithdrawalStatus(req.id, 'approved')}>
+                                        อนุมัติ (โอนแล้ว)
+                                      </Button>
+                                    </>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                ไม่มีรายการคำร้องขอถอนเงิน
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </>
+            )}
           </Tabs>
         </CardContent>
       </Card>
+
 
       <AlertDialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <AlertDialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">

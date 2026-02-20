@@ -50,7 +50,10 @@ export default function LawyerCard({ lawyer }: LawyerCardProps) {
   };
 
   return (
-    <div className="group relative flex flex-col md:flex-row items-center md:items-start p-6 gap-6 w-full bg-white text-card-foreground rounded-2xl border shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-primary overflow-hidden">
+    <div
+      className="group relative flex flex-col md:flex-row items-center md:items-start p-6 gap-6 w-full bg-white text-card-foreground rounded-2xl border shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-primary overflow-hidden cursor-pointer"
+      onClick={handleViewProfile}
+    >
       {/* Decorative background blob */}
       <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
 
@@ -118,11 +121,21 @@ export default function LawyerCard({ lawyer }: LawyerCardProps) {
       <div className="flex-shrink-0 flex flex-col sm:flex-row md:flex-col items-stretch justify-center gap-3 w-full md:w-40 mt-2 md:mt-0 relative z-10">
         <Button
           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all"
-          onClick={handleViewProfile}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleViewProfile();
+          }}
         >
           {t('card.viewProfile')}
         </Button>
-        <Button variant="outline" className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800" onClick={handleStartChat}>
+        <Button
+          variant="outline"
+          className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleStartChat();
+          }}
+        >
           <Mail className="mr-2 h-4 w-4" /> {t('card.sendMessage')}
         </Button>
       </div>

@@ -14,6 +14,7 @@ export interface UserProfile {
   status: 'active' | 'suspended' | 'pending';
   avatar?: string;
   permissions?: Record<string, string[]>;
+  adminPermissions?: string[];
   superAdmin?: boolean;
   notificationPreferences?: {
     email: string;
@@ -334,6 +335,17 @@ export interface Coupon {
   expiryDate: any; // Timestamp
   usageLimit?: number;
   usedCount: number;
+  isActive: boolean;
+  createdAt: any;
+}
+
+export interface GpCoupon {
+  id: string;
+  code: string;
+  description?: string;
+  gpRate: number;        // อัตรา GP ใหม่ เช่น 0.10 = 10%
+  assignedTo: string[];  // array ของ lawyerProfile IDs ที่ได้รับคูปองนี้
+  expiryDate?: any;      // Firestore Timestamp
   isActive: boolean;
   createdAt: any;
 }
