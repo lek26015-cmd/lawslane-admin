@@ -1,6 +1,7 @@
 
 'use client';
 
+import * as React from 'react';
 import { useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -52,7 +53,7 @@ const formSchema = z.object({
   password: z.string().min(1, { message: 'กรุณากรอกรหัสผ่าน' }),
 });
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
@@ -398,3 +399,12 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F4F6F9]"><Loader2 className="animate-spin text-primary" /></div>}>
+      <LoginPageContent />
+    </React.Suspense>
+  );
+}
+
