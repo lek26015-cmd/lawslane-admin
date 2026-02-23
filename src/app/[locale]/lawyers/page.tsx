@@ -147,13 +147,16 @@ function LawyersPageContent() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div className="col-span-1 space-y-6">
+        <div className="col-span-1 space-y-6 order-1 md:order-none">
           <LawyerFilterSidebar />
-          <LawyerPageSidebarAds />
-          <RecommendedArticles />
+          {/* Sidebar Ads and Articles for Desktop - Hidden on Mobile */}
+          <div className="hidden md:block space-y-6">
+            <LawyerPageSidebarAds />
+            <RecommendedArticles />
+          </div>
         </div>
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-3 order-2 md:order-none">
           {isSorting && (
             <div className="mb-8 p-4 rounded-lg bg-secondary">
               <p className="text-center font-semibold text-primary mb-2">{t('analyzing')}</p>
@@ -177,6 +180,12 @@ function LawyersPageContent() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Sidebar Ads and Articles for Mobile - Visible only on Mobile at the bottom */}
+        <div className="col-span-1 space-y-6 order-3 md:hidden">
+          <LawyerPageSidebarAds />
+          <RecommendedArticles />
         </div>
       </div>
     </div>

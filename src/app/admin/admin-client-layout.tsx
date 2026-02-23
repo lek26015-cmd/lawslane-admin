@@ -244,15 +244,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 { href: "/admin/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย" },
             ]
         },
-        ...(userRole === 'Super Admin' ? [{
-            title: "ระบบการศึกษา (Education)",
-            items: [
-                { href: "/admin/education", icon: <GraduationCap className="h-4 w-4" />, label: "ภาพรวม Education" },
-                { href: "/admin/education/books", icon: <Book className="h-4 w-4" />, label: "จัดการหนังสือ" },
-                { href: "/admin/education/exams", icon: <FileQuestion className="h-4 w-4" />, label: "จัดการข้อสอบ" },
-                { href: "/admin/education/orders", icon: <Package className="h-4 w-4" />, label: "รายการสั่งซื้อ" },
-            ]
-        }] : []),
+
         {
             title: "คำขอใช้บริการ",
             items: [

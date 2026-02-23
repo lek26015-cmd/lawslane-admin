@@ -27,16 +27,7 @@ export default async function middleware(request: NextRequest) {
 
             return NextResponse.rewrite(new URL(newPath, request.url));
         }
-    } else if (hostname && hostname.startsWith('education.')) {
-        // Education Subdomain (education.lawslane.com -> /education)
-        console.log('Education subdomain detected:', { hostname, pathname });
-        if (!pathname.startsWith('/education')) {
-            // Rewrite to /education, stripping locale if present
-            // Only strip ACTUAL locales (th, en, zh), not arbitrary 2-letter paths like /ac
-            const newPath = `/education${pathname.replace(/^\/(th|en|zh)/, '')}`;
-            console.log('Rewriting to:', newPath);
-            return NextResponse.rewrite(new URL(newPath, request.url));
-        }
+
     } else {
         // Redirect /admin on main domain to admin subdomain (Skip for localhost)
         if (pathname.startsWith('/admin') && hostname && !hostname.includes('localhost')) {
@@ -49,14 +40,14 @@ export default async function middleware(request: NextRequest) {
     }
 
     // 0.5 Redirect localized lawyer/admin/education routes to root (e.g. /th/admin -> /admin)
-    const localizedSystemRegex = /^\/[a-z]{2}\/(admin|lawyer-|education)(.*)/;
+    const localizedSystemRegex = /^\/[a-z]{2}\/(admin|lawyer-)(.*)/;
     if (localizedSystemRegex.test(pathname)) {
         const newPath = pathname.replace(/^\/[a-z]{2}/, '');
         return NextResponse.redirect(new URL(newPath, request.url));
     }
 
     // 1. Admin & Lawyer & Education System Exclusion (No i18n)
-    if (pathname.startsWith('/admin') || pathname.startsWith('/lawyer-') || pathname.startsWith('/education')) {
+    if (pathname.startsWith('/admin') || pathname.startsWith('/lawyer-')) {
         // Admin Auth Check
         if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
             const session = request.cookies.get('session');

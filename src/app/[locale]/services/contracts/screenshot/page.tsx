@@ -301,7 +301,7 @@ export default function ScreenshotToContractPage() {
         <>
             {/* Consent Dialog */}
             <Dialog open={showPdpaDialog} onOpenChange={setShowPdpaDialog}>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-[2rem] border-none shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-xl">
                             <ShieldCheck className="w-6 h-6 text-blue-600" />
@@ -314,7 +314,7 @@ export default function ScreenshotToContractPage() {
 
                     <div className="space-y-4 py-4">
                         {/* Privacy Policy */}
-                        <div className="flex items-start space-x-3 p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-start space-x-3 p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
                             <Checkbox
                                 id="privacy"
                                 checked={acceptPrivacy}
@@ -332,7 +332,7 @@ export default function ScreenshotToContractPage() {
                         </div>
 
                         {/* Terms of Service */}
-                        <div className="flex items-start space-x-3 p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-start space-x-3 p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
                             <Checkbox
                                 id="terms"
                                 checked={acceptTerms}
@@ -350,7 +350,7 @@ export default function ScreenshotToContractPage() {
                         </div>
 
                         {/* AI Disclaimer */}
-                        <div className="flex items-start space-x-3 p-4 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors">
+                        <div className="flex items-start space-x-3 p-4 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors shadow-sm">
                             <Checkbox
                                 id="ai-disclaimer"
                                 checked={acceptAiDisclaimer}
@@ -387,6 +387,7 @@ export default function ScreenshotToContractPage() {
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button
                             variant="outline"
+                            className="rounded-full px-6"
                             onClick={() => setShowPdpaDialog(false)}
                         >
                             ยกเลิก
@@ -394,7 +395,7 @@ export default function ScreenshotToContractPage() {
                         <Button
                             onClick={handleAcceptPdpa}
                             disabled={!acceptPrivacy || !acceptTerms || !acceptAiDisclaimer || !turnstileToken}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-full px-6"
                         >
                             <ShieldCheck className="w-4 h-4 mr-2" />
                             ยินยอมและดำเนินการต่อ
@@ -403,9 +404,8 @@ export default function ScreenshotToContractPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Login Required Dialog */}
             <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md rounded-[2rem] border-none shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-xl">
                             <LogIn className="w-6 h-6 text-blue-600" />
@@ -417,7 +417,7 @@ export default function ScreenshotToContractPage() {
                     </DialogHeader>
 
                     <div className="py-4">
-                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                        <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 shadow-sm">
                             <p className="text-sm text-blue-800">
                                 💡 <strong>หมายเหตุ:</strong> หากคุณต้องการบันทึกเป็น PDF แทน
                                 สามารถกด &quot;ยกเลิก&quot; แล้วเลือกปุ่ม &quot;บันทึก PDF&quot; ได้เลย
@@ -429,13 +429,14 @@ export default function ScreenshotToContractPage() {
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button
                             variant="outline"
+                            className="rounded-full px-6"
                             onClick={() => setShowLoginDialog(false)}
                         >
                             ยกเลิก
                         </Button>
                         <Button
                             onClick={handleLoginRedirect}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-blue-600 hover:bg-blue-700 rounded-full px-6"
                         >
                             <LogIn className="w-4 h-4 mr-2" />
                             เข้าสู่ระบบ
@@ -497,10 +498,10 @@ export default function ScreenshotToContractPage() {
                     {/* Show Upload Section when no contract */}
                     {!contractData ? (
                         <FadeIn direction="up" delay={200}>
-                            <Card className="border-0 shadow-2xl shadow-blue-900/10 rounded-3xl overflow-hidden bg-white/90 backdrop-blur-xl">
+                            <Card className="border-0 shadow-2xl shadow-blue-900/10 rounded-[2.5rem] overflow-hidden bg-white/90 backdrop-blur-xl">
                                 <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 p-8">
                                     <CardTitle className="text-2xl font-bold text-[#0B3979] flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-[#0B3979]">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-[#0B3979]">
                                             1
                                         </div>
                                         อัปโหลดรูปแชท
@@ -509,7 +510,7 @@ export default function ScreenshotToContractPage() {
                                 <CardContent className="space-y-8 p-8">
                                     <div className="w-full grid grid-cols-2 gap-4">
                                         {images.map((img, index) => (
-                                            <div key={index} className="relative aspect-square rounded-xl border border-slate-200 overflow-hidden group">
+                                            <div key={index} className="relative aspect-square rounded-2xl border border-slate-200 overflow-hidden group">
                                                 <img src={img} alt={`Uploaded chat ${index + 1}`} className="w-full h-full object-cover" />
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); removeImage(index); }}
@@ -523,8 +524,8 @@ export default function ScreenshotToContractPage() {
 
 
                                         <div
-                                            className={`relative aspect-square rounded-xl border-3 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-blue-50/50 hover:border-blue-400 group
-                                            ${images.length === 0 ? 'col-span-2 aspect-[4/3]' : 'border-slate-200'}`}
+                                            className={`relative aspect-square rounded-2xl border-3 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-blue-50/50 hover:border-blue-400 group
+                                            ${images.length === 0 ? 'col-span-2 aspect-[4/3] rounded-3xl' : 'border-slate-200'}`}
                                             onClick={handleUploadClick}
                                         >
                                             <div className="space-y-3 p-4">
@@ -555,7 +556,7 @@ export default function ScreenshotToContractPage() {
                                     <Button
                                         onClick={processImage}
                                         disabled={images.length === 0 || isProcessing}
-                                        className="w-full bg-[#0B3979] hover:bg-[#082a5a] text-white shadow-lg shadow-blue-900/20 rounded-xl py-6 text-lg font-semibold transition-all hover:translate-y-[-2px]"
+                                        className="w-full bg-[#0B3979] hover:bg-[#082a5a] text-white shadow-lg shadow-blue-900/20 rounded-full py-6 text-lg font-semibold transition-all hover:translate-y-[-2px]"
                                     >
                                         {isProcessing ? (
                                             <>
@@ -586,7 +587,7 @@ export default function ScreenshotToContractPage() {
                             </Button>
 
                             {/* Contract Draft */}
-                            <Card className="border-0 shadow-xl rounded-3xl overflow-hidden bg-white/80 backdrop-blur">
+                            <Card className="border-0 shadow-xl rounded-[2.5rem] overflow-hidden bg-white/80 backdrop-blur">
                                 <CardHeader className="border-b border-slate-100 p-6 bg-white">
                                     <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                         <FileSignature className="w-5 h-5 text-blue-600" />
@@ -596,7 +597,7 @@ export default function ScreenshotToContractPage() {
                                 <CardContent className="space-y-5 p-6 md:p-8">
                                     {/* Alerts */}
                                     {contractData.missingInfo.length > 0 && (
-                                        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 animate-in slide-in-from-bottom-2">
+                                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 animate-in slide-in-from-bottom-2">
                                             <div className="flex items-start gap-3">
                                                 <div className="p-2 bg-orange-100 rounded-full text-orange-600 mt-0.5">
                                                     <AlertTriangle className="h-4 w-4" />
@@ -617,7 +618,7 @@ export default function ScreenshotToContractPage() {
                                     )}
 
                                     {contractData.riskyTerms.length > 0 && (
-                                        <div className="bg-red-50 border border-red-100 rounded-xl p-4 animate-in slide-in-from-bottom-2">
+                                        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 animate-in slide-in-from-bottom-2">
                                             <div className="flex items-start gap-3">
                                                 <div className="p-2 bg-red-100 rounded-full text-red-600 mt-0.5">
                                                     <Shield className="h-4 w-4" />
@@ -645,7 +646,7 @@ export default function ScreenshotToContractPage() {
                                     )}
 
                                     {/* Warning to use real legal names */}
-                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
                                         <div className="flex items-start gap-3">
                                             <div className="p-2 bg-amber-100 rounded-full text-amber-600 mt-0.5">
                                                 <AlertTriangle className="h-4 w-4" />
@@ -664,7 +665,7 @@ export default function ScreenshotToContractPage() {
 
                                     {/* Form Fields */}
                                     {/* ผู้ว่าจ้าง Section */}
-                                    <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
                                         <h4 className="font-semibold text-slate-700 text-sm">👤 ผู้ว่าจ้าง</h4>
                                         <div className="space-y-2">
                                             <Label className="text-slate-600">ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
@@ -672,7 +673,7 @@ export default function ScreenshotToContractPage() {
                                                 value={contractData.employer}
                                                 onChange={(e) => handleInputChange('employer', e.target.value)}
                                                 placeholder="ชื่อ-นามสกุลตามบัตรประชาชน"
-                                                className={`bg-white ${!contractData.employer ? 'border-amber-400 bg-amber-50' : ''}`}
+                                                className={`bg-white rounded-xl ${!contractData.employer ? 'border-amber-400 bg-amber-50' : ''}`}
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
@@ -682,7 +683,7 @@ export default function ScreenshotToContractPage() {
                                                     value={contractData.employerId || ''}
                                                     onChange={(e) => handleInputChange('employerId', e.target.value)}
                                                     placeholder="x-xxxx-xxxxx-xx-x"
-                                                    className="bg-white"
+                                                    className="bg-white rounded-xl"
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -691,14 +692,14 @@ export default function ScreenshotToContractPage() {
                                                     value={contractData.employerAddress || ''}
                                                     onChange={(e) => handleInputChange('employerAddress', e.target.value)}
                                                     placeholder="ที่อยู่ตามบัตรประชาชน"
-                                                    className="bg-white"
+                                                    className="bg-white rounded-xl"
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* ผู้รับจ้าง Section */}
-                                    <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
                                         <h4 className="font-semibold text-slate-700 text-sm">🔧 ผู้รับจ้าง</h4>
                                         <div className="space-y-2">
                                             <Label className="text-slate-600">ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
@@ -706,7 +707,7 @@ export default function ScreenshotToContractPage() {
                                                 value={contractData.contractor}
                                                 onChange={(e) => handleInputChange('contractor', e.target.value)}
                                                 placeholder="ชื่อ-นามสกุลตามบัตรประชาชน"
-                                                className={`bg-white ${!contractData.contractor ? 'border-amber-400 bg-amber-50' : ''}`}
+                                                className={`bg-white rounded-xl ${!contractData.contractor ? 'border-amber-400 bg-amber-50' : ''}`}
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
@@ -716,7 +717,7 @@ export default function ScreenshotToContractPage() {
                                                     value={contractData.contractorId || ''}
                                                     onChange={(e) => handleInputChange('contractorId', e.target.value)}
                                                     placeholder="x-xxxx-xxxxx-xx-x"
-                                                    className="bg-white"
+                                                    className="bg-white rounded-xl"
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -725,7 +726,7 @@ export default function ScreenshotToContractPage() {
                                                     value={contractData.contractorAddress || ''}
                                                     onChange={(e) => handleInputChange('contractorAddress', e.target.value)}
                                                     placeholder="ที่อยู่ตามบัตรประชาชน"
-                                                    className="bg-white"
+                                                    className="bg-white rounded-xl"
                                                 />
                                             </div>
                                         </div>
@@ -737,7 +738,7 @@ export default function ScreenshotToContractPage() {
                                             onChange={(e) => handleInputChange('task', e.target.value)}
                                             rows={3}
                                             placeholder="รายละเอียดงานที่ต้องทำ"
-                                            className={`bg-white resize-none ${!contractData.task ? 'border-amber-400 bg-amber-50' : ''}`}
+                                            className={`bg-white resize-none rounded-xl ${!contractData.task ? 'border-amber-400 bg-amber-50' : ''}`}
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -748,7 +749,7 @@ export default function ScreenshotToContractPage() {
                                                 onChange={(e) => handleInputChange('price', Number(e.target.value))}
                                                 type="number"
                                                 placeholder="0"
-                                                className={`bg-white ${!contractData.price ? 'border-amber-400 bg-amber-50' : ''}`}
+                                                className={`bg-white rounded-xl ${!contractData.price ? 'border-amber-400 bg-amber-50' : ''}`}
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -758,7 +759,7 @@ export default function ScreenshotToContractPage() {
                                                 onChange={(e) => handleInputChange('deposit', Number(e.target.value))}
                                                 type="number"
                                                 placeholder="0"
-                                                className="bg-white"
+                                                className="bg-white rounded-xl"
                                             />
                                         </div>
                                     </div>
@@ -768,7 +769,7 @@ export default function ScreenshotToContractPage() {
                                             value={contractData.deadline}
                                             onChange={(e) => handleInputChange('deadline', e.target.value)}
                                             placeholder="เช่น วันที่ 15 กุมภาพันธ์ 2569"
-                                            className={`bg-white ${!contractData.deadline ? 'border-amber-400 bg-amber-50' : ''}`}
+                                            className={`bg-white rounded-xl ${!contractData.deadline ? 'border-amber-400 bg-amber-50' : ''}`}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -777,21 +778,21 @@ export default function ScreenshotToContractPage() {
                                             value={contractData.paymentTerms}
                                             onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
                                             placeholder="เช่น ชำระส่วนที่เหลือเมื่องานเสร็จ"
-                                            className={`bg-white ${!contractData.paymentTerms ? 'border-amber-400 bg-amber-50' : ''}`}
+                                            className={`bg-white rounded-xl ${!contractData.paymentTerms ? 'border-amber-400 bg-amber-50' : ''}`}
                                         />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                                         <Button
                                             onClick={handleCreateContract}
                                             disabled={isCreating}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 text-lg shadow-lg shadow-blue-900/10 transition-all hover:-translate-y-1"
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full h-12 text-lg shadow-lg shadow-blue-900/10 transition-all hover:-translate-y-1"
                                         >
                                             {isCreating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Share2 className="w-5 h-5 mr-2" />}
                                             สร้างลิงก์สัญญาออนไลน์
                                         </Button>
                                         <Button
                                             onClick={() => contractData && generateContractPDF(contractData)}
-                                            className="w-full bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl h-12 text-lg transition-all hover:-translate-y-1"
+                                            className="w-full bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full h-12 text-lg transition-all hover:-translate-y-1"
                                         >
                                             <CheckCircle className="w-5 h-5 mr-2" />
                                             โหลด PDF เท่านั้น

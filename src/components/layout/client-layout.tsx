@@ -29,36 +29,7 @@ export default function ClientLayout({
     setIsMounted(true);
   }, []);
 
-  // Auth Guard for Education Students
-  useEffect(() => {
-    async function checkRole() {
-      if (!user || !firestore) return;
 
-      // Optimization: If userRole is already set (from Header lifting state), use it
-      if (userRole === 'education_student') {
-        if (!pathname.startsWith('/education')) {
-          router.push('/education');
-        }
-        return;
-      }
-
-      try {
-        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          if (data.role === 'education_student') {
-            if (!pathname.startsWith('/education')) {
-              router.push('/education');
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Auth Guard Error:", error);
-      }
-    }
-
-    checkRole();
-  }, [user, firestore, pathname, router, userRole]);
 
   // Hide header/footer ONLY for admin pages (lawyer pages should show header now)
   const isAdminPage = pathname.startsWith('/admin') || domainType === 'admin';
