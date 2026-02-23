@@ -61,7 +61,7 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^0.475.0",
     "negotiator": "^0.6.3",
-    "next": "latest",
+    "next": "^16.1.5",
     "next-intl": "^4.6.1",
     "papaparse": "^5.5.3",
     "patch-package": "^8.0.0",
