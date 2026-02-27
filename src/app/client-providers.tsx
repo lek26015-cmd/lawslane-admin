@@ -6,6 +6,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ChatProvider } from '@/context/chat-context';
 import ClientLayout from '@/components/layout/client-layout';
 import { Toaster } from '@/components/ui/toaster';
+import { ThemeProvider } from 'next-themes';
 
 export function ClientProviders({ children, domainType = 'main' }: { children: React.ReactNode; domainType?: string }) {
   React.useEffect(() => {
@@ -13,11 +14,19 @@ export function ClientProviders({ children, domainType = 'main' }: { children: R
   }, []);
 
   return (
-    <FirebaseClientProvider>
-      <ChatProvider>
-        <ClientLayout domainType={domainType}>{children}</ClientLayout>
-        <Toaster />
-      </ChatProvider>
-    </FirebaseClientProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange={false}
+      forcedTheme={domainType === 'main' ? 'light' : undefined}
+    >
+      <FirebaseClientProvider>
+        <ChatProvider>
+          <ClientLayout domainType={domainType}>{children}</ClientLayout>
+          <Toaster />
+        </ChatProvider>
+      </FirebaseClientProvider>
+    </ThemeProvider>
   );
 }

@@ -209,8 +209,9 @@ export async function getDashboardData(db: Firestore, userId: string) {
       lawyer: lawyer,
       updatedAt: data.lastMessageAt ? data.lastMessageAt.toDate() : (data.createdAt?.toDate() || new Date()),
       rejectReason: data.rejectReason || '',
+      hasNewMessage: data.hasNewMessage || false,
     } as Case;
-  });
+  }).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   // 2. Fetch Appointments
   const appointmentsRef = collection(db, 'appointments');
@@ -346,20 +347,34 @@ export async function getLawyerDashboardData(db: Firestore, lawyerId: string): P
     const lawyerCases = casesSnapshot.docs.map(d => {
       const chatData = d.data();
       const clientParticipantId = chatData.participants.find((p: string) => p !== lawyerId);
+
+      // Calculate if unread for lawyer
+      const lastMessageAt = chatData.lastMessageAt?.toDate() || chatData.createdAt?.toDate() || new Date(0);
+      const lawyerReadAt = chatData.lawyerReadAt?.toDate() || new Date(0);
+      const isUnread = lastMessageAt > lawyerReadAt;
+      const lastMessage = chatData.lastMessage || '';
+
       return {
         id: d.id,
         title: chatData.caseTitle || 'Unknown Case',
         clientName: userProfiles[clientParticipantId]?.name || 'ลูกค้า',
         clientId: clientParticipantId,
         status: chatData.status,
-        lastUpdate: chatData.lastMessageAt?.toDate().toLocaleDateString('th-TH') || 'N/A',
+        lastUpdate: lastMessageAt.toLocaleDateString('th-TH') || 'N/A',
+        updatedAt: lastMessageAt,
+        notifications: isUnread ? 1 : 0, // Using 1 as a flag for "has new messages"
+        lastMessage: lastMessage,
       };
     });
 
     return {
       newRequests,
-      activeCases: lawyerCases.filter(c => c.status === 'active' || c.status === 'pending_payment'),
-      completedCases: lawyerCases.filter(c => c.status === 'closed'),
+      activeCases: lawyerCases
+        .filter(c => c.status === 'active' || c.status === 'pending_payment')
+        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+      completedCases: lawyerCases
+        .filter(c => c.status === 'closed')
+        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
     };
 
   } catch (error) {

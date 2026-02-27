@@ -312,7 +312,7 @@ export default function AboutPage() {
                                 </div>
                             </div>
                             <div className="text-center mt-12">
-                                <a href="https://www.lawslane.com/th/sme#contact" target="_blank" rel="noopener noreferrer">
+                                <a href="https://www.lawslane.com/th/b2b#contact" target="_blank" rel="noopener noreferrer">
                                     <Button size="lg" variant="secondary" className="text-slate-900">
                                         <Mail className="mr-2 w-5 h-5" />
                                         {t('contact.sendMessage')}

@@ -139,6 +139,14 @@ export default function LawyerExpressSignupPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
             const user = userCredential.user;
 
+            // Create server-side session cookie
+            const idToken = await user.getIdToken();
+            await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+            });
+
             // Force token refresh
             await user.getIdToken(true);
 

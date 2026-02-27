@@ -394,6 +394,32 @@ export default function FormsPage() {
                                 })}
                             </div>
                         )}
+
+                        {/* B2B CTA */}
+                        <div className="mt-8 bg-gradient-to-br from-blue-900 to-blue-800 rounded-3xl p-8 md:p-10 text-center relative overflow-hidden shadow-xl">
+                            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>
+                            <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/30 blur-[60px] rounded-full pointer-events-none" />
+                            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-cyan-500/20 blur-[60px] rounded-full pointer-events-none" />
+
+                            <div className="relative z-10 max-w-2xl mx-auto">
+                                <h3 className="text-2xl font-bold text-white mb-3">{t('b2bCta.title')}</h3>
+                                <p className="text-blue-100 mb-6 text-sm md:text-base leading-relaxed">
+                                    {t('b2bCta.description')}
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                    <Button asChild className="bg-white text-blue-900 hover:bg-slate-50 h-11 px-6 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-1 w-full sm:w-auto">
+                                        <Link href="/b2b">
+                                            {t('b2bCta.buttonB2B')}
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="outline" className="text-slate-100 border-white/30 hover:bg-white/10 hover:text-white bg-transparent h-11 px-6 rounded-xl font-semibold backdrop-blur-sm transition-transform hover:-translate-y-1 w-full sm:w-auto">
+                                        <Link href="/b2b#contact">
+                                            {t('b2bCta.buttonContact')}
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Right Sidebar (Recommended Articles) - 3 cols */}

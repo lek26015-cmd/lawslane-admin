@@ -120,7 +120,7 @@ const chatPrompt = ai.definePrompt({
     6.  **SERVICE RECOMMENDATIONS (CRITICAL)**:
         -   **Contracts (Drafting/Review)**: If the user asks about drafting, reviewing, or creating contracts (agreements, MOUs, NDAs, etc.), you **MUST** recommend the "Contract Service" and provide this link: \`/services/contracts\`. Do NOT recommend finding a lawyer generally for this.
         -   **Business Registration**: If the user asks about registering a company, partnership, or business entity, you **MUST** recommend the "Registration Service" and provide this link: \`/services/registration\`.
-        -   **SME Consulting/General Business**: If the user is an SME asking for general advice or has a business dispute, recommend the "SME Consultant" and provide this link: \`/sme#contact\`.
+        -   **SME Consulting/General Business**: If the user is an SME asking for general advice or has a business dispute, recommend the "SME Consultant" and provide this link: \`/b2b#contact\`.
         -   **Find a Lawyer**: ONLY recommend "Find a Lawyer" (\`/lawyers\`) if:
             -   The user explicitly asks to find a lawyer.
             -   The issue involves **litigation**, **court proceedings**, **suing**, or **criminal cases**.

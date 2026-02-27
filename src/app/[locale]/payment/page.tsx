@@ -21,7 +21,7 @@ import { useChat } from '@/context/chat-context';
 import { Textarea } from '@/components/ui/textarea';
 import { v4 as uuidv4 } from 'uuid';
 import { useFirebase } from '@/firebase';
-import { addDoc, collection, doc, serverTimestamp, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, setDoc, getDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import { uploadToR2 } from '@/app/actions/upload-r2';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
@@ -37,6 +37,8 @@ function PaymentPageContent() {
 
     const paymentType = searchParams.get('type') || 'appointment';
     const lawyerId = searchParams.get('lawyerId');
+    const chatId = searchParams.get('chatId');
+    const amountParam = searchParams.get('amount');
     const dateStr = searchParams.get('date');
     const description = searchParams.get('description');
 
@@ -60,10 +62,13 @@ function PaymentPageContent() {
 
     const appointmentFee = 3500;
     const chatTicketFee = 500;
-    const fee = paymentType === 'chat' ? chatTicketFee : appointmentFee;
+    let fee = paymentType === 'chat' ? chatTicketFee : appointmentFee;
+    if (paymentType === 'additional' && amountParam) {
+        fee = Number(amountParam);
+    }
     const finalFee = Math.max(0, fee - discountAmount);
-    const title = paymentType === 'chat' ? 'ยืนยันการเปิด Ticket สนทนา' : 'ยืนยันการนัดหมายและชำระเงิน';
-    const descriptionText = paymentType === 'chat' ? 'กรุณาตรวจสอบรายละเอียดและดำเนินการชำระเงินค่าเปิด Ticket' : 'กรุณาตรวจสอบรายละเอียดและดำเนินการชำระเงินค่าปรึกษา';
+    const title = paymentType === 'chat' ? 'ยืนยันการเปิด Ticket สนทนา' : (paymentType === 'additional' ? 'ชำระค่าบริการเพิ่มเติม' : 'ยืนยันการนัดหมายและชำระเงิน');
+    const descriptionText = paymentType === 'chat' ? 'กรุณาตรวจสอบรายละเอียดและดำเนินการชำระเงินค่าเปิด Ticket' : (paymentType === 'additional' ? 'กรุณาชำระค่าบริการเพิ่มเติมตามที่ทนายความร้องขอ' : 'กรุณาตรวจสอบรายละเอียดและดำเนินการชำระเงินค่าปรึกษา');
 
     useEffect(() => {
         async function fetchLawyer() {
@@ -383,6 +388,39 @@ function PaymentPageContent() {
                             updateDoc(couponRef, { usedCount: increment(1) });
                         });
                     } catch (e) { console.error("Failed to update coupon usage", e); }
+                }
+            } else if (paymentType === 'additional' && chatId) {
+                console.log("Processing additional fee payment for chat:", chatId);
+                const chatRef = doc(firestore, 'chats', chatId);
+
+                // Get current amount to add to it
+                const chatSnap = await getDoc(chatRef);
+                const currentAmount = chatSnap.exists() ? (chatSnap.data().amount || 0) : 0;
+
+                await updateDoc(chatRef, {
+                    amount: currentAmount + finalFee,
+                    pendingFeeRequest: null, // Clear the request
+                    lastPaymentAt: serverTimestamp(),
+                    hasNewPayment: true
+                });
+
+                // Create a system message in the chat
+                const messagesRef = collection(chatRef, 'messages');
+                await addDoc(messagesRef, {
+                    text: `💳 ลูกความได้ชำระค่าบริการเพิ่มเติมจำนวน ฿${finalFee.toLocaleString()} เรียบร้อยแล้ว`,
+                    senderId: 'system',
+                    timestamp: serverTimestamp(),
+                });
+
+                toast({
+                    title: "ชำระเงินสำเร็จ!",
+                    description: 'ค่าบริการถูกเพิ่มเข้าไปใน Escrow เรียบร้อยแล้ว',
+                });
+
+                if (isManualTransfer) {
+                    setPaymentSuccess(true);
+                } else {
+                    router.push(`/chat/${chatId}?lawyerId=${lawyerId}`);
                 }
             }
         } catch (error) {

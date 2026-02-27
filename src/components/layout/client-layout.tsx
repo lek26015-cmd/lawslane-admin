@@ -30,28 +30,48 @@ export default function ClientLayout({
   }, []);
 
 
+  // Check if we are in a dashboard or admin page to hide the public header/footer
+  // Handle localized paths (e.g., /th/dashboard, /en/admin)
+  // Also handle subdomains (admin.*, business.*)
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeDomainType, setActiveDomainType] = useState<'main' | 'admin' | 'business' | 'lawyer'>(domainType as any);
 
-  // Hide header/footer ONLY for admin pages (lawyer pages should show header now)
-  const isAdminPage = pathname.startsWith('/admin') || domainType === 'admin';
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      let detectedType: any = 'main';
+      if (host.includes('admin.')) detectedType = 'admin';
+      else if (host.includes('business.')) detectedType = 'business';
+      else if (host.includes('lawyer.')) detectedType = 'lawyer';
 
-  if (isAdminPage) {
+      if (detectedType !== activeDomainType) {
+        setActiveDomainType(detectedType);
+      }
+      setIsLoading(false);
+    }
+  }, [domainType, activeDomainType]);
+
+  const isDashboardPage =
+    (activeDomainType === 'admin') ||
+    (activeDomainType === 'business') || // Hide global header/footer for all business subdomain pages
+    pathname.includes('/b2b') || // Hide global header/footer for B2B landing page
+    pathname.includes('/lawyer-dashboard') ||
+    pathname.match(/^\/(th|en|zh)?\/admin/);
+
+  if (isDashboardPage) {
     return <>{children}</>;
   }
 
   return (
     <>
       <div className="flex min-h-screen flex-col">
-        {isMounted ? (
-          <Header setUserRole={setUserRole} domainType={domainType} />
-        ) : (
-          <header className="sticky top-0 z-50 h-16 bg-white border-b" />
-        )}
-        <main className="flex-1 bg-gray-50/50">{children}</main>
-        <Footer userRole={userRole} />
+        {!isDashboardPage && <Header setUserRole={setUserRole} domainType={activeDomainType} />}
+        <main className="flex-grow">{children}</main>
+        {!isDashboardPage && <Footer userRole={userRole} domainType={activeDomainType} />}
       </div>
-      <FloatingChatButton />
-      <ChatModal />
-      <CookieBanner />
+      {isMounted && !isDashboardPage && <FloatingChatButton />}
+      {isMounted && !isDashboardPage && <ChatModal />}
+      {isMounted && <CookieBanner />}
     </>
   );
 }

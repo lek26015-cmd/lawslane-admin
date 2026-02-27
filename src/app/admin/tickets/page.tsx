@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ListFilter, Ticket } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
     Card,
     CardContent,
@@ -129,10 +130,16 @@ export default function AdminTicketsPage() {
                                             className="cursor-pointer hover:bg-muted/50"
                                             onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
                                         >
-                                            <TableCell className="font-mono">{ticket.id}</TableCell>
+                                            <TableCell className="font-mono flex items-center gap-2">
+                                                {ticket.id}
+                                                <CopyButton value={ticket.id} className="h-4 w-4" />
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="font-medium">{ticket.problemType}</div>
-                                                <div className="text-xs text-muted-foreground">เคส: {ticket.caseId || 'N/A'}</div>
+                                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    เคส: {ticket.caseId || 'N/A'}
+                                                    {ticket.caseId && <CopyButton value={ticket.caseId} className="h-3 w-3" />}
+                                                </div>
                                             </TableCell>
                                             <TableCell>{ticket.clientName}</TableCell>
                                             <TableCell>{statusBadges[ticket.status]}</TableCell>

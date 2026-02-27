@@ -67,8 +67,8 @@ export default function ContractRequestPage() {
                 <FadeIn direction="up" delay={100}>
                     <Card className="border-none shadow-xl bg-white rounded-3xl">
                         <CardHeader className="border-b bg-white rounded-t-3xl p-6 md:p-8">
-                            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-[#0B3979]" />
+                            <CardTitle className="text-xl font-semibold flex items-center gap-2 text-slate-900 dark:text-slate-900">
+                                <FileText className="w-5 h-5 text-[#0B3979] dark:text-[#0B3979]" />
                                 {t('formTitle')}
                             </CardTitle>
                         </CardHeader>
@@ -77,27 +77,27 @@ export default function ContractRequestPage() {
 
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">{t('labels.name')}</Label>
-                                        <Input id="name" required placeholder={t('labels.namePlaceholder')} className="h-11 rounded-xl" />
+                                        <Label htmlFor="name" className="text-slate-900 dark:text-slate-900">{t('labels.name')}</Label>
+                                        <Input id="name" required placeholder={t('labels.namePlaceholder')} className="h-11 rounded-xl bg-white dark:bg-white border-slate-200 dark:border-slate-200 text-slate-900 dark:text-slate-900 placeholder:text-slate-500 dark:placeholder:text-slate-500" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="phone">{t('labels.phone')}</Label>
-                                        <Input id="phone" required type="tel" placeholder={t('labels.phonePlaceholder')} className="h-11 rounded-xl" />
+                                        <Label htmlFor="phone" className="text-slate-900 dark:text-slate-900">{t('labels.phone')}</Label>
+                                        <Input id="phone" required type="tel" placeholder={t('labels.phonePlaceholder')} className="h-11 rounded-xl bg-white dark:bg-white border-slate-200 dark:border-slate-200 text-slate-900 dark:text-slate-900 placeholder:text-slate-500 dark:placeholder:text-slate-500" />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="email">{t('labels.email')}</Label>
-                                    <Input id="email" required type="email" placeholder={t('labels.emailPlaceholder')} className="h-11 rounded-xl" />
+                                    <Label htmlFor="email" className="text-slate-900 dark:text-slate-900">{t('labels.email')}</Label>
+                                    <Input id="email" required type="email" placeholder={t('labels.emailPlaceholder')} className="h-11 rounded-xl bg-white dark:bg-white border-slate-200 dark:border-slate-200 text-slate-900 dark:text-slate-900 placeholder:text-slate-500 dark:placeholder:text-slate-500" />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="type">{t('labels.serviceType')}</Label>
+                                    <Label htmlFor="type" className="text-slate-900 dark:text-slate-900">{t('labels.serviceType')}</Label>
                                     <Select>
-                                        <SelectTrigger className="h-11 rounded-xl">
+                                        <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-white border-slate-200 dark:border-slate-200 text-slate-900 dark:text-slate-900 overflow-hidden">
                                             <SelectValue placeholder={t('labels.serviceTypePlaceholder')} />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="bg-white dark:bg-white border-slate-200 dark:border-slate-200 text-slate-900 dark:text-slate-900">
                                             <SelectItem value="draft">{t('serviceTypes.draft')}</SelectItem>
                                             <SelectItem value="review">{t('serviceTypes.review')}</SelectItem>
                                             <SelectItem value="consult">{t('serviceTypes.consult')}</SelectItem>
@@ -107,8 +107,8 @@ export default function ContractRequestPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>{t('labels.upload')}</Label>
-                                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                                    <Label className="text-slate-900 dark:text-slate-900">{t('labels.upload')}</Label>
+                                    <div className="border-2 border-dashed border-slate-200 dark:border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-50 transition-colors cursor-pointer relative">
                                         <input
                                             type="file"
                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -120,10 +120,10 @@ export default function ContractRequestPage() {
                                                 <Upload className="w-6 h-6" />
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="font-medium text-slate-900">
+                                                <p className="font-medium text-slate-900 dark:text-slate-900">
                                                     {file ? file.name : t('upload.dragDrop')}
                                                 </p>
-                                                <p className="text-sm text-slate-500">
+                                                <p className="text-sm text-slate-500 dark:text-slate-500">
                                                     {t('upload.support')}
                                                 </p>
                                             </div>
@@ -132,11 +132,11 @@ export default function ContractRequestPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="details">{t('labels.details')}</Label>
+                                    <Label htmlFor="details" className="text-slate-900 dark:text-slate-900">{t('labels.details')}</Label>
                                     <Textarea
                                         id="details"
                                         placeholder={t('labels.detailsPlaceholder')}
-                                        className="min-h-[120px] resize-none rounded-xl"
+                                        className="min-h-[120px] resize-none rounded-xl bg-white dark:bg-white border-slate-200 dark:border-slate-200 text-slate-900 dark:text-slate-900 placeholder:text-slate-500 dark:placeholder:text-slate-500"
                                     />
                                 </div>
 

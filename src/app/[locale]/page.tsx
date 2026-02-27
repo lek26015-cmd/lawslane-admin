@@ -58,9 +58,9 @@ export default function Home() {
   return (
     <>
       <div className="flex flex-col">
-        <section className="relative w-full py-20 md:py-32 lg:py-40 bg-slate-900 text-white rounded-b-[80px] overflow-hidden">
+        <section className="relative w-full -mt-20 pt-40 pb-20 md:pt-52 md:pb-32 lg:pt-60 lg:pb-40 bg-slate-900 text-white rounded-b-[80px] overflow-hidden">
           <Image
-            src="/images/Lawlanes-Hero-cover.jpg"
+            src="/images/lawslane-hero-cover.jpg"
             alt="Lawslane Hero Background"
             fill
             className="object-cover object-center opacity-40"
@@ -97,6 +97,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Recommended Lawyers - Client Side Fetching */}
+        <HomeRecommendedLawyers />
 
         {/* Legal Forms CTA - Redesigned (Text Left, Features Right) */}
         <section className="w-full py-16 md:py-24 bg-white">
@@ -349,7 +352,7 @@ export default function Home() {
                     </div>
                     <div className="pt-4">
                       <Button size="lg" asChild>
-                        <Link href={`/sme`}>{t('smeSolution.button')}</Link>
+                        <Link href={`/b2b`}>{t('smeSolution.button')}</Link>
                       </Button>
                     </div>
                   </div>
@@ -371,9 +374,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Recommended Lawyers - Client Side Fetching */}
-        <HomeRecommendedLawyers />
 
         {/* Services Section */}
         <HomeServicesSection />
@@ -411,7 +411,6 @@ export default function Home() {
             </FadeIn>
           </div>
         </section>
-
       </div >
     </>
   );

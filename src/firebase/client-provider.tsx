@@ -41,8 +41,46 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
     const unsubscribe = onAuthStateChanged(
       auth,
-      (firebaseUser) => { // Auth state determined
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+      async (firebaseUser) => { // Auth state determined
+        if (firebaseUser) {
+          // Check if server-side session is missing (SSO sync Client -> Server)
+          const hasSessionHint = typeof document !== 'undefined' && document.cookie.includes('session_hint=');
+          if (!hasSessionHint) {
+            try {
+              const idToken = await firebaseUser.getIdToken();
+              await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+              });
+            } catch (e) {
+              console.error("Session auto-sync failed:", e);
+            }
+          }
+          setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        } else {
+          // Check for session hint cookie (SSO across subdomains)
+          const hasSessionHint = typeof document !== 'undefined' && document.cookie.includes('session_hint=');
+
+          if (hasSessionHint) {
+            try {
+              // Try to verify session with backend
+              const res = await fetch('/api/auth/session');
+              const data = await res.json();
+              if (data.authenticated) {
+                // We have a server session, but Firebase Client SDK doesn't have the user yet.
+                // Keep isUserLoading: true but store the basic info if needed.
+                // This prevents the dashboard from rendering and making Firestore calls 
+                // until the REAL Firebase Auth SDK has initialized and authenticated.
+                setUserAuthState(prev => ({ ...prev, user: { uid: data.uid, email: data.email } as any }));
+                return;
+              }
+            } catch (e) {
+              console.error("Session sync failed:", e);
+            }
+          }
+          setUserAuthState({ user: null, isUserLoading: false, userError: null });
+        }
       },
       (error) => { // Auth listener error
         console.error("FirebaseProvider: onAuthStateChanged error:", error);

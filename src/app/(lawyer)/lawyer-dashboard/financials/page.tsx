@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
-import { ArrowLeft, DollarSign, TrendingUp, Clock, Loader2, Wallet, History, Briefcase, AlertCircle, Menu, X, PenSquare, Save } from 'lucide-react';
+import { ArrowLeft, DollarSign, TrendingUp, Clock, Loader2, Wallet, History, Briefcase, AlertCircle, Menu, X, PenSquare, Save, Building2, FileText } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, orderBy, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -123,6 +123,18 @@ function LawyerFinancialsContent() {
     const [editAccountNumber, setEditAccountNumber] = useState('');
     const [editAccountName, setEditAccountName] = useState('');
     const [isSavingBank, setIsSavingBank] = useState(false);
+
+    // Corporate Profile State (for e-Tax / Billing)
+    const [corporateName, setCorporateName] = useState('');
+    const [corporateTaxId, setCorporateTaxId] = useState('');
+    const [corporateAddress, setCorporateAddress] = useState('');
+
+    // Edit Corporate State
+    const [isEditingCorporate, setIsEditingCorporate] = useState(false);
+    const [editCorporateName, setEditCorporateName] = useState('');
+    const [editCorporateTaxId, setEditCorporateTaxId] = useState('');
+    const [editCorporateAddress, setEditCorporateAddress] = useState('');
+    const [isSavingCorporate, setIsSavingCorporate] = useState(false);
 
     const fetchFinancials = useCallback(async () => {
         if (!firestore || !user) return;
@@ -281,7 +293,7 @@ function LawyerFinancialsContent() {
             setIsLoading(false);
         }
 
-        // Fetch Lawyer Bank Details
+        // Fetch Lawyer Bank & Corporate Details
         try {
             const lawyerDoc = await getDoc(doc(firestore, 'lawyerProfiles', user.uid));
             if (lawyerDoc.exists()) {
@@ -291,10 +303,20 @@ function LawyerFinancialsContent() {
                 setAccountName(data.bankAccountName || data.name || '');
                 setLawyerOfficialName(data.name || '');
 
-                // Initialize edit state
+                // Initialize edit bank state
                 setEditBankName(data.bankName || '');
                 setEditAccountNumber(data.bankAccountNumber || '');
                 setEditAccountName(data.bankAccountName || data.name || '');
+
+                // Initialize corporate profile state
+                setCorporateName(data.corporateName || '');
+                setCorporateTaxId(data.corporateTaxId || '');
+                setCorporateAddress(data.corporateAddress || '');
+
+                // Initialize edit corporate state
+                setEditCorporateName(data.corporateName || '');
+                setEditCorporateTaxId(data.corporateTaxId || '');
+                setEditCorporateAddress(data.corporateAddress || '');
             }
         } catch (e) {
             console.error("Error fetching lawyer profile:", e);
@@ -409,6 +431,38 @@ function LawyerFinancialsContent() {
             toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถบันทึกข้อมูลได้" });
         } finally {
             setIsSavingBank(false);
+        }
+    };
+
+    const handleUpdateCorporateDetails = async () => {
+        if (!firestore || !user) return;
+
+        if (!editCorporateName || !editCorporateTaxId || !editCorporateAddress) {
+            toast({ variant: "destructive", title: "ข้อมูลไม่ครบถ้วน", description: "กรุณากรอกข้อมูลนิติบุคคลให้ครบทุกช่อง" });
+            return;
+        }
+
+        setIsSavingCorporate(true);
+        try {
+            const lawyerRef = doc(firestore, 'lawyerProfiles', user.uid);
+            await updateDoc(lawyerRef, {
+                corporateName: editCorporateName,
+                corporateTaxId: editCorporateTaxId,
+                corporateAddress: editCorporateAddress,
+            });
+
+            // Update local state
+            setCorporateName(editCorporateName);
+            setCorporateTaxId(editCorporateTaxId);
+            setCorporateAddress(editCorporateAddress);
+
+            setIsEditingCorporate(false);
+            toast({ title: "บันทึกข้อมูลสำเร็จ", description: "ข้อมูลนิติบุคคลสำหรับการออกใบกำกับภาษีถูกอัปเดตแล้ว" });
+        } catch (error) {
+            console.error("Error updating corporate details:", error);
+            toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถบันทึกข้อมูลได้" });
+        } finally {
+            setIsSavingCorporate(false);
         }
     };
 
@@ -647,9 +701,16 @@ function LawyerFinancialsContent() {
                 </div>
 
                 <Tabs defaultValue="transactions" className="w-full">
-                    <TabsList className="mb-4">
-                        <TabsTrigger value="transactions">รายการรายรับ</TabsTrigger>
-                        <TabsTrigger value="withdrawals">ประวัติการถอนเงิน</TabsTrigger>
+                    <TabsList className="mb-4 flex flex-wrap gap-2 h-auto bg-transparent p-0">
+                        <TabsTrigger value="transactions" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-slate-200 px-6 py-2">
+                            รายการรายรับ
+                        </TabsTrigger>
+                        <TabsTrigger value="withdrawals" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-slate-200 px-6 py-2">
+                            ประวัติการถอนเงิน
+                        </TabsTrigger>
+                        <TabsTrigger value="corporate_billing" className="rounded-full data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md border border-transparent px-6 py-2">
+                            <Building2 className="w-4 h-4 mr-2" /> ข้อมูลนิติบุคคล (Tax)
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="transactions">
@@ -737,6 +798,119 @@ function LawyerFinancialsContent() {
                                         )}
                                     </TableBody>
                                 </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="corporate_billing">
+                        <Card className="rounded-3xl shadow-sm border-none overflow-hidden">
+                            <CardHeader className="bg-slate-50 border-b pb-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-xl flex items-center gap-2">
+                                            <Building2 className="w-5 h-5 text-blue-600" />
+                                            ข้อมูลนิติบุคคล (Corporate Billing)
+                                        </CardTitle>
+                                        <CardDescription className="mt-1">
+                                            ข้อมูลสำหรับใช้ในการออกใบกำกับภาษีเต็มรูปแบบและหนังสือรับรองการหัก ณ ที่จ่าย
+                                        </CardDescription>
+                                    </div>
+                                    {!isEditingCorporate ? (
+                                        <Button variant="outline" size="sm" onClick={() => setIsEditingCorporate(true)} className="rounded-full">
+                                            <PenSquare className="w-4 h-4 mr-2" /> แก้ไขข้อมูล
+                                        </Button>
+                                    ) : (
+                                        <Button variant="ghost" size="sm" onClick={() => setIsEditingCorporate(false)} className="rounded-full text-red-500 hover:text-red-600 hover:bg-red-50">
+                                            <X className="w-4 h-4 mr-2" /> ยกเลิก
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                {isEditingCorporate ? (
+                                    <div className="space-y-4 max-w-2xl animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>ชื่อนิติบุคคล / บริษัท <span className="text-red-500">*</span></Label>
+                                                <Input
+                                                    value={editCorporateName}
+                                                    onChange={(e) => setEditCorporateName(e.target.value)}
+                                                    placeholder="เช่น บริษัท ลอว์เลนส์ จำกัด"
+                                                    className="bg-slate-50 border-slate-200"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>เลขประจำตัวผู้เสียภาษีอากร 13 หลัก <span className="text-red-500">*</span></Label>
+                                                <Input
+                                                    value={editCorporateTaxId}
+                                                    onChange={(e) => setEditCorporateTaxId(e.target.value)}
+                                                    placeholder="0123456789012"
+                                                    maxLength={13}
+                                                    className="bg-slate-50 border-slate-200"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>ที่อยู่จดทะเบียนบริษัท <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                value={editCorporateAddress}
+                                                onChange={(e) => setEditCorporateAddress(e.target.value)}
+                                                placeholder="ที่อยู่สำหรับออกใบกำกับภาษี"
+                                                className="bg-slate-50 border-slate-200"
+                                            />
+                                        </div>
+                                        <div className="pt-4 flex justify-end">
+                                            <Button
+                                                onClick={handleUpdateCorporateDetails}
+                                                disabled={isSavingCorporate}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8"
+                                            >
+                                                {isSavingCorporate ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                                                บันทึกข้อมูลบริษัท
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 max-w-2xl">
+                                        {corporateName ? (
+                                            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                    <span className="text-slate-500 text-sm font-medium">ชื่อนิติบุคคล:</span>
+                                                    <span className="col-span-2 font-semibold text-slate-800">{corporateName}</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                    <span className="text-slate-500 text-sm font-medium">เลขประจำตัวผู้เสียภาษี:</span>
+                                                    <span className="col-span-2 font-medium text-slate-800 tracking-widest">{corporateTaxId}</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                    <span className="text-slate-500 text-sm font-medium">ที่อยู่จดทะเบียน:</span>
+                                                    <span className="col-span-2 text-slate-700">{corporateAddress}</span>
+                                                </div>
+
+                                                <div className="mt-6 pt-4 border-t border-blue-100 flex items-start gap-3">
+                                                    <FileText className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                                    <div className="text-sm text-slate-600">
+                                                        <span className="font-semibold text-emerald-700">พร้อมใช้งานสำหรับการเบิกจ่ายองค์กร</span>
+                                                        <p className="mt-1">ข้อมูลนี้จะถูกนำไปใช้เพื่อออกเอกสารใบกำกับภาษี (e-Tax Invoice) ตอนที่คุณแจ้งถอนเงินโดยอัตโนมัติ</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-12 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                                                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <Building2 className="w-8 h-8 text-blue-600" />
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-slate-800 mb-2">ยังไม่มีข้อมูลนิติบุคคล</h3>
+                                                <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                                                    หากคุณใช้งานในนามบริษัท สามารถเพิ่มข้อมูลเพื่อใช้ขอใบกำกับภาษีและจัดการเรื่องการหัก ณ ที่จ่ายได้
+                                                </p>
+                                                <Button onClick={() => setIsEditingCorporate(true)} className="bg-blue-600 hover:bg-blue-700 rounded-full">
+                                                    เพิ่มข้อมูลบริษัท
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>

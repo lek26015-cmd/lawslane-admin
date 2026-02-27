@@ -12,6 +12,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { CopyButton } from '@/components/ui/copy-button';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Ticket, Upload } from 'lucide-react';
@@ -135,9 +136,12 @@ function SupportPageContent() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-sm">
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span className="text-muted-foreground">{t('ticketId')}:</span>
-                                <span className="font-mono font-semibold">{ticket.id}</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="font-mono font-semibold">{ticket.id}</span>
+                                    <CopyButton value={ticket.id} />
+                                </div>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{t('relatedCase')}:</span>

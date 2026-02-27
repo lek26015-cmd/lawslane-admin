@@ -1,7 +1,8 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import { usePathname, useRouter } from '@/navigation';
+import { usePathname as useIntlPathname, useRouter as useIntlRouter } from '@/navigation';
+import { useRouter as useStandardRouter, usePathname as useStandardPathname } from 'next/navigation';
 import { useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,12 +27,26 @@ const languages = {
 
 export default function LanguageSwitcher({ className, iconClassName }: LanguageSwitcherProps) {
     const locale = useLocale();
-    const router = useRouter();
-    const pathname = usePathname();
+    const router = useIntlRouter();
+    const standardRouter = useStandardRouter();
+    const pathname = useIntlPathname();
+    const standardPathname = useStandardPathname();
     const [isPending, startTransition] = useTransition();
 
     const onSelectChange = (nextLocale: string) => {
         startTransition(() => {
+            const isBusinessDomain = typeof window !== 'undefined' && window.location.hostname.startsWith('business.');
+
+            if (isBusinessDomain) {
+                let currentPath = standardPathname || window.location.pathname;
+                let pathWithoutLocale = currentPath.replace(/^\/(th|en|zh)(\/|$)/, '/');
+                if (pathWithoutLocale === '/') pathWithoutLocale = '';
+
+                const nextPath = `/${nextLocale}${pathWithoutLocale}`;
+                standardRouter.replace(nextPath || '/');
+                return;
+            }
+
             router.replace(pathname, { locale: nextLocale });
         });
     };
@@ -44,15 +59,15 @@ export default function LanguageSwitcher({ className, iconClassName }: LanguageS
                 <Button
                     variant="ghost"
                     className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300",
+                        "flex items-center justify-center gap-1.5 rounded-full border transition-all duration-300",
                         "bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20",
                         "text-white font-medium shadow-lg hover:shadow-xl hover:scale-105",
                         className
                     )}
                 >
-                    <span className="text-xl">{currentLang.flag}</span>
-                    <span className={cn("uppercase", iconClassName)}>{locale}</span>
-                    <ChevronDown className={cn("w-4 h-4 opacity-70", iconClassName)} />
+                    <span className="text-xl leading-none">{currentLang.flag}</span>
+                    <span className={cn("uppercase leading-none", iconClassName)}>{locale}</span>
+                    <ChevronDown className={cn("w-4 h-4 opacity-70 shrink-0", iconClassName)} />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[150px] bg-white/95 backdrop-blur-sm border-slate-100 p-1 rounded-xl shadow-xl">

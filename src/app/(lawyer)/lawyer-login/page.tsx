@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,6 +51,8 @@ const formSchema = z.object({
 
 export default function LawyerLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
   // const params = useParams(); // Removed lang param
   // const lang = params.lang as Locale; // Removed lang param
   const { auth } = useFirebase();
@@ -146,12 +148,27 @@ export default function LawyerLoginPage() {
         throw new Error('การยืนยันตัวตนล้มเหลว กรุณาลองใหม่');
       }
 
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Create server-side session cookie
+      const idToken = await user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
       toast({
         title: 'เข้าสู่ระบบสำเร็จ',
         description: 'กำลังนำคุณไปยังแดชบอร์ดทนายความ...',
       });
-      router.push(`/lawyer-dashboard`);
+      const target = redirectUrl || '/lawyer-dashboard';
+      if (target.startsWith('http')) {
+        window.location.href = target;
+      } else {
+        router.push(target);
+      }
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'เกิดข้อผิดพลาดที่ไม่รู้จัก';

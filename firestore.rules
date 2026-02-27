@@ -16,15 +16,10 @@ service cloud.firestore {
         return isSignedIn() && (
           request.auth.uid == 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || 
           request.auth.token.email == 'lek.26015@gmail.com' ||
-          request.auth.token.role == 'admin' ||
+          request.auth.uid == '6rX3WqjNo9M7lX6iUe5V9r7Dk9z1' ||
           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin')
         );
-    }
-
-    // Fallback: deny all access by default (each collection defines its own rules)
-    match /{document=**} {
-      allow read, write: if false;
     }
 
     match /users/{userId} {
@@ -34,8 +29,9 @@ service cloud.firestore {
 
     match /lawyerProfiles/{lawyerId} {
       allow read, list: if true;
-      allow write: if isOwner(resource.data.userId) || isAdmin();
-      allow update: if isOwner(resource.data.userId) || isAdmin() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'reviewCount']));
+      allow create: if isOwner(request.resource.data.userId) || isAdmin();
+      allow update: if isOwner(resource.data.get('userId', null)) || isAdmin() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['averageRating', 'reviewCount']));
+      allow delete: if isOwner(resource.data.get('userId', null)) || isAdmin();
     }
 
     match /reviews/{reviewId} {
@@ -77,8 +73,7 @@ service cloud.firestore {
 
     match /appointments/{appointmentId} {
         allow create: if isSignedIn();
-        allow read, list, update: if isOwner(resource.data.userId) || isOwner(resource.data.lawyerId) || isAdmin();
-        allow list: if isSignedIn(); // Broad list for pending_payment verification
+        allow read, list, update: if isOwner(resource.data.get('userId', null)) || isOwner(resource.data.get('lawyerId', null)) || isAdmin();
     }
 
     match /tickets/{ticketId} {
@@ -93,7 +88,7 @@ service cloud.firestore {
 
     match /withdrawals/{withdrawalId} {
         allow create: if isSignedIn() && request.resource.data.lawyerId == request.auth.uid;
-        allow read, list, update: if isOwner(resource.data.lawyerId) || isAdmin();
+        allow read, list, update: if isOwner(resource.data.get('lawyerId', null)) || isAdmin();
     }
 
     match /sme_inquiries/{inquiryId} {
@@ -105,20 +100,17 @@ service cloud.firestore {
         allow read, write: if isAdmin();
     }
     match /notifications/{notificationId} {
-        // Allow creating notifications (e.g. from chat or admin actions)
         allow create: if isSignedIn();
-        // Allow reading own notifications
-        allow read: if isSignedIn() && (resource.data.recipient == request.auth.uid || resource.data.recipient == 'admin' && isAdmin());
-        // Allow updating (marking as read) own notifications
-        allow update: if isSignedIn() && (resource.data.recipient == request.auth.uid || resource.data.recipient == 'admin' && isAdmin());
+        allow read: if isSignedIn() && (resource.data.recipient == request.auth.uid || resource.data.recipient == 'admin' || isAdmin());
+        allow update: if isSignedIn() && (resource.data.recipient == request.auth.uid || resource.data.recipient == 'admin' || isAdmin());
     }
     match /landingPages/{pageId} {
-        allow read: if true; // Public access for landing pages
+        allow read: if true;
         allow create, update, delete: if isAdmin();
     }
     
     match /verifiedLawyers/{lawyerId} {
-        allow read: if true; // Public access for verification
+        allow read: if true;
         allow write: if isAdmin();
     }
 
@@ -145,29 +137,86 @@ service cloud.firestore {
     match /legalForms/{formId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      // Allow admin to update everything
-      // Allow public to update ONLY downloads count
       allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloads']));
     }
 
     match /settings/{docId} {
-        // Allow all authenticated users to read settings (for GP rate)
         allow read: if isSignedIn();
-        // Only admins can write settings
         allow write: if isAdmin();
     }
 
-    // student_exam_results removed (education module deleted)
     match /coupons/{couponId} {
-      allow read, list: if true; // Temporarily loosened to troubleshoot
+      allow read, list: if true;
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount']));
     }
 
     match /gpCoupons/{couponId} {
-      allow read, list: if true; // Temporarily loosened to troubleshoot
+      allow read, list: if true;
       allow create, delete: if isAdmin();
       allow update: if isAdmin();
+    }
+
+    // --- B2B & CLM Rules ---
+
+    match /companies/{companyId} {
+      allow read: if isSignedIn() && (
+        resource.data.get('ownerId', null) == request.auth.uid || 
+        request.auth.uid in resource.data.get('adminUids', []) ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.get('ownerId', null) == request.auth.uid || 
+        isAdmin()
+      );
+    }
+
+    match /contracts/{contractId} {
+      function canAccessContract() {
+        let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+        let hasUserDoc = exists(userDocPath);
+        let userDoc = hasUserDoc ? get(userDocPath).data : {};
+        let userCompanyId = hasUserDoc ? userDoc.get('companyId', null) : null;
+        let resourceCompanyId = resource.data.get('companyId', null);
+        
+        return isSignedIn() && (
+          request.auth.uid == resource.data.ownerId ||
+          (resourceCompanyId != null && userCompanyId != null && resourceCompanyId == userCompanyId) ||
+          isAdmin()
+        );
+      }
+
+      allow read: if canAccessContract();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if canAccessContract();
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
+    }
+
+    match /compliance_events/{eventId} {
+      function canAccessCompliance() {
+        let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+        let hasUserDoc = exists(userDocPath);
+        let userDoc = hasUserDoc ? get(userDocPath).data : {};
+        let userCompanyId = hasUserDoc ? userDoc.get('companyId', null) : null;
+        let resourceCompanyId = resource.data.get('companyId', null);
+        
+        return isSignedIn() && (
+          request.auth.uid == resource.data.ownerId ||
+          (resourceCompanyId != null && userCompanyId != null && resourceCompanyId == userCompanyId) ||
+          isAdmin()
+        );
+      }
+
+      allow read: if canAccessCompliance();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if canAccessCompliance();
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
+    }
+
+    // Default deny at the very end
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

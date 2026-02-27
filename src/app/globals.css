@@ -28,26 +28,42 @@
   }
 
   .dark {
-    --background: 203 100% 16%;
-    --foreground: 0 0% 100%;
-    --card: 203 100% 16%;
-    --card-foreground: 0 0% 100%;
-    --popover: 203 100% 16%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 203 100% 16%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Background: deep neutral black-slate */
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
+
+    /* Cards: slightly lighter than background */
+    --card: 222 47% 6%;
+    --card-foreground: 210 40% 98%;
+
+    /* Popover */
+    --popover: 222 47% 5%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary: use the Lawslane blue accent but slightly more vibrant */
+    --primary: 214 93% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary / Muted */
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 95%;
+    --muted: 222 47% 10%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent */
+    --accent: 222 47% 12%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive */
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders + Inputs: subtly darker */
+    --border: 222 47% 15%;
+    --input: 222 47% 14%;
+    --ring: 214 93% 60%;
   }
+
 }
 
 @layer base {
@@ -55,10 +71,7 @@
     @apply border-border;
   }
 
-  html,
-  body {
-    overflow-x: hidden;
-  }
+  /* overflow-x: hidden removed to allow position: sticky to work properly on the navbar */
 
   body {
     @apply bg-background text-foreground font-body;

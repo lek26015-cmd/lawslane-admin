@@ -195,7 +195,7 @@ export function ArticleComments({ articleId }: ArticleCommentsProps) {
                                     </div>
                                     <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                                 </div>
-                                {user && (user.uid === comment.userId || user.email === 'admin@lawlanes.com') && (
+                                {user && (user.uid === comment.userId || user.email === 'admin@lawslane.com') && (
                                     <button
                                         onClick={() => handleDelete(comment.id)}
                                         className="text-[10px] text-muted-foreground hover:text-destructive mt-1 flex items-center gap-1 ml-2 transition-colors"

@@ -31,10 +31,12 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, FileText, Check, Upload, Scale, Ticket, Briefcase, User as UserIcon, DollarSign, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, FileText, Check, Upload, Scale, Ticket, Briefcase, User as UserIcon, DollarSign, ArrowLeft, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { CopyButton } from '@/components/ui/copy-button';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +59,11 @@ function ChatPageContent() {
     const [files, setFiles] = useState<{ name: string, url: string, size: number }[]>([]);
     const [chatStatus, setChatStatus] = useState<string>(searchParams.get('status') || 'active');
     const [chatAmount, setChatAmount] = useState<number>(0);
+    const [pendingFeeRequest, setPendingFeeRequest] = useState<{ amount: number, reason: string } | null>(null);
+    const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
+    const [feeRequestAmount, setFeeRequestAmount] = useState('');
+    const [feeRequestReason, setFeeRequestReason] = useState('');
+    const [isRequestingFee, setIsRequestingFee] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
@@ -90,6 +97,11 @@ function ChatPageContent() {
                 }
                 if (data.amount !== undefined) {
                     setChatAmount(data.amount);
+                }
+                if (data.pendingFeeRequest) {
+                    setPendingFeeRequest(data.pendingFeeRequest);
+                } else {
+                    setPendingFeeRequest(null);
                 }
             }
         }, (error) => {
@@ -353,6 +365,37 @@ function ChatPageContent() {
         }
     };
 
+    const handleRequestFee = async () => {
+        if (!feeRequestAmount || isNaN(Number(feeRequestAmount)) || Number(feeRequestAmount) <= 0) {
+            toast({ variant: "destructive", title: "จำนวนเงินไม่ถูกต้อง" });
+            return;
+        }
+
+        if (!firestore || !chatId) return;
+        setIsRequestingFee(true);
+
+        try {
+            const chatRef = doc(firestore, 'chats', chatId);
+            await updateDoc(chatRef, {
+                pendingFeeRequest: {
+                    amount: Number(feeRequestAmount),
+                    reason: feeRequestReason,
+                    requestedAt: serverTimestamp()
+                }
+            });
+
+            toast({ title: "ส่งคำขอสำเร็จ", description: "ระบบได้แจ้งคำขอเรียกเก็บค่าบริการให้ลูกความแล้ว" });
+            setIsFeeModalOpen(false);
+            setFeeRequestAmount('');
+            setFeeRequestReason('');
+        } catch (error) {
+            console.error("Error requesting fee:", error);
+            toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถส่งคำขอได้" });
+        } finally {
+            setIsRequestingFee(false);
+        }
+    };
+
     if (isLoading) {
         return <div>Loading chat...</div>
     }
@@ -402,32 +445,78 @@ function ChatPageContent() {
                                         <p className="font-bold text-foreground">{otherUser.name}</p>
                                     </div>
                                 </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground">Ticket ID:</span>
+                                    <div className="flex items-center gap-1">
+                                        <code className="bg-secondary px-1.5 py-0.5 rounded text-xs font-mono">{chatId}</code>
+                                        <CopyButton value={chatId} />
+                                    </div>
+                                </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">สถานะเคส:</span>
-                                    <Badge variant={isCompleted ? "secondary" : (additionalFeeRequested ? "destructive" : "default")}>
-                                        {isCompleted ? 'เสร็จสิ้น' : (additionalFeeRequested ? 'รออนุมัติค่าใช้จ่าย' : 'กำลังดำเนินการ')}
+                                    <Badge variant={isCompleted ? "secondary" : (pendingFeeRequest ? "destructive" : "default")}>
+                                        {isCompleted ? 'เสร็จสิ้น' : (pendingFeeRequest ? 'รอชำระค่าบริการเพิ่มเติม' : 'กำลังดำเนินการ')}
                                     </Badge>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">ค่าบริการเริ่มต้น:</span>
-                                    <span className="font-semibold">฿{initialFee.toLocaleString()}</span>
+                                    <span className="text-muted-foreground">ค่าบริการใน Escrow:</span>
+                                    <span className="font-semibold">฿{chatAmount.toLocaleString()}</span>
                                 </div>
-                                {additionalFeeRequested && (
-                                    <div className="flex justify-between font-bold text-lg">
-                                        <span className="text-muted-foreground">ค่าบริการรวม:</span>
-                                        <span className="text-foreground">฿{totalFee.toLocaleString()}</span>
-                                    </div>
-                                )}
                             </CardContent>
-                            <CardFooter>
+                            <CardFooter className="flex-col gap-2">
                                 {isCompleted ? (
                                     <Button disabled className="w-full">เคสนี้เสร็จสิ้นแล้ว</Button>
                                 ) : (
-                                    <Button variant="outline" className="w-full" asChild>
-                                        <Link href={`/lawyer-dashboard/close-case/${chatId}?clientName=${client?.name}`}>
-                                            ส่งสรุปและปิดเคส
-                                        </Link>
-                                    </Button>
+                                    <>
+                                        <AlertDialog open={isFeeModalOpen} onOpenChange={setIsFeeModalOpen}>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="default" className="w-full bg-blue-600 hover:bg-blue-700">
+                                                    <Plus className="w-4 h-4 mr-2" /> เรียกเก็บค่าบริการเพิ่มเติม
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>เรียกเก็บค่าบริการเพิ่มเติม</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        ระบุจำนวนเงินและเหตุผลในการเรียกเก็บเพิ่มเติม (เช่น ค่าเอกสาร, ค่าธรรมเนียมศาล)
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="fee-amount">จำนวนเงิน (บาท)</Label>
+                                                        <Input
+                                                            id="fee-amount"
+                                                            type="number"
+                                                            placeholder="เช่น 500"
+                                                            value={feeRequestAmount}
+                                                            onChange={(e) => setFeeRequestAmount(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="fee-reason">เหตุผล</Label>
+                                                        <Textarea
+                                                            id="fee-reason"
+                                                            placeholder="ระบุเหตุผลในการเรียกเก็บ..."
+                                                            value={feeRequestReason}
+                                                            onChange={(e) => setFeeRequestReason(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={(e) => { e.preventDefault(); handleRequestFee(); }} disabled={isRequestingFee}>
+                                                        {isRequestingFee ? 'กำลังส่ง...' : 'ส่งคำขอ'}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+
+                                        <Button variant="outline" className="w-full" asChild>
+                                            <Link href={`/lawyer-dashboard/close-case/${chatId}?clientName=${client?.name}`}>
+                                                ส่งสรุปและปิดเคส
+                                            </Link>
+                                        </Button>
+                                    </>
                                 )}
                             </CardFooter>
                         </Card>
@@ -465,47 +554,49 @@ function ChatPageContent() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    ) : additionalFeeRequested ? ( // User view, additional fee requested
-                        <Card className="border-primary shadow-lg">
+                    ) : pendingFeeRequest ? ( // User view, additional fee requested
+                        <Card className="border-primary shadow-lg ring-2 ring-primary/20">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <DollarSign className="w-6 h-6 text-primary" />
-                                    อนุมัติค่าบริการเพิ่มเติม
+                                    ชำระค่าบริการเพิ่มเติม
                                 </CardTitle>
-                                <CardDescription>ทนายความได้ส่งสรุปเคสและมีการเรียกเก็บค่าบริการเพิ่มเติม</CardDescription>
+                                <CardDescription>ทนายความได้ส่งคำขอเรียกเก็บค่าบริการเพิ่มเติม</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {pendingFeeRequest.reason && (
+                                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-md text-sm">
+                                        <p className="font-semibold text-blue-800">เหตุผล:</p>
+                                        <p className="text-blue-700">{pendingFeeRequest.reason}</p>
+                                    </div>
+                                )}
                                 <div className="space-y-2 rounded-lg border p-4 bg-secondary/50">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">ค่าบริการเดิมใน Escrow:</span>
-                                        <span>฿{initialFee.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">ขอเบิกเพิ่มเติม:</span>
-                                        <span>฿{additionalFee.toLocaleString()}</span>
-                                    </div>
-                                    <hr className="my-2" />
-                                    <div className="flex justify-between font-bold text-lg">
-                                        <span>ยอดรวมใหม่:</span>
-                                        <span>฿{totalFee.toLocaleString()}</span>
+                                        <span className="text-muted-foreground">จำนวนที่เรียกเก็บ:</span>
+                                        <span className="font-bold text-lg">฿{pendingFeeRequest.amount.toLocaleString()}</span>
                                     </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground text-center">คุณต้องชำระส่วนต่างจำนวน ฿{additionalFee.toLocaleString()} เพื่อดำเนินการต่อ</p>
+                                <p className="text-xs text-muted-foreground text-center italic">ชำระผ่านระบบ Lawlane เพื่อความปลอดภัย ข้อมูลจะถูกบันทึกใน Ticket ID</p>
                             </CardContent>
                             <CardFooter className="flex-col gap-2">
-                                <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleApproveAdditionalFee}>
-                                    อนุมัติและชำระส่วนต่าง
+                                <Button className="w-full bg-blue-600 hover:bg-blue-700" asChild>
+                                    <Link href={`/payment?chatId=${chatId}&lawyerId=${lawyerId}&amount=${pendingFeeRequest.amount}&type=additional`}>
+                                        ชำระเงินทันที
+                                    </Link>
                                 </Button>
-                                <Button variant="ghost" className="w-full text-destructive">ปฏิเสธและรายงานปัญหา</Button>
+                                <Button variant="ghost" className="w-full text-destructive text-xs">แจ้งปัญหาความไม่ถูกต้อง</Button>
                             </CardFooter>
                         </Card>
                     ) : ( // User view, active
                         <Card>
                             <CardHeader>
                                 <CardTitle>สถานะ Escrow</CardTitle>
-                                <CardDescription className="flex items-center gap-2 pt-1">
-                                    <Ticket className="w-4 h-4 text-muted-foreground" />
-                                    <span className="text-sm">Ticket ID: {chatId}</span>
+                                <CardDescription className="flex items-center justify-between pt-1">
+                                    <div className="flex items-center gap-2">
+                                        <Ticket className="w-4 h-4 text-muted-foreground" />
+                                        <span className="text-sm font-mono">{chatId}</span>
+                                    </div>
+                                    <CopyButton value={chatId} />
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="text-center">

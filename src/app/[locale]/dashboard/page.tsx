@@ -183,9 +183,14 @@ export default function DashboardPage() {
                                                             )}
                                                             <p className="text-sm text-muted-foreground">{caseItem.lastMessage}</p>
                                                         </div>
-                                                        {caseItem.status !== 'rejected' && (
-                                                            <Button size="sm" className="bg-foreground hover:bg-foreground/90 text-background rounded-full">{t('viewDetails')}</Button>
-                                                        )}
+                                                        <div className="flex items-center gap-3">
+                                                            {caseItem.hasNewMessage && (
+                                                                <span className="flex h-3 w-3 rounded-full bg-red-600 animate-pulse" />
+                                                            )}
+                                                            {caseItem.status !== 'rejected' && (
+                                                                <Button size="sm" className="bg-foreground hover:bg-foreground/90 text-background rounded-full">{t('viewDetails')}</Button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </Link>
                                             ))}

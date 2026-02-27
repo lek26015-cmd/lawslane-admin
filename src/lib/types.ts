@@ -191,6 +191,7 @@ export interface LawyerCase {
   status: 'active' | 'closed' | 'pending_payment';
   lastUpdate: string;
   notifications?: number | 'document';
+  lastMessage?: string;
 }
 
 export interface Ad {

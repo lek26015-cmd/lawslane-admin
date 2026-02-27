@@ -834,5 +834,362 @@
             "subtitle": "Ready to consult with a lawyer?",
             "button": "查找律师"
         }
+    },
+    "B2BDashboard": {
+        "overview": {
+            "errorLoading": "加载数据时发生错误",
+            "retry": "重试",
+            "welcomeTitle": "欢迎使用 Lawslane 企业数字化法律管理 (ELM)",
+            "welcomeSubtitle": "开始创建您的组织，以专业地管理合同和团队",
+            "creating": "正在创建...",
+            "createProfile": "创建公司档案",
+            "title": "ELM 控制面板",
+            "welcomeBack": "欢迎回来, {name}",
+            "manageAccount": "管理账户",
+            "stats": {
+                "contracts": "系统中的合同",
+                "team": "团队成员",
+                "urgent": "紧急日程",
+                "compliance": "文档合规率"
+            },
+            "upcoming": {
+                "title": "法律日程 (即将到来)",
+                "subtitle": "您的组织近期需要执行的合规任务",
+                "viewAll": "查看完整日历",
+                "annualReport": "年度财务报表 (DBD)",
+                "overdue": "已逾期 {days} 天",
+                "actionNow": "立即处理",
+                "agm": "年度股东大会 (AGM)",
+                "daysLeft": "剩余 {days} 天",
+                "notify": "通知提醒"
+            },
+            "activity": {
+                "title": "企业动态",
+                "uploadCert": "上传了公司证书",
+                "autoNDA": "自动创建了新的 NDA 草案",
+                "newMember": "添加了新团队成员",
+                "byAt": "由 {user} • {time}"
+            },
+            "vault": {
+                "title": "文档库状态 (Vault)",
+                "subtitle": "重要企业文档",
+                "quickUpload": "快速上传文档",
+                "limit": "支持 PDF, JPG (最大 5MB)",
+                "dbd": "DBD 摘要列表",
+                "licenses": "各种许可证",
+                "manageAll": "管理所有文档库文档"
+            },
+            "support": {
+                "title": "企业法律支持",
+                "desc": "通过私密组织聊天室立即咨询企业律师专家",
+                "btn": "开始咨询专家",
+                "toastTitle": "正在打开支持聊天",
+                "toastDesc": "正在连接律师专家..."
+            }
+        },
+        "team": {
+            "loading": "正在加载团队数据...",
+            "title": "团队成员管理",
+            "subtitle": "管理有权代表公司访问文档和管理合同的管理员",
+            "stats": {
+                "adminCount": "{count} 位管理员"
+            },
+            "list": {
+                "title": "所有成员",
+                "subtitle": "当前拥有系统管理权限的人员列表"
+            },
+            "invite": {
+                "title": "添加新成员",
+                "successTitle": "管理员添加成功",
+                "successDesc": "已成功将 {email} 添加到团队",
+                "errorDesc": "无法添加管理员",
+                "processing": "正在处理...",
+                "button": "发送团队邀请"
+            },
+            "remove": {
+                "successTitle": "成员移除成功"
+            },
+            "errorTitle": "发生错误",
+            "limit": {
+                "title": "管理员数量限制",
+                "desc": "您的 {plan} 计划最多允许 {max} 位管理员。请升级计划以添加更多成员。",
+                "btn": "升级计划",
+                "toastDesc": "正在为您准备服务方案信息..."
+            },
+            "permissions": {
+                "p1": "访问并创建所有公司合同",
+                "p2": "下载并打印合同文档",
+                "p3": "管理其他管理员选项（如获得授权）"
+            }
+        },
+        "vaultPage": {
+            "pageTitle": "文档库 (Vault)",
+            "pageSubtitle": "安全地存储和管理您组织的重要法律文档",
+            "searchPlaceholder": "搜索文档...",
+            "categories": {
+                "all": "全部",
+                "registry": "登记文档",
+                "tax": "税务文档 (PP.20)",
+                "licenses": "许可证",
+                "important": "重要合同",
+                "others": "其他"
+            },
+            "status": {
+                "verified": "已验证",
+                "pending": "待审核"
+            },
+            "upload": {
+                "button": "上传文档",
+                "processing": "正在上传...",
+                "successTitle": "上传成功 ✅",
+                "successDesc": "{name} 已保存到系统",
+                "errorTitle": "上传失败",
+                "errorDesc": "请重试"
+            },
+            "delete": {
+                "confirm": "从系统中删除 \"{name}\"？",
+                "successTitle": "文档删除成功",
+                "errorTitle": "删除失败",
+                "button": "删除文档"
+            },
+            "kyb": {
+                "title": "企业身份验证 (KYB)",
+                "desc": "上传公司证书以验证法律状态并获得完整功能访问权限",
+                "button": "开始身份验证"
+            },
+            "empty": {
+                "title": "尚无文档",
+                "desc": "点击 \"上传文档\" 添加您的第一个文件"
+            },
+            "errors": {
+                "loadFailed": "加载文档失败",
+                "unsupportedFile": "不支持的文件格式",
+                "unsupportedFileDesc": "仅支持 PDF, JPEG, PNG, DOC, XLS, TXT",
+                "fileTooLarge": "文件太大",
+                "fileTooLargeDesc": "文件大小不能超过 20 MB"
+            }
+        },
+        "calendar": {
+            "pageTitle": "法律日历 (Compliance)",
+            "pageSubtitle": "跟踪重要的法律日期和日程，以减轻组织风险",
+            "settings": "通知设置",
+            "addEvent": "添加新日程",
+            "summary": {
+                "title": "法律健康摘要",
+                "critical": "关键任务",
+                "count": "{count} 项",
+                "overdueDesc": "您有 {count} 项逾期任务。请检查这些任务以避免法律处罚。",
+                "noOverdueDesc": "您的组织目前没有逾期任务。请继续保持！"
+            },
+            "upcoming": "即将到来的日程",
+            "filterAll": "全部",
+            "filterCritical": "仅限关键",
+            "empty": {
+                "title": "尚无日程",
+                "desc": "您可以开始添加重要日期以立即接收通知",
+                "button": "添加第一个日程"
+            },
+            "overdueBadge": "逾期！",
+            "priority": "优先级: {priority}",
+            "overdue": "已逾期",
+            "daysLeft": "剩余 {days} 天",
+            "fromToday": "从今天起",
+            "tip": {
+                "title": "法律小贴士：股东周年大会 (AGM)",
+                "desc": "有限公司必须在会计期间结束后的 4 个月内召开股东周年大会 (AGM)，并在会议后的 14 天内提交股东名册 (Bor.Jor.5)。延迟提交可能会导致对实体和董事的罚款。",
+                "more": "更多详情"
+            },
+            "error": {
+                "loadTitle": "加载数据失败",
+                "retry": "重试",
+                "indexPending": "系统正在准备数据库（缺失索引）。请稍等片刻（约 1-3 分钟），或者点击控制台中的链接创建索引（如果您尚未创建）。"
+            },
+            "daysShort": [
+                "日",
+                "一",
+                "二",
+                "三",
+                "四",
+                "五",
+                "六"
+            ]
+        },
+        "billing": {
+            "pageTitle": "财务与税务管理",
+            "pageSubtitle": "管理税务发票、预扣税和组织付款历史",
+            "summaryReport": "汇总报告",
+            "preparingReport": "正在准备汇总报告",
+            "processingReport": "系统正在处理您的年度财务数据...",
+            "taxPayerInfo": "税务发票详情",
+            "entityName": "实体名称",
+            "taxId": "纳税人识别号",
+            "notSpecified": "未指定",
+            "address": "地址",
+            "currentPlan": "当前计划",
+            "noCompanyInfo": "尚无公司信息",
+            "editTaxInfo": "编辑税务详情",
+            "wht": {
+                "title": "预扣税 (WHT)",
+                "desc": "公司已获得法律服务费 3% 自动预扣税认证。"
+            },
+            "history": {
+                "title": "税务发票历史",
+                "desc": "过去的付款和税务文件",
+                "year": "{year} 年",
+                "invoiceId": "发票编号",
+                "date": "日期",
+                "type": "类型",
+                "amount": "金额 (฿)",
+                "document": "文件",
+                "downloadDoc": "发票",
+                "downloading": "正在下载文件",
+                "downloadingDesc": "正在下载税务发票 {id}..."
+            },
+            "support": {
+                "text": "对于过去的发票或财务咨询，请联系",
+                "email": "billing@lawslane.com"
+            },
+            "planLabels": {
+                "starter": "Starter — 2,500 泰铢/月",
+                "pro": "Pro — 5,900 泰铢/月",
+                "enterprise": "Enterprise — 定制"
+            },
+            "invoiceTypes": {
+                "Subscription": "订阅",
+                "Consultation": "咨询"
+            }
+        },
+        "admin": {
+            "accessDenied": "拒绝访问",
+            "superAdminOnly": "仅限超级管理员访问此部分。",
+            "noPermission": "您没有权限访问此页面。",
+            "companies": {
+                "title": "管理所有公司",
+                "subtitle": "浏览并对系统中的所有实体执行操作（共 {count} 家公司）",
+                "manageData": "管理数据",
+                "admins": "管理员: {count}",
+                "systemAdmin": "系统管理员"
+            },
+            "stats": {
+                "title": "系统概览 (管理员)",
+                "subtitle": "当前 B2B ELM 在整个平台的使用摘要",
+                "systemStats": "系统统计",
+                "totalCompanies": "公司总数",
+                "usersInSystem": "系统用户数",
+                "plansTitle": "计划使用信息 (计划)",
+                "plansSubtitle": "按会员等级划分的客户比例",
+                "latestActivities": "最新活动 (全局日志)",
+                "activitiesSubtitle": "所有公司的近期动态",
+                "noActivities": "尚无中央活动日志记录"
+            }
+        }
+    },
+    "B2BLanding": {
+        "header": {
+            "searchLawyer": "寻找律师",
+            "dashboard": "控制面板",
+            "logout": "登出",
+            "login": "登录",
+            "language": "语言 (Language)"
+        },
+        "hero": {
+            "badge": "Lawslane 企业版",
+            "title1": "合同与税务管理",
+            "title2": "专为现代企业打造",
+            "subtitle": "提升您的法律文档工作流程——更快捷、更安全，完全支持电子税务。专属企业律师为您赋能。"
+        },
+        "features": {
+            "title": "企业客户核心功能",
+            "subtitle": "旨在让您的企业法律文档管理变得尽可能简单",
+            "tax": {
+                "title": "电子税务发票系统",
+                "desc": "平台直接支持全套电子税务发票和即时代扣代缴税款"
+            },
+            "templates": {
+                "title": "B2B 模板库",
+                "desc": "访问由专业律师起草的保密协议、雇佣和租赁协议等商业标准文档库"
+            },
+            "lawyer": {
+                "title": "专属律师团队",
+                "desc": "与了解您业务背景的法律团队咨询并发送合同以供审核。周转快速。"
+            }
+        },
+        "pricing": {
+            "title": "选择适合您的计划",
+            "subtitle": "免费试用14天。无需信用卡。",
+            "perMonth": "/月",
+            "starter": {
+                "title": "入门版 (Starter)",
+                "desc": "中小型企业和早期初创公司的理想选择",
+                "price": "฿2,900",
+                "btn": "免费试用 14 天",
+                "f1": "每月下载 10 份 B2B 模板",
+                "f2": "表单生成合同",
+                "f3": "支持 1 个用户账户",
+                "f4": "开具全套税务发票",
+                "f5": "非工作时间邮件支持"
+            },
+            "pro": {
+                "title": "专业版 (Pro)",
+                "badge": "最受欢迎",
+                "desc": "适合成长型企业，倍增信心",
+                "price": "฿8,900",
+                "btn": "立即开始",
+                "f1": "无限量下载 B2B 模板",
+                "f2": "合同生命周期管理 (CLM)",
+                "f3": "律师每月审核 5 份合同",
+                "f4": "支持 5 个用户账户 (含权限设置)",
+                "f5": "税务发票与代扣代缴",
+                "f6": "电子签名系统 (基础版)"
+            },
+            "enterprise": {
+                "title": "企业版 (Enterprise)",
+                "desc": "为大型组织提供灵活定制",
+                "price": "定制",
+                "btn": "联系销售",
+                "f1": "包含专业版所有功能",
+                "f2": "专属企业咨询律师",
+                "f3": "无限量合同审核",
+                "f4": "无限用户及存储空间",
+                "f5": "API 集成 (ELM/HRIS)",
+                "f6": "2小时SLA响应保证",
+                "f7": "电子签名系统 (高级版)"
+            }
+        },
+        "cta": {
+            "title": "准备好升级贵公司的法律系统了吗？",
+            "subtitle": "加入选择 Lawslane 管理合同、降低风险并节省时间的领先企业行列。",
+            "btn": "联系我们的销售团队"
+        },
+        "contact": {
+            "badge": "联系我们",
+            "title1": "让我们处理法律事务，",
+            "title2": "保障您业务的顺利运营",
+            "subtitle": "无论是起草合同、公司注册，还是需要企业顾问，Lawslane 的专业律师随时准备在每个阶段为您的业务提供咨询和支持。",
+            "f1": {
+                "title": "免费估价",
+                "desc": "发送您的需求。我们将免费协助评估范围和价格。无前期费用。"
+            },
+            "f2": {
+                "title": "最高机密性",
+                "desc": "您发送的所有信息和文档将严格遵循保密和 PDPA 标准进行保管。"
+            }
+        }
+    },
+    "B2BSidebar": {
+        "adminTitle": "系统管理 (Admin)",
+        "adminCompanies": "管理所有公司",
+        "adminStats": "系统概览",
+        "dashboardTitle": "控制面板 (Dashboard)",
+        "overview": "概览 (Overview)",
+        "billing": "财务与税务",
+        "clm": "合同管理 (CLM)",
+        "vault": "文档库 (Vault)",
+        "calendar": "法律日历",
+        "team": "团队管理 (Team)",
+        "settings": "设置 (Settings)",
+        "displayMode": "显示模式",
+        "language": "语言",
+        "logout": "登出"
     }
 }

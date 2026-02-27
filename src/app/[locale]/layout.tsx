@@ -39,8 +39,14 @@ export default async function RootLayout({
   const headersList = await headers();
   const domain = headersList.get('host') || "";
   let domainType = 'main';
-  if (domain.startsWith('admin.')) domainType = 'admin';
-  if (domain.startsWith('lawyer.')) domainType = 'lawyer';
+
+  if (domain.includes('admin.')) domainType = 'admin';
+  else if (domain.includes('business.')) domainType = 'business';
+  else if (domain.includes('lawyer.')) domainType = 'lawyer';
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[RootLayout] Domain: ${domain}, Detected Type: ${domainType}, Locale: ${locale}`);
+  }
 
   const messages = await getMessages();
 
@@ -93,7 +99,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider messages={messages} locale={locale}>
           <ClientProviders domainType={domainType}>
             {children}
             <ScrollToTopButton />

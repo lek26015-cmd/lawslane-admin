@@ -4,11 +4,38 @@ import Link from 'next/link';
 import Logo from '@/components/logo';
 import { usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
+import { useState, useEffect } from 'react';
+import { getMainLink, getBusinessLink } from '@/lib/domain-utils';
 
-export default function Footer({ userRole }: { userRole: string | null }) {
+// Helper component to handle absolute vs relative links
+function SafeLink({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) {
+  const isAbsolute = href.startsWith('http') || href.startsWith('//');
+
+  if (isAbsolute) {
+    return (
+      <a href={href} className={className}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+export default function Footer({ userRole, domainType = 'main' }: { userRole: string | null; domainType?: 'main' | 'lawyer' | 'admin' | 'business' }) {
   const pathname = usePathname();
   const t = useTranslations('Footer');
   const locale = useLocale();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const isAuthPage = pathname.endsWith('/login') || pathname.endsWith('/signup') || pathname.endsWith('/lawyer-login');
 
   let quickLinks = [
@@ -20,8 +47,11 @@ export default function Footer({ userRole }: { userRole: string | null }) {
   ];
 
   if (userRole === 'customer') {
-    quickLinks.push({ href: `/${locale}/dashboard`, label: t('quickLinks.customerDashboard') });
+    quickLinks.push({ href: getMainLink('/dashboard', domainType, !isMounted), label: t('quickLinks.customerDashboard') });
   }
+
+  // Add Business link
+  quickLinks.push({ href: getBusinessLink('/', domainType, !isMounted), label: 'Lawslane for Business' });
 
   let forLawyersLinks = [
     { href: `/${locale}/for-lawyers`, label: t('forLawyers.join') },
@@ -78,9 +108,9 @@ export default function Footer({ userRole }: { userRole: string | null }) {
             <ul className="space-y-2">
               {quickLinks.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm hover:text-white transition-colors">
+                  <SafeLink href={link.href} className="text-sm hover:text-white transition-colors">
                     {link.label}
-                  </Link>
+                  </SafeLink>
                 </li>
               ))}
             </ul>
@@ -91,9 +121,9 @@ export default function Footer({ userRole }: { userRole: string | null }) {
             <ul className="space-y-2">
               {forLawyersLinks.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm hover:text-white transition-colors">
+                  <SafeLink href={link.href} className="text-sm hover:text-white transition-colors">
                     {link.label}
-                  </Link>
+                  </SafeLink>
                 </li>
               ))}
             </ul>
@@ -104,18 +134,21 @@ export default function Footer({ userRole }: { userRole: string | null }) {
             <ul className="space-y-2">
               {legalLinks.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm hover:text-white transition-colors">
+                  <SafeLink href={getMainLink(link.href, domainType, !isMounted)} className="text-sm hover:text-white transition-colors">
                     {link.label}
-                  </Link>
+                  </SafeLink>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-12 pt-6 text-center text-sm text-gray-500">
-          {/* Copyright Section */}
-          <p>{t('copyright', { year: new Date().getFullYear() })}</p>
+      </div>
+
+      {/* Bottom Bar (Clean Style) */}
+      <div className="bg-transparent text-slate-500 py-12 border-t border-gray-800/10 mt-12">
+        <div className="container mx-auto px-4 text-center text-[10px] font-bold uppercase tracking-widest opacity-50">
+          <p>© {new Date().getFullYear()} Lawslane. สงวนลิขสิทธิ์</p>
         </div>
       </div>
     </footer>

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, CheckCircle, Clock, DollarSign, FileText, Inbox, Percent, Star, User, Settings, BarChart, CalendarPlus, FileUp, Loader2, ShieldX, AlertCircle } from 'lucide-react';
+import { Briefcase, CheckCircle, Clock, DollarSign, FileText, Inbox, Percent, Star, User, Settings, BarChart, CalendarPlus, FileUp, Loader2, ShieldX, AlertCircle, LogOut } from 'lucide-react';
 import { getLawyerDashboardData, getLawyerStats, getLawyerById, getAdminLawyerDashboardData } from '@/lib/data';
 import type { LawyerCase, LawyerAppointmentRequest, LawyerProfile } from '@/lib/types';
 import { format } from 'date-fns';
@@ -31,6 +31,7 @@ import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useUser, useFirebase } from '@/firebase';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { signOut } from 'firebase/auth';
 
 export default function LawyerDashboardPage() {
   const router = useRouter();
@@ -67,6 +68,22 @@ export default function LawyerDashboardPage() {
     fetchGPRate();
   }, [firestore]);
 
+
+  const handleLogout = async () => {
+    if (auth) {
+      try {
+        await fetch('/api/auth/session', { method: 'DELETE' });
+      } catch (err) {
+        console.error("Failed to clear session cookie:", err);
+      }
+      await signOut(auth);
+      toast({
+        title: "ออกจากระบบแล้ว!",
+        description: "คุณได้ออกจากระบบเรียบร้อยแล้ว",
+      });
+      window.location.href = '/';
+    }
+  };
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -313,19 +330,16 @@ export default function LawyerDashboardPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">ลูกค้า: {caseItem.clientName} | อัปเดตล่าสุด: {caseItem.lastUpdate}</p>
+                        <p className="text-sm text-muted-foreground mr-2">ลูกค้า: {caseItem.clientName} | อัปเดตล่าสุด: {caseItem.lastUpdate}</p>
+                        {caseItem.lastMessage && (
+                          <p className="text-xs text-muted-foreground italic mt-1 line-clamp-1 border-l-2 border-primary/20 pl-2">
+                            {caseItem.lastMessage}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {caseItem.notifications && (
-                          typeof caseItem.notifications === 'number' ? (
-                            <Badge variant="destructive" className="flex items-center justify-center w-6 h-6 rounded-full p-0">
-                              {caseItem.notifications}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="border-blue-500 bg-blue-50 text-blue-700">
-                              <FileUp className="w-3 h-3" />
-                            </Badge>
-                          )
+                        {((typeof caseItem.notifications === 'number' && caseItem.notifications > 0) || caseItem.notifications === 'document') && (
+                          <span className="flex h-3 w-3 rounded-full bg-red-600 animate-pulse" />
                         )}
                         <Button size="sm" className="rounded-full">เข้าสู่ห้องแชท</Button>
                       </div>
@@ -403,6 +417,13 @@ export default function LawyerDashboardPage() {
                     <Button variant="outline" className="rounded-full"><Settings className="mr-2" /> จัดการตาราง</Button>
                   </Link>
                 </div>
+                <Button
+                  variant="destructive"
+                  className="w-full mt-6 rounded-full"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 w-4 h-4" /> ออกจากระบบ
+                </Button>
               </CardContent>
             </Card>
 

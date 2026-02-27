@@ -11,7 +11,7 @@ type LogoProps = {
   showText?: boolean;
 };
 
-export default function Logo({ className, href, variant = 'color', showText = true }: LogoProps) {
+export default function Logo({ className, href, variant = 'color', showText = true, subtitle }: LogoProps & { subtitle?: string }) {
   const logoSrc = variant === 'color' ? logoColor : logoWhite;
 
   return (
@@ -24,7 +24,26 @@ export default function Logo({ className, href, variant = 'color', showText = tr
         className="h-8 w-auto"
         priority
       />
-      {showText && <span className="text-xl font-bold font-headline">Lawslane</span>}
+      {(showText || subtitle) && (
+        <div className="flex flex-col">
+          {showText && (
+            <span className={cn(
+              "text-xl font-bold font-headline transition-colors leading-none",
+              variant === 'white' ? "text-white" : "text-foreground"
+            )}>
+              Lawslane
+            </span>
+          )}
+          {subtitle && (
+            <span className={cn(
+              "text-[10px] font-bold uppercase tracking-widest mt-0.5 transition-colors leading-none",
+              variant === 'white' ? "text-white/60" : "text-blue-600"
+            )}>
+              {subtitle}
+            </span>
+          )}
+        </div>
+      )}
     </Link>
   );
 }

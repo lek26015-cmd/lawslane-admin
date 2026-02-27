@@ -140,6 +140,14 @@ function LoginPageContent() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
+      // Create server-side session cookie
+      const idToken = await user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
       // Check role
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -168,9 +176,20 @@ function LoginPageContent() {
           await signOut(auth);
           return;
         }
-        router.push(redirectUrl || '/lawyer-dashboard');
+
+        const target = redirectUrl || '/lawyer-dashboard';
+        if (target.startsWith('http')) {
+          window.location.href = target;
+        } else {
+          router.push(target);
+        }
       } else {
-        router.push(redirectUrl || '/dashboard');
+        const target = redirectUrl || '/dashboard';
+        if (target.startsWith('http')) {
+          window.location.href = target;
+        } else {
+          router.push(target);
+        }
       }
     } catch (error: any) {
       console.error(error);
@@ -207,6 +226,14 @@ function LoginPageContent() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
+      // Create server-side session cookie
+      const idToken = await user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
       // Check if user profile already exists
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
@@ -230,9 +257,19 @@ function LoginPageContent() {
       });
 
       if (role === 'lawyer') {
-        router.push(redirectUrl || '/lawyer-dashboard');
+        const target = redirectUrl || '/lawyer-dashboard';
+        if (target.startsWith('http')) {
+          window.location.href = target;
+        } else {
+          router.push(target);
+        }
       } else {
-        router.push(redirectUrl || '/dashboard');
+        const target = redirectUrl || '/dashboard';
+        if (target.startsWith('http')) {
+          window.location.href = target;
+        } else {
+          router.push(target);
+        }
       }
 
     } catch (error: any) {

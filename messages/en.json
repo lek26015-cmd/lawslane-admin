@@ -123,8 +123,21 @@
             "cta": "Start Cap & Deal Now"
         }
     },
+    "NotFound": {
+        "title": "Page Not Found",
+        "description": "Sorry, the page you are looking for might have been removed, had its name changed, or is temporarily unavailable.",
+        "backHome": "Back to Home",
+        "contactSupport": "Contact Support"
+    },
     "Navigation": {
         "forSME": "For SME",
+        "forB2B": "For B2B",
+        "b2bMenu": {
+            "dashboard": "B2B Dashboard",
+            "pricing": "Corporate Pricing",
+            "clm": "Contract Management (CLM)",
+            "templates": "B2B Templates Library"
+        },
         "findLawyer": "Find Lawyer",
         "verifyLawyer": "Verify Lawyer",
         "articles": "Articles",
@@ -179,7 +192,7 @@
         }
     },
     "LegalForms": {
-        "heroTitle": "Legal Forms Center",
+        "heroTitle": "Legal Forms & Business Contracts Center",
         "heroDescription": "Download legally compliant contracts and legal documents, free for everyone",
         "searchTitle": "Search Documents",
         "searchPlaceholder": "Enter document name...",
@@ -209,6 +222,12 @@
             "description": "You have downloaded 3 documents as a guest. Please login to download unlimited documents.",
             "cancel": "Cancel",
             "loginSignup": "Login / Sign Up"
+        },
+        "b2bCta": {
+            "title": "Can't find the contract you need?",
+            "description": "We have a team of lawyers ready to provide consultation and draft custom legal documents (Custom Contracts) specifically tailored to your business model.",
+            "buttonB2B": "View Corporate Services",
+            "buttonContact": "Consult a Lawyer"
         }
     },
     "Lawyers": {
@@ -339,6 +358,10 @@
             {
                 "question": "What should I do if there is a problem with a lawyer?",
                 "answer": "If you encounter a problem or are dissatisfied with the service, you can use the 'Report Problem' button on the chat page of that case to contact our customer support team immediately. We will quickly investigate and provide assistance as soon as possible."
+            },
+            {
+                "question": "What is 'Cap & Deal' and how do I use it?",
+                "answer": "'Cap & Deal' is an AI technology that transforms chat screenshots (Line, Messenger, etc.) containing deal agreements into automatic, legally sound PDF contracts. This ensures you have solid evidence for any future legal proceedings if a contract is breached."
             }
         ]
     },
@@ -844,5 +867,362 @@
             "subtitle": "Ready to consult with a lawyer?",
             "button": "Find a Lawyer"
         }
+    },
+    "B2BDashboard": {
+        "overview": {
+            "errorLoading": "An error occurred while loading data",
+            "retry": "Retry",
+            "welcomeTitle": "Welcome to Lawslane Business ELM",
+            "welcomeSubtitle": "Start creating your organization to manage contracts and teams professionally",
+            "creating": "Creating...",
+            "createProfile": "Create Company Profile",
+            "title": "ELM Dashboard",
+            "welcomeBack": "Welcome back, {name}",
+            "manageAccount": "Manage Account",
+            "stats": {
+                "contracts": "Contracts in System",
+                "team": "Team Members",
+                "urgent": "Urgent Schedules",
+                "compliance": "Document Compliance"
+            },
+            "upcoming": {
+                "title": "Legal Schedules (Upcoming)",
+                "subtitle": "Compliance tasks your organization needs to perform soon",
+                "viewAll": "View All Calendar",
+                "annualReport": "Annual Financial Statement (DBD)",
+                "overdue": "{days} days overdue",
+                "actionNow": "Handle Immediately",
+                "agm": "Annual General Meeting (AGM)",
+                "daysLeft": "{days} days left",
+                "notify": "Notify"
+            },
+            "activity": {
+                "title": "Corporate Activity",
+                "uploadCert": "Uploaded company certificate",
+                "autoNDA": "Automatically created new NDA draft",
+                "newMember": "Added new team member",
+                "byAt": "By {user} • {time}"
+            },
+            "vault": {
+                "title": "Vault Status",
+                "subtitle": "Important Corporate Documents",
+                "quickUpload": "Quick Upload Document",
+                "limit": "PDF, JPG (Max 5MB)",
+                "dbd": "DBD Summary List",
+                "licenses": "Various Licenses",
+                "manageAll": "Manage All Vault Documents"
+            },
+            "support": {
+                "title": "Legal Corporate Support",
+                "desc": "Consult expert corporate lawyers instantly via private organization chat",
+                "btn": "Start Consulting Expert",
+                "toastTitle": "Opening Support Chat",
+                "toastDesc": "Connecting to an expert lawyer..."
+            }
+        },
+        "team": {
+            "loading": "Loading team data...",
+            "title": "Team Management",
+            "subtitle": "Manage admins who can access documents and manage contracts on behalf of the company",
+            "stats": {
+                "adminCount": "{count} Admins"
+            },
+            "list": {
+                "title": "All Members",
+                "subtitle": "List of currently authorized system administrators"
+            },
+            "invite": {
+                "title": "Add New Member",
+                "successTitle": "Admin added successfully",
+                "successDesc": "Added {email} to the team successfully",
+                "errorDesc": "Could not add admin",
+                "processing": "Processing...",
+                "button": "Send Team Invitation"
+            },
+            "remove": {
+                "successTitle": "Member removed successfully"
+            },
+            "errorTitle": "An error occurred",
+            "limit": {
+                "title": "Admin Limit Reached",
+                "desc": "Your {plan} plan allows up to {max} admins. Please upgrade your plan to add more members.",
+                "btn": "Upgrade Plan",
+                "toastDesc": "Preparing service plan information for you..."
+            },
+            "permissions": {
+                "p1": "Access and create all corporate contracts",
+                "p2": "Download and print contract documents",
+                "p3": "Manage other admin options (if authorized)"
+            }
+        },
+        "vaultPage": {
+            "pageTitle": "Vault",
+            "pageSubtitle": "Securely store and manage your organization's important legal documents",
+            "searchPlaceholder": "Search documents...",
+            "categories": {
+                "all": "All",
+                "registry": "Registry Documents",
+                "tax": "Tax (PP.20)",
+                "licenses": "Licenses",
+                "important": "Key Contracts",
+                "others": "Others"
+            },
+            "status": {
+                "verified": "Verified",
+                "pending": "Pending"
+            },
+            "upload": {
+                "button": "Upload Document",
+                "processing": "Uploading...",
+                "successTitle": "Upload Successful ✅",
+                "successDesc": "{name} has been saved to the system",
+                "errorTitle": "Upload Failed",
+                "errorDesc": "Please try again"
+            },
+            "delete": {
+                "confirm": "Delete \"{name}\" from the system?",
+                "successTitle": "Document deleted successfully",
+                "errorTitle": "Delete failed",
+                "button": "Delete Document"
+            },
+            "kyb": {
+                "title": "Corporate Identity Verification (KYB)",
+                "desc": "Upload company certificate to verify legal status and gain full feature access",
+                "button": "Start Verification"
+            },
+            "empty": {
+                "title": "No Documents Yet",
+                "desc": "Click \"Upload Document\" to add your first file"
+            },
+            "errors": {
+                "loadFailed": "Failed to load documents",
+                "unsupportedFile": "Unsupported File",
+                "unsupportedFileDesc": "Only PDF, JPEG, PNG, DOC, XLS, TXT are supported",
+                "fileTooLarge": "File Too Large",
+                "fileTooLargeDesc": "File size must not exceed 20 MB"
+            }
+        },
+        "calendar": {
+            "pageTitle": "Legal Calendar (Compliance)",
+            "pageSubtitle": "Track important legal dates and schedules to mitigate organizational risks",
+            "settings": "Notification Settings",
+            "addEvent": "Add New Schedule",
+            "summary": {
+                "title": "Legal Health Summary",
+                "critical": "Critical Tasks",
+                "count": "{count} Items",
+                "overdueDesc": "You have {count} overdue items. Please check them to avoid legal penalties.",
+                "noOverdueDesc": "Your organization has no overdue tasks at the moment. Keep up the good work!"
+            },
+            "upcoming": "Upcoming Schedules",
+            "filterAll": "All",
+            "filterCritical": "Critical Only",
+            "empty": {
+                "title": "No Schedules Yet",
+                "desc": "You can start adding important dates to receive instant notifications",
+                "button": "Add First Schedule"
+            },
+            "overdueBadge": "Overdue!",
+            "priority": "Priority: {priority}",
+            "overdue": "Overdue",
+            "daysLeft": "{days} days left",
+            "fromToday": "from today",
+            "tip": {
+                "title": "Legal Tip: AGM Meetings",
+                "desc": "Limited companies must hold an Annual General Meeting (AGM) within 4 months of the end of the accounting period and submit the list of shareholders (Bor.Jor.5) within 14 days after the meeting. Delays can result in fines for both the entity and directors.",
+                "more": "More Details"
+            },
+            "error": {
+                "loadTitle": "Failed to load data",
+                "retry": "Retry",
+                "indexPending": "The system is preparing the database (Missing Index). Please wait a moment (about 1-3 minutes) or click the link in the Console to create the Index if you haven't yet."
+            },
+            "daysShort": [
+                "Sun",
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri",
+                "Sat"
+            ]
+        },
+        "billing": {
+            "pageTitle": "Billing & Tax Management",
+            "pageSubtitle": "Manage tax invoices, withholding tax, and organizational payment history",
+            "summaryReport": "Summary Report",
+            "preparingReport": "Preparing Summary Report",
+            "processingReport": "The system is processing your annual financial data...",
+            "taxPayerInfo": "Tax Invoice Details",
+            "entityName": "Entity Name",
+            "taxId": "Tax Identification Number",
+            "notSpecified": "Not Specified",
+            "address": "Address",
+            "currentPlan": "Current Plan",
+            "noCompanyInfo": "No company information yet",
+            "editTaxInfo": "Edit Tax Details",
+            "wht": {
+                "title": "Withholding Tax (WHT)",
+                "desc": "The company is certified for 3% automatic withholding tax on legal service fees."
+            },
+            "history": {
+                "title": "Tax Invoice History",
+                "desc": "Past payments and tax documents",
+                "year": "Year {year}",
+                "invoiceId": "Invoice No.",
+                "date": "Date",
+                "type": "Type",
+                "amount": "Amount (฿)",
+                "document": "Document",
+                "downloadDoc": "Invoice",
+                "downloading": "Downloading Document",
+                "downloadingDesc": "Downloading tax invoice {id}..."
+            },
+            "support": {
+                "text": "For past invoices or financial inquiries, contact",
+                "email": "billing@lawslane.com"
+            },
+            "planLabels": {
+                "starter": "Starter — 2,500 THB/Month",
+                "pro": "Pro — 5,900 THB/Month",
+                "enterprise": "Enterprise — Custom"
+            },
+            "invoiceTypes": {
+                "Subscription": "Subscription",
+                "Consultation": "Consultation"
+            }
+        },
+        "admin": {
+            "accessDenied": "Access Denied",
+            "superAdminOnly": "Only Super Admins can access this section.",
+            "noPermission": "You do not have permission to access this page.",
+            "companies": {
+                "title": "Manage All Companies",
+                "subtitle": "Browse and perform actions for all entities in the system ({count} companies)",
+                "manageData": "Manage Data",
+                "admins": "Admins: {count}",
+                "systemAdmin": "SYSTEM ADMIN"
+            },
+            "stats": {
+                "title": "System Overview (Admin)",
+                "subtitle": "Summary of current B2B ELM usage across the platform",
+                "systemStats": "SYSTEM STATS",
+                "totalCompanies": "Total Companies",
+                "usersInSystem": "Users in System",
+                "plansTitle": "Plan Usage Info (Plans)",
+                "plansSubtitle": "Proportion of customers by member level",
+                "latestActivities": "Latest Activities (Global Logs)",
+                "activitiesSubtitle": "Recent movements from all companies",
+                "noActivities": "No central activity logs recorded yet"
+            }
+        }
+    },
+    "B2BLanding": {
+        "header": {
+            "searchLawyer": "Find Lawyer",
+            "dashboard": "Dashboard",
+            "logout": "Logout",
+            "login": "Login",
+            "language": "Language"
+        },
+        "hero": {
+            "badge": "Lawslane for Business",
+            "title1": "Contract & Tax Management",
+            "title2": "for Modern Enterprises",
+            "subtitle": "Elevate your legal document workflow—faster, secure, and fully e-Tax compliant. Empowered by your dedicated corporate lawyers."
+        },
+        "features": {
+            "title": "Key Features for Corporate Clients",
+            "subtitle": "Designed to make legal document management as easy as possible for your business",
+            "tax": {
+                "title": "e-Tax Invoice System",
+                "desc": "Full e-Tax invoicing and instant withholding tax support directly on the platform"
+            },
+            "templates": {
+                "title": "B2B Templates",
+                "desc": "Access a vault of business standard documents like NDAs, Employment, and Lease agreements drafted by pro lawyers"
+            },
+            "lawyer": {
+                "title": "Private Lawyer Team",
+                "desc": "Consult and send contracts for review with a legal team that understands your business context. Quick turnaround."
+            }
+        },
+        "pricing": {
+            "title": "Choose the Right Plan for You",
+            "subtitle": "Start free for 14 days. No credit card required.",
+            "perMonth": "/month",
+            "starter": {
+                "title": "Starter",
+                "desc": "Ideal for SMEs and early-stage startups",
+                "price": "฿2,900",
+                "btn": "Try Free for 14 Days",
+                "f1": "Download 10 B2B templates/month",
+                "f2": "Form-to-Contract generator",
+                "f3": "Supports 1 user account",
+                "f4": "Full tax invoice issuance",
+                "f5": "Off-hours Email Support"
+            },
+            "pro": {
+                "title": "Pro",
+                "badge": "Popular",
+                "desc": "For growing businesses needing confidence",
+                "price": "฿8,900",
+                "btn": "Get Started",
+                "f1": "Unlimited B2B template downloads",
+                "f2": "Contract Lifecycle Management (CLM)",
+                "f3": "Lawyer review 5 contracts/month",
+                "f4": "Supports 5 user accounts (with permissions)",
+                "f5": "Tax invoice & Withholding tax",
+                "f6": "E-Signature System (Basic)"
+            },
+            "enterprise": {
+                "title": "Enterprise",
+                "desc": "Flexible and customizable for large organizations",
+                "price": "Custom",
+                "btn": "Contact Sales",
+                "f1": "All features in Pro plan",
+                "f2": "Dedicated corporate consulting lawyer",
+                "f3": "Unlimited contract reviews",
+                "f4": "Unlimited users & storage",
+                "f5": "API integration (ELM/HRIS)",
+                "f6": "2-hour SLA response guarantee",
+                "f7": "E-Signature System (Advanced)"
+            }
+        },
+        "cta": {
+            "title": "Ready to upgrade your company's legal system?",
+            "subtitle": "Join leading companies using Lawslane to manage contracts, mitigate risks, and save time.",
+            "btn": "Contact Our Sales Team"
+        },
+        "contact": {
+            "badge": "Contact Us",
+            "title1": "Let us handle the legal matters",
+            "title2": "for your smooth business operations",
+            "subtitle": "Whether drafting contracts, company registration, or needing a corporate advisor, Lawslane's expert lawyers are ready to consult and take care of your business at every step.",
+            "f1": {
+                "title": "Free Price Estimation",
+                "desc": "Send us your requirements. We help assess the scope and price for free. No upfront costs."
+            },
+            "f2": {
+                "title": "Maximum Confidentiality",
+                "desc": "All information and documents you send will be strictly kept under Confidentiality and PDPA standards."
+            }
+        }
+    },
+    "B2BSidebar": {
+        "adminTitle": "Admin Management",
+        "adminCompanies": "Manage Companies",
+        "adminStats": "System Overview",
+        "dashboardTitle": "Dashboard",
+        "overview": "Overview",
+        "billing": "Billing & Tax",
+        "clm": "Contract Management (CLM)",
+        "vault": "Document Vault",
+        "calendar": "Legal Calendar",
+        "team": "Team Management",
+        "settings": "Settings",
+        "displayMode": "Display Mode",
+        "language": "Language",
+        "logout": "Logout"
     }
 }

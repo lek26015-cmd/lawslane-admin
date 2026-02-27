@@ -21,7 +21,7 @@ export function HomeServicesSection() {
             icon: <ShieldCheck className="w-10 h-10 text-[#0B3979]" />,
             title: t('consultant.title'),
             description: t('consultant.description'),
-            link: "/sme#contact"
+            link: "/b2b#contact"
         },
         {
             icon: <Briefcase className="w-10 h-10 text-[#0B3979]" />,
@@ -33,7 +33,7 @@ export function HomeServicesSection() {
             icon: <Users className="w-10 h-10 text-[#0B3979]" />,
             title: t('dispute.title'),
             description: t('dispute.description'),
-            link: "/sme#contact"
+            link: "/b2b#contact"
         }
     ];
 

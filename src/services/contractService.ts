@@ -25,6 +25,12 @@ export interface ContractData {
     title: string;
     content?: string; // HTML or text description
 
+    // B2B & CLM Fields
+    companyId?: string; // For B2B isolation
+    ownerId: string;    // Creator of the contract
+    category?: 'employment' | 'sales' | 'nda' | 'service' | 'other';
+    notes?: string;
+
     // Structured Data from the Screenshot Parser
     employer: ContractParty;
     contractor: ContractParty;
@@ -35,7 +41,7 @@ export interface ContractData {
     deadline: string;
     paymentTerms?: string;
 
-    status: 'draft' | 'pending' | 'signed' | 'completed';
+    status: 'draft' | 'pending' | 'signed' | 'completed' | 'canceled';
     createdAt: Timestamp;
     updatedAt: Timestamp;
 }
@@ -62,7 +68,7 @@ function cleanObject(obj: any): any {
 
 export const contractService = {
     // Create a new contract
-    async createContract(data: Omit<ContractData, 'id' | 'createdAt' | 'updatedAt' | 'status'>) {
+    async createContract(data: Omit<ContractData, 'id' | 'createdAt' | 'updatedAt'>) {
         const { firestore } = initializeFirebase();
         if (!firestore) throw new Error('Firestore not initialized');
 
@@ -72,7 +78,6 @@ export const contractService = {
         const contract = cleanObject({
             ...data,
             id,
-            status: 'pending',
             createdAt: now,
             updatedAt: now,
         });
@@ -133,6 +138,42 @@ export const contractService = {
             if (doc.exists()) {
                 callback(doc.data() as ContractData);
             }
+        });
+    },
+
+    // Update contract status
+    async updateContractStatus(id: string, status: ContractData['status']) {
+        const { firestore } = initializeFirebase();
+        if (!firestore) throw new Error('Firestore not initialized');
+
+        const docRef = doc(firestore, COLLECTION_NAME, id);
+        const now = serverTimestamp();
+
+        await updateDoc(docRef, {
+            status,
+            updatedAt: now
+        });
+    },
+
+    // Add list method for CLM
+    async getContractsByCompany(companyId: string): Promise<ContractData[]> {
+        const { firestore } = initializeFirebase();
+        if (!firestore) throw new Error('Firestore not initialized');
+
+        const { query, where, getDocs } = await import('firebase/firestore');
+        const q = query(
+            collection(firestore, COLLECTION_NAME),
+            where('companyId', '==', companyId)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const results = querySnapshot.docs.map(doc => doc.data() as ContractData);
+
+        // Sort client-side to avoid requiring a composite index from the user
+        return results.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis?.() || 0;
+            const timeB = b.createdAt?.toMillis?.() || 0;
+            return timeB - timeA;
         });
     }
 };

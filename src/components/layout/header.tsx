@@ -26,34 +26,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { doc, getDoc } from 'firebase/firestore';
 import profileLawyerImg from '@/pic/profile-lawyer.jpg';
 import { NotificationBell } from '@/components/admin/notification-bell';
+import { getMainLink, getBusinessLink } from '@/lib/domain-utils';
 
 
-export default function Header({ setUserRole, domainType = 'main' }: { setUserRole: (role: string | null) => void; domainType?: string }) {
+export default function Header({ setUserRole, domainType = 'main' }: { setUserRole: (role: string | null) => void; domainType?: 'main' | 'lawyer' | 'admin' | 'business' }) {
   const t = useTranslations('Navigation');
   const pathname = usePathname();
-  const isHomePage = pathname === `/` && domainType === 'main';
-
-  const [isScrolled, setIsScrolled] = useState(!isHomePage);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  // Helper to generate links back to main domain
-  const getMainLink = (path: string) => {
-    if (domainType === 'main') return path;
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-
-    // In development, try to use the current window location if available to preserve port
-    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-      const currentHost = window.location.host;
-      // If we are on a subdomain (e.g. lawyer.localhost:9002), strip it to get back to main
-      // This is a simple heuristic; might need adjustment if complex subdomains exist
-      const mainHost = currentHost.replace('lawyer.', '').replace('admin.', '');
-      return `${window.location.protocol}//${mainHost}${path}`;
-    }
-
-    const host = process.env.NODE_ENV === 'development' ? 'localhost:9002' : rootDomain;
-    return `${protocol}://${host}${path}`;
-  };
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const { auth, firestore } = useFirebase();
   const { user, isUserLoading: isLoading } = useAuthUser();
@@ -110,6 +95,9 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
     }
   }, [user, isLoading, firestore, setUserRole]);
 
+  // Home page detection that handles locales
+  const isHomePage = (pathname === '/' || pathname === '/th' || pathname === '/en' || pathname === '/zh') && domainType === 'main';
+
   useEffect(() => {
     if (!isHomePage) {
       if (!isScrolled) setIsScrolled(true);
@@ -127,107 +115,136 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [isHomePage]);
+  }, [isHomePage, isScrolled]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname])
 
-  const useTransparentHeader = isHomePage && !isScrolled;
+  // Ensure stable initial render for hydration
+  const useTransparentHeader = isMounted && isHomePage && !isScrolled;
 
   const { toast } = useToast();
 
   const handleLogout = async () => {
     if (auth) {
+      try {
+        await fetch('/api/auth/session', { method: 'DELETE' });
+      } catch (err) {
+        console.error("Failed to clear session cookie:", err);
+      }
       await signOut(auth);
       toast({
         title: "ออกจากระบบแล้ว!",
         description: "คุณได้ออกจากระบบเรียบร้อยแล้ว",
       });
       // Force redirect to login page after logout
-      if (domainType === 'lawyer') {
-        window.location.href = '/lawyer-login';
-      } else {
-        window.location.href = '/';
-      }
+      window.location.href = '/';
     }
   }
 
   const headerClasses = cn(
-    'sticky top-0 z-50 w-full border-b transition-colors duration-300',
+    'sticky top-0 z-50 w-full transition-all duration-300',
     useTransparentHeader
-      ? 'bg-transparent text-foreground border-transparent'
-      : 'bg-foreground text-background border-foreground'
+      ? 'bg-transparent text-white border-transparent'
+      : 'bg-white/95 backdrop-blur-md text-slate-900 border-slate-200 shadow-sm border-b'
   );
 
   const navLinkClasses = cn(
-    'transition-colors',
+    'transition-colors font-medium leading-none',
     useTransparentHeader
-      ? 'text-foreground/60 hover:text-foreground'
-      : 'text-background/80 hover:text-background'
+      ? 'text-white/70 hover:text-white'
+      : 'text-slate-600 hover:text-[#0B3979]'
   );
 
   const activeNavLinkClasses = cn(
-    'font-semibold',
-    useTransparentHeader ? 'text-foreground' : 'text-background'
+    'font-bold',
+    useTransparentHeader ? 'text-white' : 'text-[#0B3979]'
   );
 
   const loginButtonClasses = cn(
-    useTransparentHeader ? '' : 'text-background hover:text-background hover:bg-white/10'
+    useTransparentHeader ? '' : 'text-slate-700 hover:text-[#0B3979] hover:bg-slate-50'
   );
 
   const searchInputClasses = cn(
     "w-full rounded-full border focus:ring-primary pl-4 pr-12 h-12 transition-colors",
     useTransparentHeader
       ? "bg-background/20 border-foreground/30 text-foreground placeholder:text-foreground/70 focus:bg-background/80"
-      : "bg-background/20 border-foreground/30 text-background placeholder:text-background/70 focus:bg-background/30"
+      : "bg-slate-100 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white"
   )
 
 
   return (
     <header className={headerClasses}>
       <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
-        <Logo href={getMainLink('/')} variant={useTransparentHeader ? 'color' : 'white'} className={cn(useTransparentHeader ? '' : 'text-background')} />
+        <Logo
+          href={getMainLink('/', domainType, !isMounted)}
+          variant={useTransparentHeader ? "white" : "color"}
+          className={cn(useTransparentHeader ? 'text-white' : 'text-[#0B3979]')}
+          subtitle={domainType === 'business' ? "Business ELM" : undefined}
+        />
 
 
 
         <div className="hidden xl:flex items-center gap-6">
           <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
-            <DropdownMenu>
-              <DropdownMenuTrigger className={cn("flex items-center gap-1 font-medium focus:outline-none", navLinkClasses)}>
-                {t('forSME')} <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem asChild>
-                  <Link href="/services/contracts">{t('smeMenu.contracts')}</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/sme#contact">{t('smeMenu.consultant')}</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/services/registration">{t('smeMenu.registration')}</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/sme#contact">{t('smeMenu.dispute')}</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Link href={getMainLink('/lawyers')} className={pathname.startsWith(`/lawyers`) ? activeNavLinkClasses : navLinkClasses}>
+            {isMounted && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className={cn("flex items-center gap-1 font-medium focus:outline-none", navLinkClasses)}>
+                  {t('forB2B')} <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56 p-2">
+                  <DropdownMenuLabel className="text-blue-700 font-bold bg-blue-50/50 rounded-md">Corporate Plans</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <a href={getBusinessLink('/dashboard', domainType)} className="font-bold text-blue-700 w-full flex items-center px-2 py-1.5">{t('b2bMenu.dashboard')}</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <a href={getBusinessLink('/', domainType)} className="w-full flex items-center px-2 py-1.5">{t('b2bMenu.pricing')}</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <a href={getBusinessLink('/clm', domainType)} className="w-full flex items-center px-2 py-1.5">{t('b2bMenu.clm')}</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={getMainLink('/forms', domainType)}>{t('b2bMenu.templates')}</Link>
+                  </DropdownMenuItem>
+
+                  <div className="mt-2 mb-1">
+                    <DropdownMenuLabel className="text-slate-500 font-bold bg-slate-50 rounded-md">SME Solutions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                  </div>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={getMainLink('/services/contracts', domainType)}>{t('smeMenu.contracts')}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={getMainLink('/services/registration', domainType)}>{t('smeMenu.registration')}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={getMainLink('/b2b#contact', domainType)}>{t('smeMenu.consultant')}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={getMainLink('/b2b#contact', domainType)}>{t('smeMenu.dispute')}</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Link href={getMainLink('/lawyers', domainType)} className={pathname.startsWith(`/lawyers`) ? activeNavLinkClasses : navLinkClasses}>
               {t('findLawyer')}
             </Link>
-            <Link href={getMainLink('/verify-lawyer')} className={pathname.startsWith(`/verify-lawyer`) ? activeNavLinkClasses : navLinkClasses}>
+            <Link href={getMainLink('/verify-lawyer', domainType)} className={pathname.startsWith(`/verify-lawyer`) ? activeNavLinkClasses : navLinkClasses}>
               {t('verifyLawyer')}
             </Link>
-            <Link href={getMainLink('/articles')} className={pathname.startsWith(`/articles`) ? activeNavLinkClasses : navLinkClasses}>
+            <Link href={getMainLink('/articles', domainType)} className={pathname.startsWith(`/articles`) ? activeNavLinkClasses : navLinkClasses}>
               {t('articles')}
             </Link>
-            <Link href={getMainLink('/forms')} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
+            <Link href={getMainLink('/forms', domainType)} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
               {t('forms')}
             </Link>
-            <Link href={getMainLink('/services/contracts/screenshot')} className={pathname.startsWith(`/services/contracts/screenshot`) ? activeNavLinkClasses : navLinkClasses}>
+            <Link href={getMainLink('/services/contracts/screenshot', domainType)} className={pathname.startsWith(`/services/contracts/screenshot`) ? activeNavLinkClasses : navLinkClasses}>
               <span className="flex items-center gap-1"><Camera className="h-4 w-4" />{t('capAndDeal')}</span>
             </Link>
-            <Link href={getMainLink('/for-lawyers')} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
+            <Link href={getMainLink('/for-lawyers', domainType)} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
               {t('forLawyers')}
             </Link>
           </nav>
@@ -293,7 +310,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
             ) : (
               <Link href="/login">
                 <Button className={cn(
-                  "rounded-full px-8 h-10 font-bold shadow-lg transition-all transform hover:scale-105",
+                  "rounded-full px-8 h-10 font-bold shadow-lg transition-all transform hover:scale-105 leading-none",
                   useTransparentHeader
                     ? "bg-[#0B3979] text-white border-2 border-white/20 hover:bg-[#082a5a]"
                     : "bg-[#0B3979] text-white hover:bg-[#082a5a]"
@@ -303,22 +320,22 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
               </Link>
             )}
             {user && (
-              <div className={cn(useTransparentHeader ? "text-foreground" : "text-background")}>
+              <div className={cn(useTransparentHeader ? "text-white" : "text-slate-900")}>
                 <NotificationBell recipientId={role === 'admin' || role === 'Super Admin' ? 'admin' : user.uid} />
               </div>
             )}
             <div className={cn(
               "transition-all duration-300 ease-in-out ml-2",
-              useTransparentHeader ? "text-foreground" : "text-background"
+              useTransparentHeader ? "text-white" : "text-slate-900"
             )}>
               <LanguageSwitcher
                 className={cn(
-                  "h-9 px-3 text-sm",
+                  "h-9 px-3 text-sm flex items-center",
                   useTransparentHeader
-                    ? "text-foreground border-foreground/20 bg-foreground/5 hover:bg-foreground/10"
-                    : "text-white border-white/20 bg-white/10 hover:bg-white/20"
+                    ? "text-white border-white/20 bg-white/10 hover:bg-white/20"
+                    : "text-slate-900 border-slate-200 bg-slate-100 hover:bg-slate-200"
                 )}
-                iconClassName={useTransparentHeader ? "text-foreground" : "text-white"}
+                iconClassName={useTransparentHeader ? "text-white" : "text-slate-900"}
               />
             </div>
           </div>
@@ -327,16 +344,16 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
         <div className="flex items-center gap-2 xl:hidden">
           <div className={cn(
             "transition-all duration-300 ease-in-out mr-1",
-            useTransparentHeader ? "text-foreground" : "text-background"
+            useTransparentHeader ? "text-white" : "text-slate-900"
           )}>
             <LanguageSwitcher
               className={cn(
-                "h-8 px-2 text-xs",
+                "h-8 px-2 text-xs flex items-center",
                 useTransparentHeader
-                  ? "text-foreground border-foreground/20 bg-foreground/5 hover:bg-foreground/10"
-                  : "text-white border-white/20 bg-white/10 hover:bg-white/20"
+                  ? "text-white border-white/20 bg-white/10 hover:bg-white/20"
+                  : "text-slate-900 border-slate-200 bg-slate-100 hover:bg-slate-200"
               )}
-              iconClassName={useTransparentHeader ? "text-foreground" : "text-white"}
+              iconClassName={useTransparentHeader ? "text-white" : "text-slate-900"}
             />
           </div>
           {user ? (
@@ -364,27 +381,38 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
             <SheetContent side="left" className="p-0 flex flex-col h-full">
               <SheetHeader className="p-6 pb-0">
                 <SheetTitle>
-                  <Logo href={getMainLink('/')} variant="color" />
+                  <Logo
+                    href={getMainLink('/', domainType, !isMounted)}
+                    variant="color"
+                    subtitle={domainType === 'business' ? "Business ELM" : undefined}
+                  />
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-6 p-6 overflow-y-auto flex-1">
                 <nav className="flex flex-col gap-4 text-lg mt-6">
-                  <Link href={getMainLink('/')} className="hover:text-primary">{t('home')}</Link>
+                  <Link href={getMainLink('/', domainType, !isMounted)} className="hover:text-primary">{t('home')}</Link>
 
                   <div className="flex flex-col gap-2 py-2">
-                    <span className="font-semibold">{t('forSME')}</span>
-                    <Link href="/services/contracts" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.contracts')}</Link>
-                    <Link href="/sme#contact" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.consultant')}</Link>
-                    <Link href="/services/registration" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.registration')}</Link>
-                    <Link href="/sme#contact" className="pl-4 text-base hover:text-primary text-muted-foreground">{t('smeMenu.dispute')}</Link>
+                    <span className="font-semibold text-lg">{t('forB2B')}</span>
+
+                    <span className="pl-4 text-sm font-semibold text-blue-600 mt-2">Corporate Plans</span>
+                    <a href={getBusinessLink('/', domainType, !isMounted)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('b2bMenu.pricing')}</a>
+                    <a href={getBusinessLink('/clm', domainType, !isMounted)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('b2bMenu.clm')}</a>
+                    <a href={getBusinessLink('/forms', domainType, !isMounted)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('b2bMenu.templates')}</a>
+
+                    <span className="pl-4 text-sm font-semibold text-slate-500 mt-2">SME Solutions</span>
+                    <Link href={getMainLink('/services/contracts', domainType)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('smeMenu.contracts')}</Link>
+                    <Link href={getMainLink('/services/registration', domainType)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('smeMenu.registration')}</Link>
+                    <Link href={getMainLink('/b2b#contact', domainType)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('smeMenu.consultant')}</Link>
+                    <Link href={getMainLink('/b2b#contact', domainType)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('smeMenu.dispute')}</Link>
                   </div>
 
-                  <Link href={getMainLink('/articles')} className="hover:text-primary">{t('articles')}</Link>
-                  <Link href={getMainLink('/forms')} className="hover:text-primary">{t('forms')}</Link>
-                  <Link href={getMainLink('/services/contracts/screenshot')} className="flex items-center gap-2 hover:text-primary"><Camera className="h-5 w-5" />{t('capAndDeal')}</Link>
-                  <Link href={getMainLink('/for-lawyers')} className="hover:text-primary">{t('forLawyers')}</Link>
-                  <Link href={getMainLink('/lawyers')} className="hover:text-primary">{t('findLawyer')}</Link>
-                  <Link href={getMainLink('/verify-lawyer')} className="hover:text-primary">{t('verifyLawyer')}</Link>
+                  <Link href={getMainLink('/articles', domainType)} className="hover:text-primary">{t('articles')}</Link>
+                  <Link href={getMainLink('/forms', domainType)} className="hover:text-primary">{t('forms')}</Link>
+                  <Link href={getMainLink('/services/contracts/screenshot', domainType)} className="flex items-center gap-2 hover:text-primary"><Camera className="h-5 w-5" />{t('capAndDeal')}</Link>
+                  <Link href={getMainLink('/for-lawyers', domainType)} className="hover:text-primary">{t('forLawyers')}</Link>
+                  <Link href={getMainLink('/lawyers', domainType)} className="hover:text-primary">{t('findLawyer')}</Link>
+                  <Link href={getMainLink('/verify-lawyer', domainType)} className="hover:text-primary">{t('verifyLawyer')}</Link>
                 </nav>
                 <div className="border-t pt-6">
                   {user ? (
@@ -432,7 +460,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
           </Sheet>
         </div>
 
-      </div>
+      </div >
     </header >
   );
 }

@@ -22,13 +22,15 @@ import type { LawyerProfile, HumanChatMessage } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Sparkles, Languages } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useChat } from '@/context/chat-context';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { translateToMultipleLanguages } from '@/app/actions/translate';
+import { QuickReplies } from './quick-replies';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface ChatBoxProps {
   firestore: Firestore;
@@ -143,6 +145,16 @@ export function ChatBox({
       };
 
       addDoc(messagesColRef, messageData)
+        .then(() => {
+          // Update parent chat document
+          const chatRef = doc(firestore, 'chats', chatId);
+          updateDoc(chatRef, {
+            lastMessage: initialChatMessage,
+            lastMessageAt: serverTimestamp(),
+            hasNewMessage: isLawyerView ? false : true,
+            lawyerReadAt: isLawyerView ? serverTimestamp() : null
+          }).catch(console.error);
+        })
         .catch(serverError => {
           const permissionError = new FirestorePermissionError({
             path: messagesColRef.path,
@@ -223,7 +235,7 @@ export function ChatBox({
     updateDoc(chatRef, {
       lastMessage: input,
       lastMessageAt: serverTimestamp(),
-      ...(isLawyerView ? { lawyerReadAt: serverTimestamp() } : { hasNewMessage: true }) // Optional: flag for unread status
+      ...(isLawyerView ? { lawyerReadAt: serverTimestamp(), hasNewMessage: false } : { hasNewMessage: true })
     }).catch(console.error);
 
     // Create Notification for the other user
@@ -280,7 +292,11 @@ export function ChatBox({
       <CardHeader className="border-b">
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle className="text-xl">คดี: มรดก</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-xl">คดี: มรดก</CardTitle>
+              <span className="text-xs font-mono text-muted-foreground">({chatId})</span>
+              <CopyButton value={chatId} className="h-4 w-4" />
+            </div>
             <p className="text-sm text-muted-foreground">
               {isLawyerView ? `เคสของ ${otherUser.name}` : `สนทนากับ ${otherUser.name}`}
             </p>
@@ -291,12 +307,24 @@ export function ChatBox({
               <span>ทนายอ่านแล้ว</span>
             </div>
           )}
+          {isLawyerView && (
+            <QuickReplies onSelect={(text) => setInput(text)} />
+          )}
         </div>
       </CardHeader>
 
       <CardContent className="flex-grow p-0 flex flex-col min-h-0">
         <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
           <div className="space-y-6">
+            {/* Payment Warning Warning Banner */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-red-800 shadow-sm animate-pulse-slow">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
+              <div className="text-sm">
+                <p className="font-bold">คำเตือนเพื่อความปลอดภัย</p>
+                <p>ห้ามโอนเงินหรือตกลงค่าใช้จ่ายนอกระบบ Lawlanes โดยเด็ดขาด เพื่อป้องกันการถูกหลอกลวงและความคุ้มครองจากแพลตฟอร์ม</p>
+              </div>
+            </div>
+
             {/* Show Summary to BOTH Lawyer and Client */}
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">

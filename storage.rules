@@ -44,6 +44,14 @@ service firebase.storage {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // B2B Company Vault — any authenticated user can access their company docs
+    // (companyId ownership is enforced at the Firestore rules / service layer)
+    match /companies/{companyId}/vault/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
     // Default: deny everything else
     match /{allPaths=**} {
       allow read, write: if false;

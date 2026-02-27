@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useRef } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,10 +34,10 @@ const formSchema = z.object({
   }),
 });
 
-import { useRef } from 'react';
-
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
   // const params = useParams(); // Removed lang param
   // const lang = params.lang as Locale; // Removed lang param
   const { auth, firestore } = useFirebase();
@@ -79,6 +79,14 @@ export default function SignupPage() {
       // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+
+      // Create server-side session cookie
+      const idToken = await user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
 
       // 2. Update user profile in Firebase Auth
       await updateProfile(user, { displayName: values.name });
@@ -127,7 +135,12 @@ export default function SignupPage() {
         description: 'กำลังนำคุณไปยังแดชบอร์ด...',
       });
 
-      router.push(`/dashboard`);
+      const target = redirectUrl || '/dashboard';
+      if (target.startsWith('http')) {
+        window.location.href = target;
+      } else {
+        router.push(target);
+      }
 
     } catch (error: any) {
       console.error(error);
@@ -155,6 +168,14 @@ export default function SignupPage() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      // Create server-side session cookie
+      const idToken = await user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
 
       // Check if user profile already exists
       const userRef = doc(firestore, 'users', user.uid);
@@ -184,7 +205,12 @@ export default function SignupPage() {
         title: 'ลงชื่อเข้าใช้ด้วย Google สำเร็จ',
         description: 'กำลังนำคุณไปยังแดชบอร์ด...',
       });
-      router.push(`/dashboard`);
+      const target = redirectUrl || '/dashboard';
+      if (target.startsWith('http')) {
+        window.location.href = target;
+      } else {
+        router.push(target);
+      }
 
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
