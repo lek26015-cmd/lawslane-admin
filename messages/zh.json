@@ -137,6 +137,13 @@
         },
         "scrollToTop": "回到顶部"
     },
+    "ComingSoon": {
+        "title": "业务解决方案即将推出",
+        "subtitle": "为未来提升法律管理",
+        "description": "我们正在为企业构建最全面的平台，以简化并增强每项业务的合同管理和法律咨询。",
+        "backHome": "回到首页",
+        "contactSales": "联系销售人员"
+    },
     "VerifyLawyer": {
         "backToHome": "返回首页",
         "title": "验证",

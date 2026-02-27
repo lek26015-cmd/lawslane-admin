@@ -129,6 +129,13 @@
         "backHome": "Back to Home",
         "contactSupport": "Contact Support"
     },
+    "ComingSoon": {
+        "title": "Business Solutions Coming Soon",
+        "subtitle": "Elevating Legal Management for the Future",
+        "description": "We are building the most comprehensive platform for corporations to simplify and empower contract management and legal consulting for every business.",
+        "backHome": "Back to Home",
+        "contactSales": "Contact Sales"
+    },
     "Navigation": {
         "forSME": "For SME",
         "forB2B": "For B2B",

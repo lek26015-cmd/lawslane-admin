@@ -52,56 +52,13 @@ export default async function middleware(request: NextRequest) {
                 }
             }
 
-            // Business subdomain maps to B2B landing and ELM dashboard
+            // Business subdomain maps to Coming Soon page on production
             const localeMatch = pathname.match(/^\/(th|en|zh)(\/|$)/);
             const locale = localeMatch ? localeMatch[1] : 'th';
-            const pathWithoutLocale = localeMatch ? pathname.replace(/^\/(th|en|zh)/, '') : pathname;
 
-            // 1. Root on subdomain -> B2B Landing Page
-            if (pathWithoutLocale === '/' || pathWithoutLocale === '') {
-                const newPath = `/${locale}/b2b`.replace(/\/+$/, '') || '/th/b2b';
-                return NextResponse.rewrite(new URL(newPath, request.url));
-            }
-
-            // 2. /dashboard etc on subdomain -> B2B Dashboard (/dashboard/b2b)
-            if (pathWithoutLocale.startsWith('/dashboard') ||
-                pathWithoutLocale.startsWith('/billing') ||
-                pathWithoutLocale.startsWith('/team') ||
-                pathWithoutLocale.startsWith('/vault') ||
-                pathWithoutLocale.startsWith('/calendar') ||
-                pathWithoutLocale.startsWith('/settings') ||
-                pathWithoutLocale.startsWith('/admin')) {
-
-                let subPath = pathWithoutLocale;
-                if (pathWithoutLocale.startsWith('/dashboard')) {
-                    subPath = pathWithoutLocale.replace(/^\/dashboard/, '');
-                }
-
-                // Clean up /b2b if it is already present to prevent duplicate /b2b/b2b paths
-                if (subPath.startsWith('/b2b')) {
-                    subPath = subPath.replace(/^\/b2b/, '');
-                }
-
-                // If subPath is empty (root of dashboard), just go to /dashboard/b2b
-                const targetPath = !subPath || subPath === '/'
-                    ? '/dashboard/b2b'
-                    : `/dashboard/b2b${subPath.startsWith('/') ? subPath : '/' + subPath}`;
-
-                const newPath = `/${locale}${targetPath}`.replace(/\/\//g, '/');
-                return NextResponse.rewrite(new URL(newPath, request.url));
-            }
-
-            // 3. /login on subdomain -> B2B Login Page
-            if (pathWithoutLocale === '/login') {
-                const newPath = `/${locale}/dashboard/b2b/login`;
-                return NextResponse.rewrite(new URL(newPath, request.url));
-            }
-
-            // 4. /clm on subdomain -> /dashboard/clm
-            if (pathWithoutLocale.startsWith('/clm')) {
-                const newPath = `/${locale}/dashboard${pathWithoutLocale}`.replace(/\/\//g, '/');
-                return NextResponse.rewrite(new URL(newPath, request.url));
-            }
+            // Rewrite all business subdomain requests to the beautiful coming-soon page
+            const newPath = `/${locale}/coming-soon`;
+            return NextResponse.rewrite(new URL(newPath, request.url));
 
             // For other paths, try to serve them directly or default to dashboard
             // But we already handled the main ones.
