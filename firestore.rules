@@ -25,6 +25,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow write: if isOwner(userId) || isAdmin();
+
+      match /integrations/{integrationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /lawyerProfiles/{lawyerId} {

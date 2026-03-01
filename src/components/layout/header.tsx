@@ -181,13 +181,31 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
           href={getMainLink('/', domainType, !isMounted)}
           variant={useTransparentHeader ? "white" : "color"}
           className={cn(useTransparentHeader ? 'text-white' : 'text-[#0B3979]')}
-          subtitle={domainType === 'business' ? "Business ELM" : undefined}
+          subtitle={domainType === 'business' ? "legal os" : undefined}
         />
 
 
 
         <div className="hidden xl:flex items-center gap-6">
           <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
+            <Link href={getMainLink('/lawyers', domainType)} className={pathname.startsWith(`/lawyers`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('findLawyer')}
+            </Link>
+            <Link href={getMainLink('/verify-lawyer', domainType)} className={pathname.startsWith(`/verify-lawyer`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('verifyLawyer')}
+            </Link>
+            <Link href={getMainLink('/forms', domainType)} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('forms')}
+            </Link>
+            <Link href={getMainLink('/services/contracts/screenshot', domainType)} className={pathname.startsWith(`/services/contracts/screenshot`) ? activeNavLinkClasses : navLinkClasses}>
+              <span className="flex items-center gap-1"><Camera className="h-4 w-4" />{t('capAndDeal')}</span>
+            </Link>
+            <Link href={getMainLink('/articles', domainType)} className={pathname.startsWith(`/articles`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('articles')}
+            </Link>
+            <Link href={getMainLink('/for-lawyers', domainType)} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
+              {t('forLawyers')}
+            </Link>
             {isMounted && (
               <DropdownMenu>
                 <DropdownMenuTrigger className={cn("flex items-center gap-1 font-medium focus:outline-none", navLinkClasses)}>
@@ -195,10 +213,6 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56 p-2">
                   <DropdownMenuLabel className="text-blue-700 font-bold bg-blue-50/50 rounded-md">Corporate Plans</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <a href={getBusinessLink('/dashboard', domainType)} className="font-bold text-blue-700 w-full flex items-center px-2 py-1.5">{t('b2bMenu.dashboard')}</a>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <a href={getBusinessLink('/', domainType)} className="w-full flex items-center px-2 py-1.5">{t('b2bMenu.pricing')}</a>
@@ -229,24 +243,6 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <Link href={getMainLink('/lawyers', domainType)} className={pathname.startsWith(`/lawyers`) ? activeNavLinkClasses : navLinkClasses}>
-              {t('findLawyer')}
-            </Link>
-            <Link href={getMainLink('/verify-lawyer', domainType)} className={pathname.startsWith(`/verify-lawyer`) ? activeNavLinkClasses : navLinkClasses}>
-              {t('verifyLawyer')}
-            </Link>
-            <Link href={getMainLink('/articles', domainType)} className={pathname.startsWith(`/articles`) ? activeNavLinkClasses : navLinkClasses}>
-              {t('articles')}
-            </Link>
-            <Link href={getMainLink('/forms', domainType)} className={pathname.startsWith(`/forms`) ? activeNavLinkClasses : navLinkClasses}>
-              {t('forms')}
-            </Link>
-            <Link href={getMainLink('/services/contracts/screenshot', domainType)} className={pathname.startsWith(`/services/contracts/screenshot`) ? activeNavLinkClasses : navLinkClasses}>
-              <span className="flex items-center gap-1"><Camera className="h-4 w-4" />{t('capAndDeal')}</span>
-            </Link>
-            <Link href={getMainLink('/for-lawyers', domainType)} className={pathname.startsWith(`/for-lawyers`) ? activeNavLinkClasses : navLinkClasses}>
-              {t('forLawyers')}
-            </Link>
           </nav>
 
           <div className="hidden items-center gap-2 md:flex ml-4 whitespace-nowrap">
@@ -365,7 +361,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
             </Link>
           ) : (
             <Link href="/login">
-              <Button variant="ghost" size="icon" className={cn(useTransparentHeader ? 'text-foreground' : 'text-background')}>
+              <Button variant="ghost" size="icon" className={cn(useTransparentHeader ? 'text-white' : 'text-foreground')}>
                 <User className="w-5 h-5" />
                 <span className="sr-only">{t('login')}</span>
               </Button>
@@ -373,7 +369,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
           )}
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn(useTransparentHeader ? 'text-foreground' : 'text-background')}>
+              <Button variant="ghost" size="icon" className={cn(useTransparentHeader ? 'text-white' : 'text-foreground')}>
                 <Menu />
                 <span className="sr-only">เปิดเมนู</span>
               </Button>
@@ -384,13 +380,19 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                   <Logo
                     href={getMainLink('/', domainType, !isMounted)}
                     variant="color"
-                    subtitle={domainType === 'business' ? "Business ELM" : undefined}
+                    subtitle={domainType === 'business' ? "legal os" : undefined}
                   />
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-6 p-6 overflow-y-auto flex-1">
                 <nav className="flex flex-col gap-4 text-lg mt-6">
                   <Link href={getMainLink('/', domainType, !isMounted)} className="hover:text-primary">{t('home')}</Link>
+                  <Link href={getMainLink('/lawyers', domainType)} className="hover:text-primary">{t('findLawyer')}</Link>
+                  <Link href={getMainLink('/verify-lawyer', domainType)} className="hover:text-primary">{t('verifyLawyer')}</Link>
+                  <Link href={getMainLink('/forms', domainType)} className="hover:text-primary">{t('forms')}</Link>
+                  <Link href={getMainLink('/services/contracts/screenshot', domainType)} className="flex items-center gap-2 hover:text-primary"><Camera className="h-5 w-5" />{t('capAndDeal')}</Link>
+                  <Link href={getMainLink('/articles', domainType)} className="hover:text-primary">{t('articles')}</Link>
+                  <Link href={getMainLink('/for-lawyers', domainType)} className="hover:text-primary">{t('forLawyers')}</Link>
 
                   <div className="flex flex-col gap-2 py-2">
                     <span className="font-semibold text-lg">{t('forB2B')}</span>
@@ -406,13 +408,6 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
                     <Link href={getMainLink('/b2b#contact', domainType)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('smeMenu.consultant')}</Link>
                     <Link href={getMainLink('/b2b#contact', domainType)} className="pl-6 text-base hover:text-primary text-muted-foreground" onClick={() => setIsMobileMenuOpen(false)}>{t('smeMenu.dispute')}</Link>
                   </div>
-
-                  <Link href={getMainLink('/articles', domainType)} className="hover:text-primary">{t('articles')}</Link>
-                  <Link href={getMainLink('/forms', domainType)} className="hover:text-primary">{t('forms')}</Link>
-                  <Link href={getMainLink('/services/contracts/screenshot', domainType)} className="flex items-center gap-2 hover:text-primary"><Camera className="h-5 w-5" />{t('capAndDeal')}</Link>
-                  <Link href={getMainLink('/for-lawyers', domainType)} className="hover:text-primary">{t('forLawyers')}</Link>
-                  <Link href={getMainLink('/lawyers', domainType)} className="hover:text-primary">{t('findLawyer')}</Link>
-                  <Link href={getMainLink('/verify-lawyer', domainType)} className="hover:text-primary">{t('verifyLawyer')}</Link>
                 </nav>
                 <div className="border-t pt-6">
                   {user ? (

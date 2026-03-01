@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTranslations } from 'next-intl';
 
 export function SmeContactForm() {
+    const [mounted, setMounted] = useState(false);
     const t = useTranslations('SMEContactForm');
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +30,10 @@ export function SmeContactForm() {
         email: '',
         serviceType: ''
     });
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -74,6 +79,8 @@ export function SmeContactForm() {
             }
 
             const { firestore: db } = initializeFirebase();
+            if (!db) throw new Error("Firestore not initialized");
+
             await addDoc(collection(db, 'smeRequests'), {
                 ...formData,
                 fileUrl,
@@ -172,18 +179,22 @@ export function SmeContactForm() {
 
                     <div className="space-y-2">
                         <Label htmlFor="serviceType" className="text-base font-medium">{t('labels.serviceType')}</Label>
-                        <Select onValueChange={handleSelectChange} value={formData.serviceType}>
-                            <SelectTrigger className="h-12">
-                                <SelectValue placeholder={t('labels.serviceTypePlaceholder')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="contract">{t('serviceTypes.contract')}</SelectItem>
-                                <SelectItem value="advisor">{t('serviceTypes.advisor')}</SelectItem>
-                                <SelectItem value="registration">{t('serviceTypes.registration')}</SelectItem>
-                                <SelectItem value="dispute">{t('serviceTypes.dispute')}</SelectItem>
-                                <SelectItem value="other">{t('serviceTypes.other')}</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {mounted ? (
+                            <Select onValueChange={handleSelectChange} value={formData.serviceType}>
+                                <SelectTrigger className="h-12">
+                                    <SelectValue placeholder={t('labels.serviceTypePlaceholder')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="contract">{t('serviceTypes.contract')}</SelectItem>
+                                    <SelectItem value="advisor">{t('serviceTypes.advisor')}</SelectItem>
+                                    <SelectItem value="registration">{t('serviceTypes.registration')}</SelectItem>
+                                    <SelectItem value="dispute">{t('serviceTypes.dispute')}</SelectItem>
+                                    <SelectItem value="other">{t('serviceTypes.other')}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <div className="h-12 w-full border border-input rounded-md bg-background animate-pulse" />
+                        )}
                     </div>
 
                     <div className="space-y-2">

@@ -36,7 +36,7 @@ export default function Logo({ className, href, variant = 'color', showText = tr
           )}
           {subtitle && (
             <span className={cn(
-              "text-[10px] font-bold uppercase tracking-widest mt-0.5 transition-colors leading-none",
+              "text-[10px] font-bold tracking-widest mt-0.5 transition-colors leading-none",
               variant === 'white' ? "text-white/60" : "text-blue-600"
             )}>
               {subtitle}

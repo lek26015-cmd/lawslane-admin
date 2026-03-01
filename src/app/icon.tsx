@@ -25,7 +25,7 @@ export default function Icon() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#003654', // Primary color from globals.css
+                    color: '#002f4b', // Primary color from globals.css
                 }}
             >
                 <Scale width={24} height={24} />

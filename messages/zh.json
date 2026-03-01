@@ -846,11 +846,11 @@
         "overview": {
             "errorLoading": "加载数据时发生错误",
             "retry": "重试",
-            "welcomeTitle": "欢迎使用 Lawslane 企业数字化法律管理 (ELM)",
+            "welcomeTitle": "欢迎使用 Lawslane 企业数字化法律管理 (Legal OS)",
             "welcomeSubtitle": "开始创建您的组织，以专业地管理合同和团队",
             "creating": "正在创建...",
             "createProfile": "创建公司档案",
-            "title": "ELM 控制面板",
+            "title": "Legal OS 控制面板",
             "welcomeBack": "欢迎回来, {name}",
             "manageAccount": "管理账户",
             "stats": {
@@ -1079,7 +1079,7 @@
             },
             "stats": {
                 "title": "系统概览 (管理员)",
-                "subtitle": "当前 B2B ELM 在整个平台的使用摘要",
+                "subtitle": "当前 Legal OS 在整个平台的使用摘要",
                 "systemStats": "系统统计",
                 "totalCompanies": "公司总数",
                 "usersInSystem": "系统用户数",
@@ -1158,7 +1158,7 @@
                 "f2": "专属企业咨询律师",
                 "f3": "无限量合同审核",
                 "f4": "无限用户及存储空间",
-                "f5": "API 集成 (ELM/HRIS)",
+                "f5": "API 集成 (Legal OS/HRIS)",
                 "f6": "2小时SLA响应保证",
                 "f7": "电子签名系统 (高级版)"
             }

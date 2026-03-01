@@ -1,9 +1,9 @@
 'use client';
 
+import React, { useTransition, useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { usePathname as useIntlPathname, useRouter as useIntlRouter } from '@/navigation';
 import { useRouter as useStandardRouter, usePathname as useStandardPathname } from 'next/navigation';
-import { useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,12 +26,17 @@ const languages = {
 };
 
 export default function LanguageSwitcher({ className, iconClassName }: LanguageSwitcherProps) {
+    const [mounted, setMounted] = useState(false);
     const locale = useLocale();
     const router = useIntlRouter();
     const standardRouter = useStandardRouter();
     const pathname = useIntlPathname();
     const standardPathname = useStandardPathname();
     const [isPending, startTransition] = useTransition();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const onSelectChange = (nextLocale: string) => {
         startTransition(() => {
@@ -52,6 +57,25 @@ export default function LanguageSwitcher({ className, iconClassName }: LanguageS
     };
 
     const currentLang = languages[locale as keyof typeof languages] || languages.th;
+
+    if (!mounted) {
+        return (
+            <Button
+                variant="ghost"
+                disabled
+                className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-full border transition-all duration-300",
+                    "bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20",
+                    "text-white font-medium shadow-lg hover:shadow-xl hover:scale-105",
+                    className
+                )}
+            >
+                <span className="text-xl leading-none opacity-50">🌐</span>
+                <span className={cn("uppercase leading-none opacity-50", iconClassName)}>--</span>
+                <ChevronDown className={cn("w-4 h-4 opacity-50 shrink-0", iconClassName)} />
+            </Button>
+        );
+    }
 
     return (
         <DropdownMenu>
