@@ -79,16 +79,10 @@ export default async function middleware(request: NextRequest) {
             return NextResponse.redirect(`${protocol}://${targetHost}${newPath}`);
         }
 
-        if (pathname.includes('/dashboard/b2b')) {
-            const newPath = pathname.replace(/^\/(th|en|zh)?\/dashboard\/b2b/, '') || '/dashboard';
-            const targetHost = `business.${rootDomain}${portSuffix}`;
-            return NextResponse.redirect(`${protocol}://${targetHost}${newPath}`);
-        }
-
-        if (pathname.match(/^\/(th|en|zh)?\/b2b/)) {
-            const newPath = pathname.replace(/^\/(th|en|zh)?\/b2b/, '') || '/';
-            const targetHost = `business.${rootDomain}${portSuffix}`;
-            return NextResponse.redirect(`${protocol}://${targetHost}${newPath}`);
+        if (pathname.includes('/dashboard/b2b') || pathname.match(/^\/(th|en|zh)?\/b2b/)) {
+            const localeMatch = pathname.match(/^\/(th|en|zh)(\/|$)/);
+            const locale = localeMatch ? localeMatch[1] : 'th';
+            return NextResponse.redirect(new URL(`/${locale}/coming-soon`, request.url));
         }
     }
 
