@@ -51,12 +51,14 @@ export default function ClientLayout({
     }
   }, [domainType, activeDomainType]);
 
-  const isDashboardPage =
+  const isLawyerPage = pathname.includes('/lawyer-') || pathname.startsWith('/lawyers');
+
+  const isDashboardPage = !isLawyerPage && (
     (activeDomainType === 'admin') ||
     (activeDomainType === 'business') || // Hide global header/footer for all business subdomain pages
     pathname.includes('/b2b') || // Hide global header/footer for B2B landing page
-    pathname.includes('/lawyer-dashboard') ||
-    pathname.match(/^\/(th|en|zh)?\/admin/);
+    pathname.match(/^\/(th|en|zh)?\/admin/)
+  );
 
   if (isDashboardPage) {
     return <>{children}</>;
