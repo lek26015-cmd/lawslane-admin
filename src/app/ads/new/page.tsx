@@ -103,7 +103,7 @@ export default function AdminAdCreatePage() {
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const adminAdsPath = `/admin/ads`;
+  const adminAdsPath = `/ads`;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -134,7 +134,7 @@ export default function AdminFormEditPage() {
         en: null,
         zh: null,
     });
-    const adminFormsPath = `/admin/forms`;
+    const adminFormsPath = `/forms`;
 
     React.useEffect(() => {
         if (!firestore || !id) return;

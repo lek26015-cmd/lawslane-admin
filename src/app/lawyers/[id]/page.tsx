@@ -254,7 +254,7 @@ export default function AdminLawyerDetailPage() {
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
         <div className="flex items-center gap-4">
-          <Link href="/admin/lawyers">
+          <Link href="/lawyers">
             <Button variant="outline" size="icon" className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -267,7 +267,7 @@ export default function AdminLawyerDetailPage() {
             {statusBadges[lawyer.status]}
           </div>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href={`/admin/lawyers/${id}/edit`}>
+            <Link href={`/lawyers/${id}/edit`}>
               <Button variant="outline" size="sm">แก้ไขข้อมูล</Button>
             </Link>
 
@@ -322,7 +322,7 @@ export default function AdminLawyerDetailPage() {
                         const result = await deleteLawyerById(lawyer.id);
                         if (result.success) {
                           toast({ title: 'ลบทนายสำเร็จ', description: `ลบ ${lawyer.name} เรียบร้อยแล้ว` });
-                          router.push('/admin/lawyers');
+                          router.push('/lawyers');
                         } else {
                           throw new Error(result.error);
                         }
@@ -381,7 +381,7 @@ export default function AdminLawyerDetailPage() {
               <ul className="list-disc list-inside mt-2">
                 {duplicateLawyers.map(dup => (
                   <li key={dup.id}>
-                    <Link href={`/admin/lawyers/${dup.id}`} className="underline font-medium hover:text-destructive/80">
+                    <Link href={`/lawyers/${dup.id}`} className="underline font-medium hover:text-destructive/80">
                       {dup.name}
                     </Link>
                     <span className="ml-2 text-muted-foreground">
@@ -585,7 +585,7 @@ export default function AdminLawyerDetailPage() {
               {gpCoupons.filter(c => !assignedCoupons.find(a => a.id === c.id)).length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   ไม่มีคูปอง GP ที่พร้อมใช้งาน กรุณาสร้างคูปองที่{' '}
-                  <a href="/admin/gp-coupons" className="underline text-primary">หน้าจัดการคูปอง GP</a>
+                  <a href="/gp-coupons" className="underline text-primary">หน้าจัดการคูปอง GP</a>
                 </p>
               ) : (
                 gpCoupons

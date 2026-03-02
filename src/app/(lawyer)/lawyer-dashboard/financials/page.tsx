@@ -370,7 +370,7 @@ function LawyerFinancialsContent() {
                 createdAt: serverTimestamp(),
                 read: false,
                 recipient: 'admin',
-                link: `/admin/financials`,
+                link: `/financials`,
                 relatedId: user.uid
             });
 

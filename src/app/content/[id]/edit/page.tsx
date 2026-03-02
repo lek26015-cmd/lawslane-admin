@@ -241,7 +241,7 @@ export default function AdminArticleEditPage() {
                 title: "แก้ไขบทความสำเร็จ",
                 description: `บทความ "${article.title}" ได้รับการอัปเดตแล้ว`,
             });
-            router.push('/admin/content');
+            router.push('/content');
 
         } catch (error: any) {
             console.error("Error updating article:", error);
@@ -309,7 +309,7 @@ export default function AdminArticleEditPage() {
         <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
             <div className="mx-auto grid max-w-5xl flex-1 auto-rows-max gap-4">
                 <div className="flex items-center gap-4">
-                    <Link href="/admin/content">
+                    <Link href="/content">
                         <Button variant="outline" size="icon" className="h-7 w-7" disabled={isSaving}>
                             <ChevronLeft className="h-4 w-4" />
                             <span className="sr-only">กลับ</span>
@@ -319,7 +319,7 @@ export default function AdminArticleEditPage() {
                         แก้ไขบทความ
                     </h1>
                     <div className="hidden items-center gap-2 md:ml-auto md:flex">
-                        <Link href="/admin/content">
+                        <Link href="/content">
                             <Button variant="outline" size="sm" disabled={isSaving}>
                                 ยกเลิก
                             </Button>
@@ -673,7 +673,7 @@ export default function AdminArticleEditPage() {
                 </div>
 
                 <div className="flex items-center justify-end gap-2 md:hidden">
-                    <Link href="/admin/content">
+                    <Link href="/content">
                         <Button variant="outline" size="sm" disabled={isSaving}>
                             ยกเลิก
                         </Button>

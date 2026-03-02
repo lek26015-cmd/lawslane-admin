@@ -130,7 +130,7 @@ export default function AdminAdsPage() {
                             </TabsList>
                             <div className="ml-auto flex items-center gap-2">
                                 <Button size="sm" className="h-8 gap-1" asChild>
-                                    <Link href="/admin/ads/new">
+                                    <Link href="/ads/new">
                                         <PlusCircle className="h-3.5 w-3.5" />
                                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                                             เพิ่มโฆษณาใหม่
@@ -160,7 +160,7 @@ export default function AdminAdsPage() {
                                         <TableRow
                                             key={ad.id}
                                             className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => router.push(`/admin/ads/${ad.id}`)}
+                                            onClick={() => router.push(`/ads/${ad.id}`)}
                                         >
                                             <TableCell className="hidden sm:table-cell">
                                                 <Image
@@ -172,7 +172,7 @@ export default function AdminAdsPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                <Link href={`/admin/ads/${ad.id}`} className="hover:underline">
+                                                <Link href={`/ads/${ad.id}`} className="hover:underline">
                                                     {ad.title}
                                                 </Link>
                                             </TableCell>
@@ -200,10 +200,10 @@ export default function AdminAdsPage() {
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                         <DropdownMenuItem asChild>
-                                                            <Link href={`/admin/ads/${ad.id}`}>ดูสถิติ</Link>
+                                                            <Link href={`/ads/${ad.id}`}>ดูสถิติ</Link>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem asChild>
-                                                            <Link href={`/admin/ads/${ad.id}/edit`}>แก้ไข</Link>
+                                                            <Link href={`/ads/${ad.id}/edit`}>แก้ไข</Link>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem

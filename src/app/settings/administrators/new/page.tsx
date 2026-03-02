@@ -77,10 +77,10 @@ export default function NewAdminPage() {
               title: "ไม่มีสิทธิ์เข้าถึง",
               description: "คุณไม่มีสิทธิ์ในการสร้างผู้ดูแลระบบ"
             });
-            router.push('/admin/settings/administrators');
+            router.push('/settings/administrators');
           }
         } else {
-          router.push('/admin/settings/administrators');
+          router.push('/settings/administrators');
         }
       } catch (error) {
         console.error("Error checking role:", error);
@@ -165,7 +165,7 @@ export default function NewAdminPage() {
 
         // If we really want to save permissions, we should probably do it in the edit page or modify the server action.
         // Given the constraints, I'll redirect to the list.
-        router.push('/admin/settings/administrators');
+        router.push('/settings/administrators');
       } else {
         toast({
           variant: "destructive",
@@ -193,7 +193,7 @@ export default function NewAdminPage() {
       <div className="mx-auto grid w-full max-w-2xl gap-2">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/admin/settings/administrators">
+            <Link href="/settings/administrators">
               <ArrowLeftCircle className="h-5 w-5" />
             </Link>
           </Button>

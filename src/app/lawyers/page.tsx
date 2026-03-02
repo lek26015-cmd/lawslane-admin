@@ -191,7 +191,7 @@ export default function AdminLawyersPage() {
                                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
                                 </Button>
                                 <Button size="sm" className="h-8 gap-1" asChild>
-                                    <Link href="/admin/lawyers/new">
+                                    <Link href="/lawyers/new">
                                         <PlusCircle className="h-3.5 w-3.5" />
                                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">เพิ่มทนายความ</span>
                                     </Link>
@@ -245,7 +245,7 @@ export default function AdminLawyersPage() {
                                         <TableRow
                                             key={lawyer.id}
                                             className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => router.push(`/admin/lawyers/${lawyer.id}`)}
+                                            onClick={() => router.push(`/lawyers/${lawyer.id}`)}
                                         >
                                             <TableCell className="font-medium">
                                                 <div className="flex items-center gap-3">
@@ -278,10 +278,10 @@ export default function AdminLawyersPage() {
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
                                                             <DropdownMenuItem asChild>
-                                                                <Link href={`/admin/lawyers/${lawyer.id}`}>ดูโปรไฟล์</Link>
+                                                                <Link href={`/lawyers/${lawyer.id}`}>ดูโปรไฟล์</Link>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem asChild>
-                                                                <Link href={`/admin/lawyers/${lawyer.id}/edit`}>แก้ไขข้อมูล</Link>
+                                                                <Link href={`/lawyers/${lawyer.id}/edit`}>แก้ไขข้อมูล</Link>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             {lawyer.status !== 'approved' && (

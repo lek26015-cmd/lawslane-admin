@@ -76,14 +76,14 @@ export default function AdminFinancialSettingsPage() {
         <nav
           className="grid gap-4 text-sm text-muted-foreground"
         >
-          <Link href="/admin/settings">
+          <Link href="/settings">
             ทั่วไป
           </Link>
-          <Link href="/admin/settings/financials" className="font-semibold text-primary">
+          <Link href="/settings/financials" className="font-semibold text-primary">
             การเงิน
           </Link>
-          <Link href="/admin/settings/administrators">ผู้ดูแลระบบ</Link>
-          <Link href="/admin/settings/notifications">การแจ้งเตือน</Link>
+          <Link href="/settings/administrators">ผู้ดูแลระบบ</Link>
+          <Link href="/settings/notifications">การแจ้งเตือน</Link>
         </nav>
         <div className="grid gap-6">
           <Card className="rounded-xl">

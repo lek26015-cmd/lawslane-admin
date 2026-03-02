@@ -132,7 +132,7 @@ export default function AdminRegistrationRequestsPage() {
                                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" asChild>
-                                                <Link href={`/admin/registration-requests/${request.id}`}>
+                                                <Link href={`/registration-requests/${request.id}`}>
                                                     <ExternalLink className="w-4 h-4 mr-1" />
                                                     รายละเอียด
                                                 </Link>

@@ -148,7 +148,7 @@ export default function AdminLoginPage() {
 
       // Force refresh to update middleware state
       router.refresh();
-      router.push('/admin');
+      router.push('/');
 
     } catch (error: any) {
       console.error(error);

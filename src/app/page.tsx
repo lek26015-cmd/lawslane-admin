@@ -110,7 +110,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
-        <Link href="/admin/customers" className="block transition-transform hover:scale-[1.02] active:scale-95">
+        <Link href="/customers" className="block transition-transform hover:scale-[1.02] active:scale-95">
           <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/tickets" className="block transition-transform hover:scale-[1.02] active:scale-95">
+        <Link href="/tickets" className="block transition-transform hover:scale-[1.02] active:scale-95">
           <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Ticket ที่เปิดอยู่</CardTitle>
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/lawyers?tab=pending" className="block transition-transform hover:scale-[1.02] active:scale-95">
+        <Link href="/lawyers?tab=pending" className="block transition-transform hover:scale-[1.02] active:scale-95">
           <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/admin/lawyers?tab=active" className="block transition-transform hover:scale-[1.02] active:scale-95">
+        <Link href="/lawyers?tab=active" className="block transition-transform hover:scale-[1.02] active:scale-95">
           <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
               </CardDescription>
             </div>
             <Button asChild size="sm" className="ml-auto gap-1">
-              <Link href="/admin/lawyers?tab=pending">
+              <Link href="/lawyers?tab=pending">
                 ดูทั้งหมด
                 <ArrowLeft className="h-4 w-4" />
               </Link>
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
-                          <DropdownMenuItem asChild><Link href={`/admin/lawyers/${lawyer.id}`}>ดูใบสมัคร</Link></DropdownMenuItem>
+                          <DropdownMenuItem asChild><Link href={`/lawyers/${lawyer.id}`}>ดูใบสมัคร</Link></DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -271,7 +271,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <Button asChild size="sm" className="ml-auto gap-1">
-                  <Link href={`/admin/tickets/${ticket.id}`}>
+                  <Link href={`/tickets/${ticket.id}`}>
                     ดู Ticket
                     <ArrowLeft className="h-4 w-4" />
                   </Link>

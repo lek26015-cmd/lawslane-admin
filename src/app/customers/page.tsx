@@ -170,7 +170,7 @@ export default function AdminCustomersPage() {
                                     </span>
                                 </Button>
                                 <Button size="sm" className="h-8 gap-1" asChild>
-                                    <Link href="/admin/customers/new">
+                                    <Link href="/customers/new">
                                         <PlusCircle className="h-3.5 w-3.5" />
                                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                                             เพิ่มลูกค้า
@@ -204,7 +204,7 @@ export default function AdminCustomersPage() {
                                         <TableRow
                                             key={customer.uid}
                                             className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => router.push(`/admin/customers/${customer.uid}`)}
+                                            onClick={() => router.push(`/customers/${customer.uid}`)}
                                         >
                                             <TableCell className="hidden sm:table-cell">
                                                 <Avatar className="h-9 w-9">
@@ -255,10 +255,10 @@ export default function AdminCustomersPage() {
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
                                                         <DropdownMenuItem asChild>
-                                                            <Link href={`/admin/customers/${customer.uid}`}>ดูโปรไฟล์</Link>
+                                                            <Link href={`/customers/${customer.uid}`}>ดูโปรไฟล์</Link>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem asChild>
-                                                            <Link href={`/admin/customers/${customer.uid}/edit`}>แก้ไขข้อมูล</Link>
+                                                            <Link href={`/customers/${customer.uid}/edit`}>แก้ไขข้อมูล</Link>
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem className="text-destructive">

@@ -101,7 +101,7 @@ export default function AdminLawyerCreatePage() {
         title: "สร้างโปรไฟล์สำเร็จ",
         description: `ทนายความ ${name} ได้ถูกเพิ่มเข้าสู่ระบบแล้ว`,
       })
-      router.push('/admin/lawyers');
+      router.push('/lawyers');
     } catch (error: any) {
       console.error("Error creating lawyer:", error);
       toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: error.message });
@@ -114,7 +114,7 @@ export default function AdminLawyerCreatePage() {
     <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
       <div className="mx-auto grid max-w-2xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/admin/lawyers">
+          <Link href="/lawyers">
             <Button variant="outline" size="icon" className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -124,7 +124,7 @@ export default function AdminLawyerCreatePage() {
             เพิ่มทนายความใหม่
           </h1>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href="/admin/lawyers">
+            <Link href="/lawyers">
               <Button variant="outline" size="sm">ยกเลิก</Button>
             </Link>
             <Button size="sm" onClick={handleSaveChanges} disabled={isLoading}>
@@ -224,7 +224,7 @@ export default function AdminLawyerCreatePage() {
           </CardContent>
         </Card>
         <div className="flex items-center justify-end gap-2 md:hidden">
-          <Link href="/admin/lawyers">
+          <Link href="/lawyers">
             <Button variant="outline" size="sm">ยกเลิก</Button>
           </Link>
           <Button size="sm" onClick={handleSaveChanges} disabled={isLoading}>

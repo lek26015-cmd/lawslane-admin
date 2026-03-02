@@ -233,23 +233,23 @@ export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' |
         try {
             let notificationTitle = subject.replace(/\[Lawslane Admin\] /g, '');
             let notificationMessage = '';
-            let notificationLink = '/admin';
+            let notificationLink = '/';
 
             if (type === 'new_user') {
                 notificationMessage = `มีผู้ใช้งานใหม่: ${data.name} (${data.email})`;
-                notificationLink = '/admin/customers';
+                notificationLink = '/customers';
             } else if (type === 'new_ticket') {
                 notificationMessage = `หัวข้อ: ${data.problemType} จาก ${data.clientName}`;
-                notificationLink = `/admin/tickets/${data.ticketId}`;
+                notificationLink = `/tickets/${data.ticketId}`;
             } else if (type === 'payment') {
                 notificationMessage = `มีการชำระเงินใหม่ ฿${data.amount?.toLocaleString()} ${data.lawyerName ? `สำหรับ ${data.lawyerName}` : ''}`;
-                notificationLink = '/admin/financials';
+                notificationLink = '/financials';
             } else if (type === 'withdrawal') {
                 notificationMessage = `คำร้องขอถอนเงินใหม่ ฿${data.amount?.toLocaleString()} จาก ${data.lawyerName}`;
-                notificationLink = '/admin/financials';
+                notificationLink = '/financials';
             } else if (type === 'new_lawyer') {
                 notificationMessage = `ทนายความใหม่สมัครสมาชิก: ${data.name}`;
-                notificationLink = `/admin/lawyers/${data.uid}`;
+                notificationLink = `/lawyers/${data.uid}`;
             }
 
             if (notificationMessage) {

@@ -106,16 +106,16 @@ export default function AdminAdministratorsPage() {
         <nav
           className="grid gap-4 text-sm text-muted-foreground"
         >
-          <Link href="/admin/settings">
+          <Link href="/settings">
             ทั่วไป
           </Link>
-          <Link href="/admin/settings/financials">
+          <Link href="/settings/financials">
             การเงิน
           </Link>
-          <Link href="/admin/settings/administrators" className="font-semibold text-primary">
+          <Link href="/settings/administrators" className="font-semibold text-primary">
             ผู้ดูแลระบบ
           </Link>
-          <Link href="/admin/settings/notifications">การแจ้งเตือน</Link>
+          <Link href="/settings/notifications">การแจ้งเตือน</Link>
         </nav>
         <div className="grid gap-6">
           <Card className="rounded-xl">
@@ -129,7 +129,7 @@ export default function AdminAdministratorsPage() {
                 </div>
                 {isSuperAdmin && (
                   <Button size="sm" className="gap-1" asChild>
-                    <Link href="/admin/settings/administrators/new">
+                    <Link href="/settings/administrators/new">
                       <PlusCircle className="h-3.5 w-3.5" />
                       เพิ่มผู้ดูแลใหม่
                     </Link>
@@ -190,7 +190,7 @@ export default function AdminAdministratorsPage() {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
                                   <DropdownMenuItem asChild>
-                                    <Link href={`/admin/settings/administrators/${admin.uid}/edit`}>แก้ไขสิทธิ์</Link>
+                                    <Link href={`/settings/administrators/${admin.uid}/edit`}>แก้ไขสิทธิ์</Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <AlertDialogTrigger asChild>

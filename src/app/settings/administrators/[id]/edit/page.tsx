@@ -89,12 +89,12 @@ export default function AdminEditAdministratorPage() {
               title: "ไม่มีสิทธิ์เข้าถึง",
               description: "คุณไม่มีสิทธิ์ในการแก้ไขผู้ดูแลระบบ"
             });
-            router.push('/admin/settings/administrators');
+            router.push('/settings/administrators');
             return;
           }
         } else {
           // Should not happen if logged in, but safe fallback
-          router.push('/admin/settings/administrators');
+          router.push('/settings/administrators');
           return;
         }
 
@@ -121,7 +121,7 @@ export default function AdminEditAdministratorPage() {
               title: "ไม่พบผู้ใช้",
               description: "ไม่พบข้อมูลผู้ดูแลระบบที่ต้องการแก้ไข"
             });
-            router.push('/admin/settings/administrators');
+            router.push('/settings/administrators');
           }
         }
       } catch (error) {
@@ -175,7 +175,7 @@ export default function AdminEditAdministratorPage() {
         title: 'แก้ไขสิทธิ์สำเร็จ',
         description: `สิทธิ์การเข้าถึงของ "${admin.name || admin.email}" ได้รับการอัปเดตแล้ว`,
       });
-      router.push('/admin/settings/administrators');
+      router.push('/settings/administrators');
     } catch (error) {
       console.error("Error saving permissions:", error);
       toast({
@@ -200,7 +200,7 @@ export default function AdminEditAdministratorPage() {
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="mx-auto grid w-full max-w-4xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/admin/settings/administrators">
+          <Link href="/settings/administrators">
             <Button variant="outline" size="icon" className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -210,7 +210,7 @@ export default function AdminEditAdministratorPage() {
             แก้ไขสิทธิ์ผู้ดูแลระบบ
           </h1>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href="/admin/settings/administrators">
+            <Link href="/settings/administrators">
               <Button variant="outline" size="sm">
                 ยกเลิก
               </Button>
@@ -320,7 +320,7 @@ export default function AdminEditAdministratorPage() {
           </Card>
         </div>
         <div className="flex items-center justify-end gap-2 md:hidden">
-          <Link href="/admin/settings/administrators">
+          <Link href="/settings/administrators">
             <Button variant="outline" size="sm">
               ยกเลิก
             </Button>

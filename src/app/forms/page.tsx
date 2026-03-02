@@ -130,7 +130,7 @@ export default function AdminFormsPage() {
                     </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Link href="/admin/forms/new">
+                    <Link href="/forms/new">
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             เพิ่มแบบฟอร์ม
@@ -222,7 +222,7 @@ export default function AdminFormsPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/edit`)}>
+                                                    <DropdownMenuItem onClick={() => router.push(`/forms/${form.id}/edit`)}>
                                                         <Pencil className="mr-2 h-4 w-4" />
                                                         แก้ไข
                                                     </DropdownMenuItem>

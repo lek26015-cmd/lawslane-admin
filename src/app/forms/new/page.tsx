@@ -126,7 +126,7 @@ export default function AdminFormCreatePage() {
         en: null,
         zh: null,
     });
-    const adminFormsPath = `/admin/forms`;
+    const adminFormsPath = `/forms`;
 
     const handleFileChange = (lang: LanguageCode, e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);

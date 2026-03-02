@@ -128,7 +128,7 @@ export default function AdminTicketsPage() {
                                         <TableRow
                                             key={ticket.id}
                                             className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
+                                            onClick={() => router.push(`/tickets/${ticket.id}`)}
                                         >
                                             <TableCell className="font-mono flex items-center gap-2">
                                                 {ticket.id}
@@ -146,7 +146,7 @@ export default function AdminTicketsPage() {
                                             <TableCell>{ticket.reportedAt}</TableCell>
                                             <TableCell>
                                                 <Button asChild variant="outline" size="sm">
-                                                    <Link href={`/admin/tickets/${ticket.id}`}>
+                                                    <Link href={`/tickets/${ticket.id}`}>
                                                         ดูรายละเอียด
                                                     </Link>
                                                 </Button>

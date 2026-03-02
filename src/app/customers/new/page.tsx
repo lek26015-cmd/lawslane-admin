@@ -140,7 +140,7 @@ export default function AdminCustomerCreatePage() {
         title: "สร้างลูกค้าสำเร็จ",
         description: `ลูกค้าใหม่ ${name} ได้ถูกเพิ่มเข้าสู่ระบบแล้ว`,
       })
-      router.push(`/admin/customers`);
+      router.push(`/customers`);
 
     } catch (error: any) {
       console.error("Error creating customer:", error);
@@ -158,7 +158,7 @@ export default function AdminCustomerCreatePage() {
     <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
       <div className="mx-auto grid max-w-2xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Link href={`/admin/customers`}>
+          <Link href={`/customers`}>
             <Button variant="outline" size="icon" className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -168,7 +168,7 @@ export default function AdminCustomerCreatePage() {
             เพิ่มลูกค้าใหม่
           </h1>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href={`/admin/customers`}>
+            <Link href={`/customers`}>
               <Button variant="outline" size="sm">
                 ยกเลิก
               </Button>
@@ -269,7 +269,7 @@ export default function AdminCustomerCreatePage() {
           </CardContent>
         </Card>
         <div className="flex items-center justify-end gap-2 md:hidden">
-          <Link href={`/admin/customers`}>
+          <Link href={`/customers`}>
             <Button variant="outline" size="sm">
               ยกเลิก
             </Button>

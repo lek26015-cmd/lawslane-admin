@@ -46,7 +46,7 @@ export default function AdminAdEditPage() {
 
   const [ad, setAd] = React.useState<Ad | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
-  const adminAdsPath = `/admin/ads`;
+  const adminAdsPath = `/ads`;
 
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);

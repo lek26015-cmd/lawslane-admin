@@ -38,7 +38,7 @@ export default function AdminRegistrationRequestDetailsPage() {
                         title: "ไม่พบข้อมูล",
                         description: "ไม่พบคำขอที่คุณต้องการ",
                     });
-                    router.push('/admin/registration-requests');
+                    router.push('/registration-requests');
                 }
             } catch (error) {
                 console.error("Error fetching request:", error);
@@ -126,7 +126,7 @@ export default function AdminRegistrationRequestDetailsPage() {
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
             <div className="flex items-center gap-4">
-                <Link href="/admin/registration-requests">
+                <Link href="/registration-requests">
                     <Button variant="outline" size="icon" className="h-9 w-9">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>

@@ -62,7 +62,7 @@ export default function AdminAdDetailsPage() {
     <main className="grid flex-1 items-start gap-4 p-4">
       <div className="mx-auto grid w-full max-w-6xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/admin/ads">
+          <Link href="/ads">
             <Button variant="outline" size="icon" className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -75,7 +75,7 @@ export default function AdminAdDetailsPage() {
             </p>
           </div>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href={`/admin/ads/${id}/edit`}>
+            <Link href={`/ads/${id}/edit`}>
               <Button variant="outline" size="sm">
                 แก้ไข
               </Button>

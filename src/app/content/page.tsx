@@ -102,7 +102,7 @@ export default function AdminContentPage() {
                         <div className="flex items-center">
                             <div className="ml-auto flex items-center gap-2">
                                 <Button size="sm" className="h-8 gap-1" asChild>
-                                    <Link href="/admin/content/new">
+                                    <Link href="/content/new">
                                         <PlusCircle className="h-3.5 w-3.5" />
                                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                                             สร้างบทความใหม่
@@ -162,7 +162,7 @@ export default function AdminContentPage() {
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                             <DropdownMenuItem asChild>
-                                                                <Link href={`/admin/content/${article.id}/edit`}>แก้ไข</Link>
+                                                                <Link href={`/content/${article.id}/edit`}>แก้ไข</Link>
                                                             </DropdownMenuItem>
                                                             <AlertDialogTrigger asChild>
                                                                 <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>ลบ</DropdownMenuItem>

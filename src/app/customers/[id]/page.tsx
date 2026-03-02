@@ -166,7 +166,7 @@ export default function AdminCustomerDetailPage() {
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
         <div className="flex items-center gap-4">
-          <Link href="/admin/customers">
+          <Link href="/customers">
             <Button variant="outline" size="icon" className="h-7 w-7">
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -190,7 +190,7 @@ export default function AdminCustomerDetailPage() {
             }
           </Badge>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href={`/admin/customers/${id}/edit`}>
+            <Link href={`/customers/${id}/edit`}>
               <Button variant="outline" size="sm">
                 แก้ไขข้อมูล
               </Button>

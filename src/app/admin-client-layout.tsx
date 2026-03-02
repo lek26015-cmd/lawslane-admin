@@ -108,7 +108,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                             setCurrentUser(null);
                             setUserRole(null);
                             signOut(auth);
-                            router.push('/admin/login?error=invalid_domain');
+                            router.push('/login?error=invalid_domain');
                             return;
                         }
 
@@ -141,7 +141,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                             setCurrentUser(null);
                             setUserRole(null);
                             signOut(auth);
-                            router.push('/admin/login');
+                            router.push('/login');
                         }
                     } else if (userDoc.exists()) {
                         const userData = userDoc.data();
@@ -177,8 +177,8 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                             setCurrentUser(null);
                             setUserRole(null);
 
-                            if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-                                router.push('/admin/login');
+                            if (pathname.startsWith('/') && pathname !== '/login') {
+                                router.push('/login');
                             }
                         }
                     }
@@ -193,8 +193,8 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 setUserRole(null);
                 setAdminPermissions(null);
                 setIsSuperAdmin(false);
-                if (pathname !== '/admin/login') {
-                    router.push('/admin/login');
+                if (pathname !== '/login') {
+                    router.push('/login');
                 }
             }
             setIsCheckingAuth(false);
@@ -204,15 +204,15 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     }, [areServicesAvailable, auth, firestore, router, pathname]);
 
     useEffect(() => {
-        if (isAdmin && pathname === '/admin/login') {
-            router.push('/admin');
+        if (isAdmin && pathname === '/login') {
+            router.push('/');
         }
     }, [isAdmin, pathname, router]);
 
     const handleLogout = async () => {
         if (auth) {
             await signOut(auth);
-            router.push('/admin/login');
+            router.push('/login');
         }
     };
 
@@ -239,47 +239,47 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
         {
             title: "จัดการผู้ใช้งาน",
             items: [
-                { href: "/admin/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า" },
-                { href: "/admin/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ" },
-                { href: "/admin/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย" },
+                { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า" },
+                { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ" },
+                { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย" },
             ]
         },
 
         {
             title: "คำขอใช้บริการ",
             items: [
-                { href: "/admin/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา" },
-                { href: "/admin/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน" },
-                { href: "/admin/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME" },
+                { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา" },
+                { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน" },
+                { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME" },
             ]
         },
         {
             title: "เนื้อหาและการตลาด",
             items: [
-                { href: "/admin/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages" },
-                { href: "/admin/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา" },
-                { href: "/admin/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา" },
-                { href: "/admin/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย" },
-                { href: "/admin/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย" },
-                { href: "/admin/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI" },
+                { href: "/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages" },
+                { href: "/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา" },
+                { href: "/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา" },
+                { href: "/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย" },
+                { href: "/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย" },
+                { href: "/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI" },
             ]
         },
         {
             title: "การเงิน",
             items: [
-                { href: "/admin/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", permission: "financials.overview" },
-                { href: "/admin/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", permission: "financials.verification" },
-                { href: "/admin/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", permission: "financials.transactions" },
-                { href: "/admin/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", permission: "financials.withdrawals" },
-                { href: "/admin/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", permission: "coupons" },
-                { href: "/admin/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", permission: "gp_coupons" },
+                { href: "/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", permission: "financials.overview" },
+                { href: "/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", permission: "financials.verification" },
+                { href: "/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", permission: "financials.transactions" },
+                { href: "/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", permission: "financials.withdrawals" },
+                { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", permission: "coupons" },
+                { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", permission: "gp_coupons" },
             ]
         },
         {
             title: "ระบบและสนับสนุน",
             items: [
-                { href: "/admin/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
-                { href: "/admin/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
+                { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
+                { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
             ]
         }
     ];
@@ -287,7 +287,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     const searchParams = useSearchParams();
     const isActive = (href: string) => {
         const [hrefPath, hrefQuery] = href.split('?');
-        if (hrefPath === '/admin') return pathname === hrefPath;
+        if (hrefPath === '/') return pathname === hrefPath;
         if (hrefQuery) {
             // For links with query params (e.g. ?tab=overview), match both path and query
             const params = new URLSearchParams(hrefQuery);
@@ -314,7 +314,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
 
     // Fix: If on login page, render only the content (login form) without sidebar
     // This prevents the "sidebar + login page" glitch if the user is already authenticated
-    if (pathname === '/admin/login') {
+    if (pathname === '/login') {
         return <>{children}</>;
     }
 
@@ -327,7 +327,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
             <div className="hidden border-r border-slate-700 bg-[#0f172a] text-slate-100 md:block">
                 <div className="flex h-full max-h-screen flex-col gap-2">
                     <div className="flex h-14 items-center border-b border-slate-700 px-4 lg:h-[60px] lg:px-6">
-                        <Link href="/admin" className="flex items-center gap-2 font-semibold text-white">
+                        <Link href="/" className="flex items-center gap-2 font-semibold text-white">
                             <div className="relative h-8 w-8">
                                 <Image
                                     src="/images/logo-lawslane-transparent-white.png"
@@ -344,9 +344,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                     <div className="flex-1 overflow-auto py-2">
                         <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
                             <Link
-                                href="/admin"
+                                href="/"
                                 className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-slate-100 transition-all hover:bg-slate-800 hover:text-white mb-2",
-                                    pathname === "/admin" && "bg-slate-800 text-white"
+                                    pathname === "/" && "bg-slate-800 text-white"
                                 )}
                             >
                                 <LayoutDashboard className="h-4 w-4" />
@@ -423,7 +423,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
-                                        <Link href="/admin/settings">
+                                        <Link href="/settings">
                                             <Settings className="mr-2 h-4 w-4" />
                                             <span>ตั้งค่า</span>
                                         </Link>
@@ -475,10 +475,10 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                 {/* Dashboard Link */}
                                 {/* Dashboard Link */}
                                 <Link
-                                    href="/admin"
+                                    href="/"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className={cn("flex items-center gap-3 rounded-lg px-3 py-3 text-slate-100 transition-all hover:bg-slate-800",
-                                        pathname === "/admin" && "bg-slate-800 text-white font-medium"
+                                        pathname === "/" && "bg-slate-800 text-white font-medium"
                                     )}
                                 >
                                     <LayoutDashboard className="h-5 w-5" />

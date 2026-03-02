@@ -148,7 +148,7 @@ export default function AdminLandingPagesList() {
             )}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">จัดการ Landing Pages</h1>
-                <Link href="/admin/landing-pages/new">
+                <Link href="/landing-pages/new">
                     <Button>
                         <Plus className="w-4 h-4 mr-2" />
                         สร้างใหม่
@@ -201,7 +201,7 @@ export default function AdminLandingPagesList() {
                                                     <ExternalLink className="w-4 h-4" />
                                                 </Button>
                                             </a>
-                                            <Link href={`/admin/landing-pages/${page.id}/edit`}>
+                                            <Link href={`/landing-pages/${page.id}/edit`}>
                                                 <Button variant="ghost" size="icon" title="แก้ไข">
                                                     <Pencil className="w-4 h-4" />
                                                 </Button>

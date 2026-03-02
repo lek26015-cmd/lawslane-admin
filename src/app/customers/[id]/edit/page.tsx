@@ -114,7 +114,7 @@ export default function AdminCustomerEditPage() {
         title: "บันทึกข้อมูลสำเร็จ",
         description: `ข้อมูลของลูกค้า ${customer.name} ได้รับการอัปเดตแล้ว`,
       })
-      router.push(`/admin/customers`)
+      router.push(`/customers`)
     }).catch(err => {
       console.error(err);
       toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถบันทึกข้อมูลได้' })
@@ -148,7 +148,7 @@ export default function AdminCustomerEditPage() {
     <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
       <div className="mx-auto grid max-w-2xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Link href={`/admin/customers`}>
+          <Link href={`/customers`}>
             <Button variant="outline" size="icon" className="h-7 w-7" disabled={isSaving}>
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">กลับ</span>
@@ -158,7 +158,7 @@ export default function AdminCustomerEditPage() {
             แก้ไขข้อมูลลูกค้า
           </h1>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Link href={`/admin/customers`}>
+            <Link href={`/customers`}>
               <Button variant="outline" size="sm" disabled={isSaving}>
                 ยกเลิก
               </Button>
@@ -253,7 +253,7 @@ export default function AdminCustomerEditPage() {
           </CardContent>
         </Card>
         <div className="flex items-center justify-end gap-2 md:hidden">
-          <Link href={`/admin/customers`}>
+          <Link href={`/customers`}>
             <Button variant="outline" size="sm" disabled={isSaving}>
               ยกเลิก
             </Button>

@@ -144,7 +144,7 @@ export default function AdminContractRequestsPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" asChild>
-                                                <Link href={`/admin/contract-requests/${request.id}`}>
+                                                <Link href={`/contract-requests/${request.id}`}>
                                                     <ExternalLink className="w-4 h-4 mr-1" />
                                                     รายละเอียด
                                                 </Link>

@@ -187,7 +187,7 @@ function AdminTicketDetailPageContent() {
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
             <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
                 <div className="flex items-center gap-4">
-                    <Link href="/admin/tickets">
+                    <Link href="/tickets">
                         <Button variant="outline" size="icon" className="h-7 w-7">
                             <ChevronLeft className="h-4 w-4" />
                             <span className="sr-only">กลับ</span>
@@ -228,7 +228,7 @@ function AdminTicketDetailPageContent() {
                         <Separator />
                         <div className="flex justify-between items-center">
                             <span className="text-muted-foreground flex items-center gap-2"><User /> ผู้แจ้งปัญหา</span>
-                            <Link href={`/admin/customers/cus_001`} className="font-semibold text-primary hover:underline">{ticket.clientName}</Link>
+                            <Link href={`/customers/cus_001`} className="font-semibold text-primary hover:underline">{ticket.clientName}</Link>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-muted-foreground flex items-center gap-2"><Briefcase /> เคสที่เกี่ยวข้อง</span>

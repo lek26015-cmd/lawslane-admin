@@ -198,7 +198,7 @@ export default function NewLandingPage() {
                 description: "สร้าง Landing Page เรียบร้อยแล้ว",
             });
 
-            router.push('/admin/landing-pages');
+            router.push('/landing-pages');
 
         } catch (error: any) {
             console.error("Error creating landing page:", error);
@@ -226,7 +226,7 @@ export default function NewLandingPage() {
                 </div>
             )}
             <div className="flex items-center gap-4 mb-6">
-                <Link href="/admin/landing-pages">
+                <Link href="/landing-pages">
                     <Button variant="outline" size="icon">
                         <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -368,7 +368,7 @@ export default function NewLandingPage() {
                 </Card>
 
                 <div className="flex justify-end gap-4">
-                    <Link href="/admin/landing-pages">
+                    <Link href="/landing-pages">
                         <Button variant="outline">ยกเลิก</Button>
                     </Link>
                     <Button onClick={handleSubmit} disabled={isSaving}>
