@@ -86,7 +86,12 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
+        console.log('AdminClientLayout: areServicesAvailable:', areServicesAvailable);
+        console.log('AdminClientLayout: auth exists:', !!auth);
+        console.log('AdminClientLayout: firestore exists:', !!firestore);
+
         if (!areServicesAvailable || !auth || !firestore) {
+            console.log('AdminClientLayout: Services not ready yet, skipping auth check');
             setIsCheckingAuth(false);
             return;
         }
