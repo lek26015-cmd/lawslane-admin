@@ -37,7 +37,8 @@ import {
     Book,
     FileQuestion,
     Package,
-    Percent
+    Percent,
+    ShoppingBag
 } from 'lucide-react';
 import React, { useState, useEffect, useContext } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -285,6 +286,14 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
             items: [
                 { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
                 { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
+            ]
+        },
+        {
+            title: "ร้านค้าและบริการข้อมูล",
+            items: [
+                { href: "/books", icon: <Package className="h-4 w-4" />, label: "คลังหนังสือ" },
+                { href: "/orders", icon: <ShoppingBag className="h-4 w-4" />, label: "รายการสั่งซื้อ" },
+                { href: "/rag", icon: <Database className="h-4 w-4" />, label: "มอนิเตอร์ RAG" },
             ]
         }
     ];

@@ -1,0 +1,338 @@
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Loader2, Database, RefreshCw, Layers, Cpu, Zap, Activity, Clock, Pause, Play, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import Link from 'next/link';
+
+interface RagStats {
+    vectorCount?: number;
+    dimensions?: number;
+    error?: string;
+}
+
+interface IngestionStatus {
+    status: 'active' | 'cooling_down' | 'idle' | 'error' | 'paused';
+    lastUpdate: string;
+    message?: string;
+    nextRetry?: string;
+}
+
+export default function RagStatusPage() {
+    const [stats, setStats] = useState<RagStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+    
+    // For status tracking
+    const [eta, setEta] = useState<string | null>(null);
+    const [rate, setRate] = useState<number>(0); 
+    const [isStalled, setIsStalled] = useState(false);
+    const [displayCount, setDisplayCount] = useState(0);
+    const [liveLogs, setLiveLogs] = useState<{id: string, text: string, time: string}[]>([]);
+    const [taskStatuses, setTaskStatuses] = useState<Record<string, IngestionStatus>>({});
+    const [systemPaused, setSystemPaused] = useState(false);
+    const [controlLoading, setControlLoading] = useState(false);
+    const [isCompleted, setIsCompleted] = useState(false);
+    
+    const [TASK_START_TIME] = useState<number>(new Date("2026-03-14T07:48:00Z").getTime());
+    const [elapsed, setElapsed] = useState<string>("");
+    
+    const prevCountRef = useRef<number>(0);
+    const prevTimeRef = useRef<number>(Date.now());
+    const lastSuccessCountTimeRef = useRef<number>(Date.now());
+
+    const ESTIMATED_TOTAL_VECTORS = 1000000;
+    
+    useEffect(() => {
+        const calculateElapsed = () => {
+            const now = Date.now();
+            const diff = now - TASK_START_TIME;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+            setElapsed(`${hours}h ${mins}m ${secs}s`);
+        };
+
+        calculateElapsed();
+        const interval = setInterval(calculateElapsed, 1000);
+        return () => clearInterval(interval);
+    }, [TASK_START_TIME]);
+
+    const fetchIngestionStatus = async () => {
+        try {
+            const res = await fetch('/api/admin/ingestion-status');
+            if (res.ok) {
+                const data = await res.json();
+                setTaskStatuses(data.tasks);
+                setSystemPaused(data.systemPaused);
+            }
+        } catch (error) {
+            console.error("Failed to fetch ingestion status:", error);
+        }
+    };
+
+    const handleIngestorControl = async (action: 'pause' | 'resume') => {
+        setControlLoading(true);
+        try {
+            const res = await fetch('/api/admin/ingestor-control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            });
+            if (res.ok) {
+                await fetchIngestionStatus();
+            }
+        } catch (error) {
+            console.error(`Failed to ${action} ingestors:`, error);
+        } finally {
+            setControlLoading(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const response = await fetch('/api/admin/rag-stats');
+            const data = await response.json();
+            
+            if (data.vectorCount) {
+                const now = Date.now();
+                const count = data.vectorCount;
+                
+                // Calculate rate
+                const timeDiff = (now - prevTimeRef.current) / 1000;
+                const countDiff = count - prevCountRef.current;
+                
+                if (countDiff > 0 && timeDiff > 0) {
+                    const currentRate = countDiff / timeDiff;
+                    setRate(currentRate);
+                    
+                    // Estimate ETA
+                    const remaining = ESTIMATED_TOTAL_VECTORS - count;
+                    if (remaining > 0) {
+                        const etaSeconds = remaining / currentRate;
+                        const etaHours = Math.floor(etaSeconds / 3600);
+                        const etaMins = Math.floor((etaSeconds % 3600) / 60);
+                        setEta(`${etaHours}h ${etaMins}m`);
+                    }
+                    
+                    lastSuccessCountTimeRef.current = now;
+                    setIsStalled(false);
+                } else if (now - lastSuccessCountTimeRef.current > 60000) {
+                    // Stalled if no new vectors in 60 seconds
+                    setIsStalled(true);
+                }
+
+                if (count >= ESTIMATED_TOTAL_VECTORS) {
+                    setIsCompleted(true);
+                }
+
+                prevCountRef.current = count;
+                prevTimeRef.current = now;
+                setStats(data);
+                setDisplayCount(count);
+                setLastUpdated(now);
+            }
+        } catch (error) {
+            console.error("Failed to fetch RAG stats:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchStats();
+        fetchIngestionStatus();
+        const interval = setInterval(() => {
+            fetchStats();
+            fetchIngestionStatus();
+        }, 15000); 
+        return () => clearInterval(interval);
+    }, []);
+
+    const progressPercent = stats?.vectorCount ? Math.min(100, (stats.vectorCount / ESTIMATED_TOTAL_VECTORS) * 100) : 0;
+
+    return (
+        <div className="flex flex-col gap-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold flex items-center gap-2">
+                        <Database className="w-8 h-8 text-blue-600" />
+                        Lawslane RAG Status
+                    </h1>
+                    <p className="text-slate-500">Monitoring real-time vector ingestion for Legal Data</p>
+                </div>
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                    <Button 
+                        variant={systemPaused ? "secondary" : "ghost"} 
+                        size="sm" 
+                        className={cn("gap-2 rounded-lg", systemPaused ? "bg-amber-100 text-amber-700 hover:bg-amber-100" : "text-slate-500")}
+                        onClick={() => handleIngestorControl('pause')}
+                        disabled={systemPaused || controlLoading}
+                    >
+                        {controlLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
+                        Pause System
+                    </Button>
+                    <Button 
+                        variant={!systemPaused ? "secondary" : "ghost"} 
+                        size="sm" 
+                        className={cn("gap-2 rounded-lg", !systemPaused ? "bg-green-100 text-green-700 hover:bg-green-100" : "text-slate-500")}
+                        onClick={() => handleIngestorControl('resume')}
+                        disabled={!systemPaused || controlLoading}
+                    >
+                        {controlLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                        Resume System
+                    </Button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="border-none shadow-md bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-3xl overflow-hidden">
+                    <CardHeader className="pb-2 pt-6">
+                        <CardDescription className="text-blue-100 flex items-center gap-2 font-medium">
+                            <Activity className="w-4 h-4" /> Total Vectors
+                        </CardDescription>
+                        <CardTitle className="text-4xl font-black">
+                            {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : displayCount.toLocaleString()}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-6">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                                <span>Progress to Goal</span>
+                                <span>{progressPercent.toFixed(1)}%</span>
+                            </div>
+                            <Progress value={progressPercent} className="h-1.5 bg-blue-400/30" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md bg-white rounded-3xl">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2 font-medium">
+                            <Zap className="w-4 h-4 text-amber-500" /> Ingestion Rate
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold">
+                            {rate.toFixed(1)} <span className="text-sm font-normal text-slate-400">vec/sec</span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-xs text-slate-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Updated {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : 'Never'}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md bg-white rounded-3xl">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2 font-medium">
+                            <Clock className="w-4 h-4 text-blue-500" /> Estimated ETA
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold">
+                            {eta || 'Calculating...'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className={cn("text-xs font-bold uppercase tracking-widest", isStalled ? "text-red-500" : "text-green-500")}>
+                            {isStalled ? '● System Stalled' : '● System Healthy'}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md bg-white rounded-3xl">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2 font-medium">
+                            <Layers className="w-4 h-4 text-purple-500" /> Dimensions
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold">
+                            {stats?.dimensions || '1024'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-xs text-slate-400">
+                            Model: text-embedding-3-small
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <Card className="lg:col-span-2 border-slate-200 rounded-3xl shadow-sm bg-white overflow-hidden">
+                    <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <Cpu className="w-5 h-5 text-blue-600" /> Target Ingestors Status
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y divide-slate-100">
+                            {Object.entries(taskStatuses).map(([name, task]) => (
+                                <div key={name} className="flex items-center justify-between p-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center",
+                                            task.status === 'active' ? "bg-green-100" : 
+                                            task.status === 'paused' ? "bg-amber-100" : "bg-slate-100"
+                                        )}>
+                                            {task.status === 'active' ? <RefreshCw className="w-5 h-5 text-green-600 animate-spin" /> : 
+                                             task.status === 'paused' ? <Pause className="w-5 h-5 text-amber-600" /> : <Database className="w-5 h-5 text-slate-400" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900 capitalize">{name.replace(/_/g, ' ')}</p>
+                                            <p className="text-xs text-slate-500">{task.message || 'Waiting for signal...'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className={cn(
+                                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
+                                            task.status === 'active' ? "bg-green-100 text-green-700" : 
+                                            task.status === 'paused' ? "bg-amber-100 text-amber-700" :
+                                            task.status === 'error' ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-500"
+                                        )}>
+                                            {task.status}
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 mt-1">Last: {new Date(task.lastUpdate).toLocaleTimeString()}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-slate-200 rounded-3xl shadow-sm bg-white overflow-hidden">
+                    <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+                        <CardTitle className="text-lg font-bold">Session Overview</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-6">
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-500">Start Time</span>
+                            <span className="text-sm font-medium">{new Date(TASK_START_TIME).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-500">Time Elapsed</span>
+                            <span className="text-sm font-bold text-blue-600">{elapsed}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-500">Estimated Total</span>
+                            <span className="text-sm font-medium">{ESTIMATED_TOTAL_VECTORS.toLocaleString()}</span>
+                        </div>
+                        <div className="pt-4 border-t border-slate-100">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Platform Connection</p>
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                Cloudflare Vectorize (v2)
+                            </div>
+                        </div>
+                        <Button variant="outline" className="w-full rounded-xl border-slate-200 hover:bg-slate-50 h-10 gap-2" asChild>
+                            <Link href="/">
+                                Return to Main Dashboard
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}

@@ -114,6 +114,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Textarea } from '@/components/ui/textarea';
 
 export default function AdminFinancialsPage() {
   const { firestore } = useFirebase();
@@ -144,6 +145,11 @@ export default function AdminFinancialsPage() {
   // Debug State
   const [debugData, setDebugData] = React.useState<any>(null);
   const [isDebugOpen, setIsDebugOpen] = React.useState(false);
+
+  // Rejection State
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = React.useState(false);
+  const [rejectReason, setRejectReason] = React.useState('');
+  const [selectedRejectItem, setSelectedRejectItem] = React.useState<SlipVerificationItem | null>(null);
 
   // Permission State
   const [adminPermissions, setAdminPermissions] = React.useState<string[] | null>(null);
@@ -307,7 +313,7 @@ export default function AdminFinancialsPage() {
           type: 'Chat',
           userName: userName,
           lawyerName: lawyerName,
-          amount: 500,
+          amount: data.amount || 500,
           submittedAt: data.createdAt?.toDate() || new Date(),
           collectionName: 'chats',
           slipUrl: data.slipUrl,
@@ -559,6 +565,49 @@ export default function AdminFinancialsPage() {
       toast({
         variant: 'destructive',
         title: 'อนุมัติไม่สำเร็จ',
+        description: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
+      });
+    }
+  };
+
+  const handleRejectPayment = async () => {
+    if (!firestore || !selectedRejectItem || !rejectReason) return;
+
+    const docRef = doc(firestore, selectedRejectItem.collectionName, selectedRejectItem.id);
+
+    try {
+      await updateDoc(docRef, {
+        status: 'pending_payment',
+        rejectReason: rejectReason,
+        hasNewPayment: false
+      });
+
+      toast({
+        title: 'ปฏิเสธรายการแล้ว',
+        description: `แจ้งเหตุผลให้ ${selectedRejectItem.userName} เรียบร้อยแล้ว`,
+      });
+
+      // Notify Client
+      await addDoc(collection(firestore, 'notifications'), {
+        type: 'payment_rejected',
+        title: 'การชำระเงินถูกปฏิเสธ',
+        message: `สลิปของคุณสำหรับ ${selectedRejectItem.type} ถูกปฏิเสธ: ${rejectReason}`,
+        createdAt: serverTimestamp(),
+        read: false,
+        recipient: selectedRejectItem.userId,
+        link: selectedRejectItem.collectionName === 'chats' ? `/chat/${selectedRejectItem.id}` : '/dashboard',
+        relatedId: selectedRejectItem.id
+      });
+
+      setIsRejectDialogOpen(false);
+      setRejectReason('');
+      setSelectedRejectItem(null);
+      fetchPendingPayments();
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      toast({
+        variant: 'destructive',
+        title: 'ปฏิเสธไม่สำเร็จ',
         description: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
       });
     }
@@ -894,6 +943,13 @@ export default function AdminFinancialsPage() {
                                   }} disabled={!item.slipUrl}>
                                     <Eye className="mr-1 h-3 w-3" /> ตรวจสอบสลิป
                                   </Button>
+                                  <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => {
+                                    setSelectedRejectItem(item);
+                                    setRejectReason('');
+                                    setIsRejectDialogOpen(true);
+                                  }}>
+                                    ปฏิเสธ
+                                  </Button>
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprovePayment(item)}>
                                     <CheckCircle className="mr-1 h-3 w-3" /> ยืนยัน
                                   </Button>
@@ -920,6 +976,36 @@ export default function AdminFinancialsPage() {
                   expectedAmount={selectedSlip?.amount}
                   expectedLawyerName={selectedSlip?.lawyerName}
                 />
+
+                {/* Rejection Dialog */}
+                <AlertDialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>ปฏิเสธการชำระเงิน</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        ระบุเหตุผลที่ปฏิเสธสลิปนี้ เพื่อให้ลูกค้าดำเนินการแก้ไข
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-2">
+                       <Textarea 
+                        placeholder="เช่น ยอดเงินไม่ถูกต้อง, สลิปไม่ชัดเจน, สลิปซ้ำ..."
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        className="min-h-[100px]"
+                       />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setIsRejectDialogOpen(false)}>ยกเลิก</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleRejectPayment}
+                        disabled={!rejectReason.trim()}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        ยืนยันการปฏิเสธ
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
                 <TabsContent value="transactions">
                   <Card className="rounded-xl">
