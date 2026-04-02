@@ -96,6 +96,7 @@ type SlipVerificationItem = {
   userName: string;
   lawyerName: string;
   amount: number;
+  reason?: string;
   submittedAt: Date;
   collectionName: 'appointments' | 'chats';
   slipUrl?: string;
@@ -283,12 +284,14 @@ export default function AdminFinancialsPage() {
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
         const userName = await getUserName(data.userId);
+        const lawyerName = await getLawyerName(data.lawyerId);
+        const amount = data.amount || 3500;
         pending.push({
           id: d.id,
           type: 'Appointment',
           userName: userName,
-          lawyerName: data.lawyerName,
-          amount: 3500,
+          lawyerName: lawyerName,
+          amount: amount,
           submittedAt: data.createdAt?.toDate() || new Date(),
           collectionName: 'appointments',
           slipUrl: data.slipUrl,
@@ -299,27 +302,31 @@ export default function AdminFinancialsPage() {
 
       for (const d of chatSnapshot.docs) {
         const data = d.data();
-        // Chat participants: [userId, lawyerUserId]
-        // We need to find which one is the customer. Usually the creator.
-        // But here we saved userId explicitly in my previous step.
-        const userId = data.userId || data.participants[0];
+        const userId = data.userId || (data.participants && data.participants[0]);
         const lawyerId = data.lawyerId;
 
         const userName = await getUserName(userId);
         const lawyerName = lawyerId ? await getLawyerName(lawyerId) : 'Unknown Lawyer';
 
-        pending.push({
-          id: d.id,
-          type: 'Chat',
-          userName: userName,
-          lawyerName: lawyerName,
-          amount: data.amount || 500,
-          submittedAt: data.createdAt?.toDate() || new Date(),
-          collectionName: 'chats',
-          slipUrl: data.slipUrl,
-          userId: userId,
-          lawyerId: lawyerId
-        });
+        // Dynamic amount and reason for Case Opening or Chat Ticket
+        const amount = data.pendingPaymentDetails?.amount || data.amount || 0;
+        const reason = data.pendingPaymentDetails?.reason || (data.amount > 0 ? "Chat Ticket" : "Case Opening Fee");
+
+        if (amount > 0) {
+          pending.push({
+            id: d.id,
+            type: 'Chat',
+            userName: userName,
+            lawyerName: lawyerName,
+            amount: amount,
+            reason: reason, // We'll add this to the interface if needed or just use description
+            submittedAt: data.pendingPaymentDetails?.submittedAt?.toDate() || data.createdAt?.toDate() || new Date(),
+            collectionName: 'chats',
+            slipUrl: data.pendingPaymentDetails?.slipUrl || data.slipUrl,
+            userId: userId,
+            lawyerId: lawyerId
+          });
+        }
       }
 
       setSlipVerifications(pending.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()));
@@ -366,7 +373,6 @@ export default function AdminFinancialsPage() {
       // Process Appointments
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
-        // Skip if pending payment (handled in verification tab)
         if (data.status === 'pending_payment') continue;
 
         const userName = await getUserName(data.userId);
@@ -374,7 +380,7 @@ export default function AdminFinancialsPage() {
           id: d.id,
           date: data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
           description: `นัดหมายปรึกษา - ${userName}`,
-          amount: 3500,
+          amount: data.amount || 3500,
           type: 'revenue',
           status: data.status === 'completed' ? 'completed' : 'pending',
         });
@@ -383,18 +389,21 @@ export default function AdminFinancialsPage() {
       // Process Chats
       for (const d of chatSnapshot.docs) {
         const data = d.data();
-        if (data.status === 'pending_payment') continue;
+        if (data.status === 'pending_payment' || (data.status === 'active' && !data.amount)) continue;
 
         const userId = data.userId || (data.participants && data.participants[0]);
         const userName = userId ? await getUserName(userId) : 'Unknown User';
+        
+        const amount = data.amount || data.pendingPaymentDetails?.amount || 0;
+        if (amount === 0) continue;
 
         allTransactions.push({
           id: d.id,
           date: data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
-          description: `ปรึกษาผ่านแชท - ${userName}`,
-          amount: 500,
+          description: `ปรึกษาผ่านแชท/เปิดคดี - ${userName}`,
+          amount: amount,
           type: 'revenue',
-          status: data.status === 'closed' ? 'completed' : 'pending',
+          status: data.status === 'closed' || data.status === 'paid' ? 'completed' : 'pending',
         });
       }
 
@@ -495,7 +504,18 @@ export default function AdminFinancialsPage() {
       item.collectionName === 'appointments' ? 'pending' : 'active';
 
     try {
-      await updateDoc(docRef, { status: newStatus });
+      const updatePayload: any = { status: newStatus };
+      
+      // If it's a chat (Case Opening/Additional Fee), 
+      // promote the paid amount to the top level and cleanup pending objects
+      if (item.collectionName === 'chats') {
+        const { deleteField } = await import('firebase/firestore');
+        updatePayload.amount = item.amount;
+        updatePayload.pendingFeeRequest = deleteField();
+        updatePayload.pendingPaymentDetails = deleteField();
+      }
+
+      await updateDoc(docRef, updatePayload);
       toast({
         title: 'อนุมัติสำเร็จ',
         description: `รายการของ ${item.userName} ได้รับการอนุมัติแล้ว`,
@@ -705,7 +725,7 @@ export default function AdminFinancialsPage() {
   const { totalServiceValue, platformRevenueThisMonth, platformTotalRevenue, monthlyData } = stats;
 
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-8 lg:p-8">
       <Card className="rounded-xl">
         <CardHeader>
           <CardTitle>ภาพรวมการเงิน</CardTitle>
@@ -917,16 +937,17 @@ export default function AdminFinancialsPage() {
                                 </TableCell>
                                 <TableCell>{item.userName}</TableCell>
                                 <TableCell>
-                                  <Badge variant="outline">{item.type}</Badge>
+                                  <div className="flex flex-col gap-1">
+                                    <Badge variant="outline" className="w-fit">{item.type}</Badge>
+                                    {item.reason && <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{item.reason}</span>}
+                                  </div>
                                 </TableCell>
                                 <TableCell>{item.lawyerName}</TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                  <div className="font-bold">฿{item.amount.toLocaleString()}</div>
+                                  <Badge variant="outline" className="mt-1 bg-yellow-50 text-yellow-700 border-yellow-200 text-[10px]">
                                     รออนุมัติ
                                   </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  ฿{item.amount.toLocaleString()}
                                 </TableCell>
                                 <TableCell className="text-right space-x-2">
                                   {/* Debug Button */}

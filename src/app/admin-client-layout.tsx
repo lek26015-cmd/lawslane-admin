@@ -337,8 +337,8 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <div className="grid h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-            <div className="hidden border-r border-slate-700 bg-[#0f172a] text-slate-100 md:block">
+        <div className="grid h-screen w-full lg:grid-cols-[280px_1fr]">
+            <div className="hidden border-r border-slate-700 bg-[#0f172a] text-slate-100 lg:block">
                 <div className="flex h-full max-h-screen flex-col gap-2">
                     <div className="flex h-14 items-center border-b border-slate-700 px-4 lg:h-[60px] lg:px-6">
                         <Link href="/" className="flex items-center gap-2 font-semibold text-white">
@@ -463,7 +463,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6 lg:h-[60px]">
                     <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                         <SheetTrigger asChild>
-                            <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+                            <Button variant="outline" size="icon" className="shrink-0 lg:hidden">
                                 <Menu className="h-5 w-5" />
                                 <span className="sr-only">Toggle navigation menu</span>
                             </Button>

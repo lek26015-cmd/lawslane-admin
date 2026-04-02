@@ -92,8 +92,8 @@ export default function AdminDashboard() {
 
 
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-8 lg:p-8">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:gap-8 lg:grid-cols-4">
         {userRole === 'Super Admin' && (
           <Card className="rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

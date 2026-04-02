@@ -288,7 +288,7 @@ export function ChatBox({
   const firstUserMessage = messages.find(m => m.senderId !== (isLawyerView ? currentUser.uid : otherUser.userId));
 
   return (
-    <Card className="flex flex-col h-[80vh] shadow-lg">
+    <Card className="flex flex-col h-[calc(100vh-220px)] min-h-[600px] shadow-lg">
       <CardHeader className="border-b">
         <div className="flex justify-between items-center">
           <div>

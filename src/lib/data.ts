@@ -711,8 +711,9 @@ export async function getFinancialStats(db: Firestore) {
 
     appointmentsSnapshot.docs.forEach(doc => {
       const data = doc.data();
-      if (data.status !== 'pending' && data.status !== 'pending_payment' && data.status !== 'cancelled') {
-        const amount = 3500; // Fixed price for now
+      // Only count paid or verified appointments
+      if (data.status === 'paid' || data.status === 'completed' || data.status === 'awaiting_admin_final_check') {
+        const amount = data.amount || 3500; // Fallback to 3500 if amount is missing
         totalServiceValue += amount;
 
         const date = data.createdAt ? data.createdAt.toDate() : new Date();
@@ -728,9 +729,16 @@ export async function getFinancialStats(db: Firestore) {
 
     chatsSnapshot.docs.forEach(doc => {
       const data = doc.data();
-      // Assuming chats created are paid if not 'pending_payment'
-      if (data.status !== 'pending_payment') {
-        const amount = 500; // Fixed price
+      
+      // Determine the amount based on standard amount or pending payment details
+      let amount = 0;
+      if (data.status === 'paid' || data.status === 'completed') {
+        amount = data.amount || 0;
+      } else if (data.status === 'awaiting_admin_final_check') {
+        amount = data.pendingPaymentDetails?.amount || data.amount || 0;
+      }
+
+      if (amount > 0) {
         totalServiceValue += amount;
 
         const date = data.createdAt ? data.createdAt.toDate() : new Date();
@@ -743,6 +751,7 @@ export async function getFinancialStats(db: Firestore) {
         }
       }
     });
+
 
     platformTotalRevenue = totalServiceValue * 0.15;
 
