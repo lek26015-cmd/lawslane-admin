@@ -283,6 +283,9 @@ export default function AdminFinancialsPage() {
 
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
+        // Skip items without a slip (no slip to verify)
+        if (!data.slipUrl && !data.hasNewPayment) continue;
+        
         const userName = await getUserName(data.userId);
         const lawyerName = await getLawyerName(data.lawyerId);
         const amount = data.amount || 3500;
@@ -504,7 +507,7 @@ export default function AdminFinancialsPage() {
       item.collectionName === 'appointments' ? 'pending' : 'active';
 
     try {
-      const updatePayload: any = { status: newStatus };
+      const updatePayload: any = { status: newStatus, hasNewPayment: false };
       
       // If it's a chat (Case Opening/Additional Fee), 
       // promote the paid amount to the top level and cleanup pending objects
@@ -578,6 +581,29 @@ export default function AdminFinancialsPage() {
         }
       }
 
+      // Send email to CLIENT confirming approval
+      try {
+        const clientDoc = await getDoc(doc(firestore, 'users', item.userId));
+        if (clientDoc.exists()) {
+          const clientData = clientDoc.data();
+          if (clientData.email) {
+            import('@/app/actions/email').then(({ sendClientPaymentApprovedEmail }) => {
+              const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
+              const dashboardLink = `https://${rootDomain}/dashboard`;
+              sendClientPaymentApprovedEmail(
+                clientData.email,
+                clientData.name || 'ลูกความ',
+                item.amount,
+                item.type === 'Chat' ? 'ปรึกษาผ่านแชท/เปิดคดี' : 'นัดหมายปรึกษา',
+                dashboardLink
+              );
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to send client approval email', e);
+      }
+
       // Refetch the list after approval
       fetchPendingPayments();
     } catch (error) {
@@ -622,6 +648,32 @@ export default function AdminFinancialsPage() {
       setIsRejectDialogOpen(false);
       setRejectReason('');
       setSelectedRejectItem(null);
+
+      // Send email to CLIENT about rejection
+      try {
+        const clientDoc = await getDoc(doc(firestore, 'users', selectedRejectItem.userId));
+        if (clientDoc.exists()) {
+          const clientData = clientDoc.data();
+          if (clientData.email) {
+            import('@/app/actions/email').then(({ sendClientPaymentRejectedEmail }) => {
+              const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
+              const retryLink = selectedRejectItem.collectionName === 'chats'
+                ? `https://${rootDomain}/chat/${selectedRejectItem.id}`
+                : `https://${rootDomain}/dashboard`;
+              sendClientPaymentRejectedEmail(
+                clientData.email,
+                clientData.name || 'ลูกความ',
+                selectedRejectItem.amount,
+                rejectReason,
+                retryLink
+              );
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to send client rejection email', e);
+      }
+
       fetchPendingPayments();
     } catch (error) {
       console.error('Error rejecting payment:', error);
