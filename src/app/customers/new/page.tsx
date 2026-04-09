@@ -29,7 +29,8 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { useFirebase } from '@/firebase/provider'
 import { addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore'
-import { uploadToR2 } from '@/app/actions/upload-r2'
+import { uploadFileAction } from '@/app/actions/upload-storage'
+import { SecureImage } from '@/components/secure-image'
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants'
 
 export default function AdminCustomerCreatePage() {
@@ -100,14 +101,19 @@ export default function AdminCustomerCreatePage() {
       if (imageFile) {
         toast({
           title: "กำลังอัปโหลดรูปภาพ...",
-          description: "Uploading to R2..."
+          description: "Uploading to Firebase Storage..."
         });
 
         try {
           const formData = new FormData();
           formData.append('file', imageFile);
-          finalImageUrl = await uploadToR2(formData, 'profile-images');
-          toast({ title: "รูปภาพพร้อมแล้ว", description: "อัปโหลดสำเร็จ" });
+          const result = await uploadFileAction(formData, 'profile-images');
+          if (result.success) {
+            finalImageUrl = result.path;
+            toast({ title: "รูปภาพพร้อมแล้ว", description: "อัปโหลดสำเร็จ" });
+          } else {
+            throw new Error('Upload failed');
+          }
         } catch (uploadError) {
           console.error("Upload failed:", uploadError);
           toast({
@@ -191,7 +197,7 @@ export default function AdminCustomerCreatePage() {
                 <Label htmlFor="picture">รูปโปรไฟล์</Label>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={imageUrl || ''} />
+                    <SecureImage src={imageUrl || ''} alt="Preview" className="h-full w-full" />
                     <AvatarFallback>ลค</AvatarFallback>
                   </Avatar>
                   <div className="grid w-full max-w-sm items-center gap-1.5">

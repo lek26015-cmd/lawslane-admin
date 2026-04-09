@@ -17,6 +17,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { SecureImage } from '@/components/secure-image'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -60,7 +61,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useFirebase } from '@/firebase'
+import { useFirebase, initializeFirebase } from '@/firebase'
 import { doc, updateDoc, collection, query, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore'
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -239,16 +240,37 @@ export default function AdminLawyerDetailPage() {
     { name: 'ใบอนุญาตว่าความ', url: lawyer.licenseUrl },
     { name: 'สำเนาบัตรประชาชน', url: lawyer.idCardUrl },
   ].filter(d => d.url); // Only show if URL exists
-  const handleViewDocument = (url: string | undefined) => {
+  const handleViewDocument = async (url: string | undefined) => {
     if (!url || url === '#' || url === '') {
       toast({
         variant: "destructive",
         title: "ไม่พบเอกสาร",
-        description: "เอกสารนี้ยังไม่ได้ถูกอัปโหลด (ข้อมูลจำลอง)",
+        description: "เอกสารนี้ยังไม่ได้ถูกอัปโหลด",
       });
       return;
     }
-    window.open(url, '_blank');
+
+    if (url.startsWith('http')) {
+      window.open(url, '_blank');
+      return;
+    }
+
+    // Resolve Firebase path
+    try {
+      const { storage } = initializeFirebase();
+      if (!storage) throw new Error("Storage not initialized");
+      const { ref, getDownloadURL } = await import('firebase/storage');
+      const storageRef = ref(storage, url);
+      const downloadUrl = await getDownloadURL(storageRef);
+      window.open(downloadUrl, '_blank');
+    } catch (err) {
+      console.error("Error viewing document:", err);
+      toast({
+        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเปิดเอกสารได้",
+      });
+    }
   };
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
@@ -483,7 +505,11 @@ export default function AdminLawyerDetailPage() {
             <div className="grid gap-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={lawyer.imageUrl} />
+                  <SecureImage 
+                    src={lawyer.imageUrl} 
+                    alt={lawyer.name} 
+                    className="h-full w-full"
+                  />
                   <AvatarFallback>{lawyer.name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-1">

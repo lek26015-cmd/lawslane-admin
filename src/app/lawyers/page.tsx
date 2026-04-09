@@ -47,6 +47,7 @@ import {
     TabsTrigger,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SecureImage } from '@/components/secure-image';
 import { getAllLawyers } from '@/lib/data';
 import type { LawyerProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -250,7 +251,7 @@ export default function AdminLawyersPage() {
                                             <TableCell className="font-medium">
                                                 <div className="flex items-center gap-3">
                                                     <Avatar className="h-9 w-9">
-                                                        <AvatarImage src={lawyer.imageUrl} alt={lawyer.name} />
+                                                        <SecureImage src={lawyer.imageUrl} alt={lawyer.name} className="h-full w-full" />
                                                         <AvatarFallback>{lawyer.name.slice(0, 2)}</AvatarFallback>
                                                     </Avatar>
                                                     <div>

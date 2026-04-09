@@ -31,7 +31,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useFirebase } from '@/firebase'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import type { UserProfile } from '@/lib/types'
-import { uploadToR2 } from '@/app/actions/upload-r2';
+import { uploadFileAction } from '@/app/actions/upload-storage';
+import { SecureImage } from '@/components/secure-image';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 
 
@@ -78,16 +79,20 @@ export default function AdminCustomerEditPage() {
       }
 
       try {
-        toast({ title: "กำลังอัปโหลดรูปภาพ...", description: "Uploading to R2..." });
+        toast({ title: "กำลังอัปโหลดรูปภาพ...", description: "Uploading to Firebase Storage..." });
 
         const formData = new FormData();
         formData.append('file', file);
-        const url = await uploadToR2(formData, 'profile-images');
+        const result = await uploadFileAction(formData, 'profile-images');
 
-        // @ts-ignore
-        setCustomer(prev => prev ? { ...prev, avatar: url } : null);
-        setImageFile(file);
-        toast({ title: "รูปภาพพร้อมแล้ว", description: "กดบันทึกเพื่อยืนยันการเปลี่ยนแปลง" });
+        if (result.success) {
+            // @ts-ignore
+            setCustomer(prev => prev ? { ...prev, avatar: result.path } : null);
+            setImageFile(file);
+            toast({ title: "รูปภาพพร้อมแล้ว", description: "กดบันทึกเพื่อยืนยันการเปลี่ยนแปลง" });
+        } else {
+            throw new Error('Upload failed');
+        }
       } catch (error) {
         console.error("Upload failed:", error);
         toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถอัปโหลดรูปภาพได้" });
@@ -181,7 +186,7 @@ export default function AdminCustomerEditPage() {
                 <Label htmlFor="picture">รูปโปรไฟล์</Label>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={customer.avatar} />
+                    <SecureImage src={customer.avatar} alt={customer.name} className="h-full w-full" />
                     <AvatarFallback>{customer.name.slice(0, 2)}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-2">

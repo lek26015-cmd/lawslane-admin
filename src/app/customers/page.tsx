@@ -50,6 +50,7 @@ import {
     TabsTrigger,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SecureImage } from '@/components/secure-image';
 import { useFirebase } from '@/firebase';
 import { getAllUsers } from '@/lib/data';
 import type { UserProfile } from '@/lib/types';
@@ -208,7 +209,7 @@ export default function AdminCustomersPage() {
                                         >
                                             <TableCell className="hidden sm:table-cell">
                                                 <Avatar className="h-9 w-9">
-                                                    <AvatarImage src={customer.avatar} alt={customer.name} />
+                                                    <SecureImage src={customer.avatar} alt={customer.name} className="h-full w-full" />
                                                     <AvatarFallback>{customer.name.slice(0, 2)}</AvatarFallback>
                                                 </Avatar>
                                             </TableCell>

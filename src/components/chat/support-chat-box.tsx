@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Loader2, UserCog, Languages } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SecureImage } from '@/components/secure-image';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -168,7 +169,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
                   >
                     {!ownMessage && (
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : undefined)} />
+                        <SecureImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : undefined)} alt={msg.senderName} className="h-full w-full" />
                         <AvatarFallback>
                           <UserCog className="w-5 h-5" />
                         </AvatarFallback>
@@ -216,7 +217,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
                     </div>
                     {ownMessage && (
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={msg.avatarUrl || (isAdmin ? adminProfile.avatar : undefined)} />
+                        <SecureImage src={msg.avatarUrl || (isAdmin ? adminProfile.avatar : undefined)} alt="Me" className="h-full w-full" />
                         <AvatarFallback>{isAdmin ? <UserCog className="w-5 h-5" /> : "Me"}</AvatarFallback>
                       </Avatar>
                     )}

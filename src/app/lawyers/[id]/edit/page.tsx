@@ -34,9 +34,10 @@ import { getLawyerById } from '@/lib/data'
 import { useFirebase } from '@/firebase'
 import type { LawyerProfile } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox'
+import { SecureImage } from '@/components/secure-image'
 
 import { doc, updateDoc } from 'firebase/firestore';
-import { uploadToR2 } from '@/app/actions/upload-r2';
+import { uploadFileAction } from '@/app/actions/upload-storage';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 import { translateToMultipleLanguages } from '@/app/actions/translate';
 
@@ -124,14 +125,18 @@ export default function AdminLawyerEditPage() {
       }
 
       try {
-        toast({ title: "กำลังอัปโหลดรูปภาพ...", description: "Uploading to R2..." });
+        toast({ title: "กำลังอัปโหลดรูปภาพ...", description: "Uploading to Firebase Storage..." });
 
         const formData = new FormData();
         formData.append('file', file);
-        const url = await uploadToR2(formData, 'lawyers');
+        const result = await uploadFileAction(formData, 'lawyers');
 
-        setLawyer(prev => prev ? { ...prev, imageUrl: url } : null);
-        toast({ title: "รูปภาพพร้อมแล้ว", description: "กดบันทึกเพื่อยืนยันการเปลี่ยนแปลง" });
+        if (result.success) {
+          setLawyer(prev => prev ? { ...prev, imageUrl: result.path } : null);
+          toast({ title: "รูปภาพพร้อมแล้ว", description: "กดบันทึกเพื่อยืนยันการเปลี่ยนแปลง" });
+        } else {
+          throw new Error('Upload failed');
+        }
       } catch (error) {
         console.error("Upload failed:", error);
         toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถอัปโหลดรูปภาพได้" });
@@ -229,7 +234,7 @@ export default function AdminLawyerEditPage() {
                 <Label htmlFor="picture">รูปโปรไฟล์</Label>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={lawyer.imageUrl} />
+                    <SecureImage src={lawyer.imageUrl} alt={lawyer.name} className="h-full w-full" />
                     <AvatarFallback>{lawyer.name.slice(0, 2)}</AvatarFallback>
                   </Avatar>
                   <input

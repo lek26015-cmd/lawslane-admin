@@ -3,6 +3,11 @@
 import { r2 } from '@/lib/r2';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 
+/**
+ * @deprecated THIS ACTION UPLOADS TO PUBLIC R2 STORAGE.
+ * DO NOT USE THIS FOR SENSITIVE DOCUMENTS (ID CARDS, LICENSES, ETC.).
+ * Use uploadFileAction from '@/app/actions/upload-storage' instead for secure storage.
+ */
 export async function uploadToR2(formData: FormData, folder: string = 'uploads') {
     const file = formData.get('file') as File;
     if (!file) {
