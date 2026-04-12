@@ -109,7 +109,7 @@ export default function LawyerRegistryPage() {
                 // For now, we'll just show a success message with the character count
                 // and maybe try to find some patterns if possible.
 
-                // TODO: Implement specific parsing logic based on user's PDF format
+                // NOTE: PDF text extraction is available but structured data parsing is not automated. Use CSV import for bulk data instead.
                 // For now, we treat it as a "Text Extraction Success"
 
                 toast({

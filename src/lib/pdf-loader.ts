@@ -15,7 +15,7 @@ async function tryOcrFallback(buffer: Buffer): Promise<string> {
         // NOTE: The previous implementation used undocumented internals of pdf-parse (new PDFParse)
         // which causes "fake worker" errors in serverless environments.
         // For now, we return empty to avoid crashing. 
-        // TODO: Implement a robust server-side PDF-to-Image solution (e.g. using a dedicated API or stable library).
+        // NOTE: Server-side PDF-to-Image is not supported in Vercel serverless. Typhoon OCR is used as an alternative when text extraction fails.
 
         return "";
 

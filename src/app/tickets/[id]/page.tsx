@@ -21,35 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
-const mockTickets = [
-    {
-        id: "TICKET-5891A",
-        caseId: "case-001",
-        clientName: "สมหญิง ใจดี",
-        lawyerName: "นางสาวสมศรี ยุติธรรม",
-        problemType: "ทนายตอบช้า",
-        status: "pending",
-        reportedAt: "2024-07-28"
-    },
-    {
-        id: "TICKET-5891B",
-        caseId: "case-002",
-        clientName: "นายสมชาย กฎหมายดี",
-        lawyerName: "ลูกค้า",
-        problemType: "ไม่สามารถอัปโหลดไฟล์ได้",
-        status: "pending",
-        reportedAt: "2024-07-27"
-    },
-    {
-        id: "TICKET-5890C",
-        caseId: "case-003",
-        clientName: "บริษัท เติบโต จำกัด",
-        lawyerName: "นายวิชัย ชนะคดี",
-        problemType: "ปัญหาการชำระเงิน",
-        status: "resolved",
-        reportedAt: "2024-07-25"
-    }
-]
+
 
 function AdminTicketDetailPageContent() {
     const params = useParams();
@@ -160,28 +132,10 @@ function AdminTicketDetailPageContent() {
     const isResolved = ticket.status === 'resolved';
     const reportedTicket = {
         ...ticket,
-        lawyerId: 'lawyer-123', // Mock ID
+        lawyerId: ticket.lawyerId || ticket.caseId || '',
         caseTitle: `เคส ${ticket.caseId}`,
         status: ticket.status as 'pending' | 'resolved',
-        // reportedAt is already a Date object
     }
-    // Correction: In the onSnapshot above, I formatted reportedAt to string.
-    // But SupportChatBox might need the original data?
-    // Let's look at SupportChatBox again. It uses ticket.id and ticket.caseTitle.
-    // It doesn't seem to use reportedAt.
-    // However, to satisfy TypeScript, we need to match the type.
-    // Let's just cast it or ensure it's correct.
-    // Ideally, I should store the raw data in state and format only for display.
-    // But to minimize changes, I'll just leave it as is if it works, or fix if it breaks.
-    // The previous code had: reportedAt: new Date(ticket.reportedAt)
-    // If ticket.reportedAt is "20/07/2567", new Date() might fail.
-    // Let's check the previous code again.
-    // Previous code:
-    // if (data.reportedAt?.toDate) { reportedAtStr = ... }
-    // setTicket({ ... reportedAt: reportedAtStr ... })
-    // const reportedTicket = { ... reportedAt: new Date(ticket.reportedAt) }
-    // This looks risky if the string is Thai format.
-    // But since I'm rewriting, I can improve this.
 
     return (
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">

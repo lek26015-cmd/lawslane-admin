@@ -197,37 +197,7 @@ export default function AdminLawyersPage() {
                                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">เพิ่มทนายความ</span>
                                     </Link>
                                 </Button>
-                                <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="h-8 gap-1 ml-2"
-                                    onClick={async () => {
-                                        try {
-                                            const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-                                            const dummyId = 'test-lawyer-' + Date.now();
-                                            await setDoc(doc(firestore!, 'lawyerProfiles', dummyId), {
-                                                id: dummyId,
-                                                userId: 'test-user-' + Date.now(), // Add dummy userId
-                                                name: 'Test Lawyer ' + Date.now(),
-                                                email: 'test@example.com',
-                                                status: 'pending',
-                                                specialty: ['คดีแพ่ง'],
-                                                joinedAt: serverTimestamp(),
-                                                imageHint: 'professional',
-                                                imageUrl: ''
-                                            });
-                                            toast({ title: 'สร้างทนายจำลองสำเร็จ', description: 'ลองรีเฟรชหน้าจอเพื่อดูข้อมูล' });
-                                            // Trigger refresh
-                                            getAllLawyers(firestore!).then(setAllLawyers);
-                                        } catch (e) {
-                                            console.error(e);
-                                            toast({ variant: 'destructive', title: 'Error', description: String(e) });
-                                        }
-                                    }}
-                                >
-                                    <PlusCircle className="h-3.5 w-3.5" />
-                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Test Data</span>
-                                </Button>
+
                             </div>
                         </div>
                         <TabsContent value={activeTab}>
