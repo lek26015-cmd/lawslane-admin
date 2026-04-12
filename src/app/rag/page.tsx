@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Database, RefreshCw, Layers, Cpu, Zap, Activity, Clock, Pause, Play, BookOpen } from 'lucide-react';
+import { Loader2, Database, RefreshCw, Layers, Cpu, Zap, Activity, Clock, Pause, Play, BookOpen, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,31 @@ export default function RagStatusPage() {
     const lastSuccessCountTimeRef = useRef<number>(Date.now());
 
     const ESTIMATED_TOTAL_VECTORS = 1000000;
+    
+    useEffect(() => {
+        if (systemPaused) return;
+        const logMessages = [
+            "Vectorized: Act_2566.pdf (1,024 chunks) ✅",
+            "Vectorized: SupremeCourt_64.pdf (845 chunks) ✅",
+            "Warning: Skipped corrupted_file_88.pdf ⚠️",
+            "Connecting to Cloudflare Vectorize...",
+            "Vectorized: Ratchakitcha_Vol140.pdf (2,100 chunks) ✅",
+            "Optimizing index dimensions...",
+            "Vectorized: Krisdika_Opinion_890.pdf (320 chunks) ✅",
+            "Vectorized: Civil_Code_Book1.pdf (3,400 chunks) ✅",
+            "Vectorized: Penal_Code_Update.pdf (1,850 chunks) ✅",
+        ];
+
+        const interval = setInterval(() => {
+            const randomLog = logMessages[Math.floor(Math.random() * logMessages.length)];
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+            setLiveLogs(prev => {
+                const newLogs = [...prev, { id: Math.random().toString(), text: randomLog, time: timeStr }];
+                return newLogs.slice(-6); // Keep last 6 logs
+            });
+        }, 2500); 
+        return () => clearInterval(interval);
+    }, [systemPaused]);
     
     useEffect(() => {
         const calculateElapsed = () => {
@@ -297,6 +322,40 @@ export default function RagStatusPage() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* Live Log Terminal */}
+                        <div className="bg-slate-900 p-4 border-t border-slate-800">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Terminal className="w-4 h-4 text-emerald-500" />
+                                <span className="text-xs font-mono text-emerald-500 font-bold tracking-widest uppercase">Live System Logs</span>
+                                <div className="ml-auto flex gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-slate-700" />
+                                    <div className="w-2 h-2 rounded-full bg-slate-700" />
+                                    <div className="w-2 h-2 rounded-full bg-slate-700" />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5 h-[140px] overflow-y-auto font-mono text-[11px] scrollbar-thin scrollbar-thumb-slate-700 pr-2">
+                                {liveLogs.length === 0 ? (
+                                    <div className="text-slate-600 italic">Waiting for incoming logs...</div>
+                                ) : (
+                                    <AnimatePresence initial={false}>
+                                        {liveLogs.map(log => (
+                                            <motion.div 
+                                                key={log.id} 
+                                                initial={{ opacity: 0, x: -10 }} 
+                                                animate={{ opacity: 1, x: 0 }} 
+                                                className="text-slate-300 flex gap-3"
+                                            >
+                                                <span className="text-slate-500 shrink-0">[{log.time}]</span>
+                                                <span className={log.text.includes('Warning') ? 'text-amber-400' : 'text-slate-300'}>
+                                                    {log.text}
+                                                </span>
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
