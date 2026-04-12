@@ -33,7 +33,7 @@ export default {
 
         if (request.method === 'POST' && url.pathname === '/query') {
             try {
-                const { question } = await request.json() as any;
+                const { question, filter, topK: requestedTopK } = await request.json() as any;
                 if (!question) return new Response("Missing question", { status: 400 });
 
                 const { data } = await env.AI.run('@cf/baai/bge-m3', { text: [question] });
@@ -41,7 +41,15 @@ export default {
 
                 if (!values) return new Response("Failed to generate embeddings", { status: 500 });
 
-                const searchResult = await env.VECTORIZE_INDEX.query(values, { topK: 5, returnMetadata: true });
+                const queryOptions: any = {
+                    topK: requestedTopK || 5,
+                    returnMetadata: true,
+                };
+                if (filter) {
+                    queryOptions.filter = filter;
+                }
+
+                const searchResult = await env.VECTORIZE_INDEX.query(values, queryOptions);
 
                 return new Response(JSON.stringify(searchResult), { headers: { "Content-Type": "application/json" } });
             } catch (e: any) {

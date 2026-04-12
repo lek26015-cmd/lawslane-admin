@@ -24,8 +24,12 @@ export default function AiAnalysisCard() {
     setIsFindingLawyers(true);
     try {
       const result = await findLawyerSpecialties({ problem: analysisText });
-      const specialties = result.specialties.join(',');
-      router.push(`/lawyers?specialties=${encodeURIComponent(specialties)}`);
+      if (result.matchedLawyerIds && result.matchedLawyerIds.length > 0) {
+        const matchIds = result.matchedLawyerIds.join(',');
+        router.push(`/lawyers?matchIds=${encodeURIComponent(matchIds)}`);
+      } else {
+        router.push(`/lawyers`);
+      }
     } catch (error) {
       console.error('Failed to find lawyer specialties:', error);
       router.push(`/lawyers`);

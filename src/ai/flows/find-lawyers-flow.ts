@@ -1,70 +1,81 @@
 
 'use server';
 /**
- * @fileOverview An AI flow to find lawyer specialties based on a user's problem description.
+ * @fileOverview Vector AI Matchmaking flow — finds the best-matching lawyers
+ * by querying Cloudflare Vectorize for semantic similarity against lawyer profiles.
+ * Replaces the old Gemini LLM category-classification approach.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getAllLawyers } from '@/lib/data';
-import { Firestore, getFirestore } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+
+const WORKER_URL = 'https://lawslane-rag-api.lawslane-app.workers.dev';
 
 const FindLawyersInputSchema = z.object({
   problem: z.string().describe("The user's description of their legal problem."),
 });
 
 const FindLawyersOutputSchema = z.object({
-  specialties: z.array(z.string()).describe('A list of lawyer specialties relevant to the problem.'),
+  matchedLawyerIds: z.array(z.string()).describe('Ordered list of matched lawyer IDs from vector search.'),
+  specialties: z.array(z.string()).describe('Kept for backward compatibility — now empty.'),
 });
 
 export type FindLawyersInput = z.infer<typeof FindLawyersInputSchema>;
 export type FindLawyersOutput = z.infer<typeof FindLawyersOutputSchema>;
 
-// This function now dynamically fetches specialties from Firestore
-async function getDynamicLawyerSpecialties(db: Firestore): Promise<string[]> {
-  const lawyers = await getAllLawyers(db);
-  const allSpecialties = lawyers.flatMap(lawyer => lawyer.specialty);
-  // Return unique specialties
-  return [...new Set(allSpecialties)];
-}
-
-
-const findLawyersPrompt = ai.definePrompt({
-  name: 'findLawyersPrompt',
-  input: {
-    schema: z.object({
-      problem: z.string(),
-      specialties: z.array(z.string()),
-    })
-  },
-  output: { schema: FindLawyersOutputSchema },
-  prompt: `You are an expert legal AI assistant for Lawslane (Thailand).
-Your task is to analyze the user's legal problem and identify the most relevant lawyer specialties from the provided list.
-
-Instructions:
-1.  **Analyze the Core Issue**: Read the user's problem carefully to understand the specific legal domain (e.g., Family, Criminal, Corporate, Property).
-2.  **Match Precisely**: Select ONLY the specialties that directly address the core issue. Do not select loosely related specialties.
-3.  **Limit Selection**: Return at most 2 specialties, prioritizing the most critical one.
-4.  **Language**: The input will be in Thai. Ensure you understand Thai legal context.
-
-Available Specialties:
-{{#each specialties}}
-- {{{this}}}
-{{/each}}
-
-User's Problem: {{{problem}}}
-`,
-});
-
 export async function findLawyerSpecialties(input: FindLawyersInput): Promise<FindLawyersOutput> {
-  const { firestore } = initializeFirebase();
-  if (!firestore) throw new Error("Firestore not initialized");
-  const dynamicSpecialties = await getDynamicLawyerSpecialties(firestore);
+  if (!input.problem.trim()) {
+    return { matchedLawyerIds: [], specialties: [] };
+  }
 
-  const { output } = await findLawyersPrompt({
-    problem: input.problem,
-    specialties: dynamicSpecialties,
-  });
-  return output!;
+  try {
+    console.log(`[Vector Matchmaking] Querying for: "${input.problem}"`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(`${WORKER_URL}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: input.problem,
+        filter: { type: 'lawyer' },
+        topK: 10,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Cannot read error');
+      console.error(`[Vector Matchmaking] Worker error: ${response.status}`, errorText);
+      return { matchedLawyerIds: [], specialties: [] };
+    }
+
+    const data = await response.json() as any;
+
+    if (!data || !data.matches || data.matches.length === 0) {
+      console.warn('[Vector Matchmaking] No matches found.');
+      return { matchedLawyerIds: [], specialties: [] };
+    }
+
+    const lawyerIds: string[] = [];
+    for (const match of data.matches) {
+      const lawyerId = match.metadata?.lawyerId;
+      if (lawyerId && !lawyerIds.includes(lawyerId)) {
+        lawyerIds.push(lawyerId);
+      }
+    }
+
+    console.log(`[Vector Matchmaking] Found ${lawyerIds.length} matching lawyers:`, lawyerIds);
+
+    return {
+      matchedLawyerIds: lawyerIds,
+      specialties: [],
+    };
+  } catch (error) {
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    console.error('[Vector Matchmaking] Error:', isTimeout ? 'Request timeout' : error);
+    return { matchedLawyerIds: [], specialties: [] };
+  }
 }
