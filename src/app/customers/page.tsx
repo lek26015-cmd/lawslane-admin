@@ -105,7 +105,7 @@ export default function AdminCustomersPage() {
         const csvRows = [
             headers.join(','),
             ...filteredCustomers.map(c =>
-                [c.uid, `"${c.name}"`, c.email, c.type, c.registeredAt, c.status].join(',')
+                [c.uid, `"${c.name || 'Unknown'}"`, c.email, c.type, c.registeredAt, c.status].join(',')
             )
         ];
 
@@ -209,12 +209,12 @@ export default function AdminCustomersPage() {
                                         >
                                             <TableCell className="hidden sm:table-cell">
                                                 <Avatar className="h-9 w-9">
-                                                    <SecureImage src={customer.avatar} alt={customer.name} className="h-full w-full" />
-                                                    <AvatarFallback>{customer.name.slice(0, 2)}</AvatarFallback>
+                                                    <SecureImage src={customer.avatar} alt={customer.name || 'User'} className="h-full w-full" />
+                                                    <AvatarFallback>{(customer.name || 'U').slice(0, 2).toUpperCase()}</AvatarFallback>
                                                 </Avatar>
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {customer.name}
+                                                {customer.name || 'Unnamed User'}
                                                 <div className="text-xs text-muted-foreground md:hidden">
                                                     {customer.email}
                                                 </div>
