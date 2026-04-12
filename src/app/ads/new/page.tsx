@@ -32,7 +32,7 @@ import { useFirebase } from '@/firebase'
 import { addDoc, collection, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { errorEmitter, FirestorePermissionError } from '@/firebase'
 
-import { uploadToR2 } from '@/app/actions/upload-r2';
+import { uploadToCloudflareImages } from '@/app/actions/upload-cloudflare-images';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 
 export default function AdminAdCreatePage() {
@@ -147,7 +147,7 @@ export default function AdminAdCreatePage() {
         try {
           const formData = new FormData();
           formData.append('file', imageFile);
-          finalImageUrl = await uploadToR2(formData, 'ads');
+          finalImageUrl = await uploadToCloudflareImages(formData, 'ads');
           toast({ title: "รูปภาพพร้อมแล้ว", description: "อัปโหลดสำเร็จ" });
         } catch (uploadError) {
           console.error("Upload failed:", uploadError);

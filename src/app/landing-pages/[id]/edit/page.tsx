@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, Upload, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { uploadToR2 } from '@/app/actions/upload-r2';
+import { uploadToCloudflareImages } from '@/app/actions/upload-cloudflare-images';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -127,13 +127,13 @@ export default function EditLandingPage() {
             if (heroImageFile) {
                 const heroFormData = new FormData();
                 heroFormData.append('file', heroImageFile);
-                finalHeroUrl = await uploadToR2(heroFormData, 'landing-pages');
+                finalHeroUrl = await uploadToCloudflareImages(heroFormData, 'landing-pages');
             }
 
             if (logoFile) {
                 const logoFormData = new FormData();
                 logoFormData.append('file', logoFile);
-                finalLogoUrl = await uploadToR2(logoFormData, 'landing-pages');
+                finalLogoUrl = await uploadToCloudflareImages(logoFormData, 'landing-pages');
             }
 
             // Update Firestore

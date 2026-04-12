@@ -32,12 +32,7 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: '*.r2.dev',
-        port: '',
-        pathname: '/**',
-      },
+      
       {
         protocol: 'https',
         hostname: 'i.pravatar.cc',
@@ -90,7 +85,7 @@ const nextConfig: NextConfig = {
               default-src 'self';
               script-src 'self' 'unsafe-eval' 'unsafe-inline' https://challenges.cloudflare.com https://apis.google.com;
               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-              img-src 'self' blob: data: https://placehold.co https://images.unsplash.com https://picsum.photos https://*.r2.dev https://i.pravatar.cc https://*.googleusercontent.com;
+              img-src 'self' blob: data: https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pravatar.cc https://*.googleusercontent.com https://imagedelivery.net ;
               font-src 'self' https://fonts.gstatic.com;
               connect-src 'self' https://challenges.cloudflare.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://firestore.googleapis.com https://*.firebaseapp.com;
               frame-src 'self' https://challenges.cloudflare.com https://*.firebaseapp.com https://*.googleapis.com https://auth.lawslane.com;
