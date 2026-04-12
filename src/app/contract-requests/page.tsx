@@ -20,6 +20,7 @@ export default function AdminContractRequestsPage() {
         const fetchRequests = async () => {
             try {
                 const { firestore: db } = initializeFirebase();
+                if (!db) return;
                 const q = query(collection(db, 'contractRequests'), orderBy('createdAt', 'desc'), limit(50));
                 const querySnapshot = await getDocs(q);
 

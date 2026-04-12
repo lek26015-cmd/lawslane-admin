@@ -28,6 +28,7 @@ export default function AdminContractRequestDetailsPage() {
         const fetchRequest = async () => {
             try {
                 const { firestore: db } = initializeFirebase();
+                if (!db) return;
                 const docRef = doc(db, 'contractRequests', id);
                 const docSnap = await getDoc(docRef);
 
@@ -63,6 +64,7 @@ export default function AdminContractRequestDetailsPage() {
         setUpdating(true);
         try {
             const { firestore: db } = initializeFirebase();
+            if (!db) return;
             const docRef = doc(db, 'contractRequests', request.id);
             await updateDoc(docRef, { status: newStatus });
 

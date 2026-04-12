@@ -208,7 +208,7 @@ export default function AdminFormCreatePage() {
                         title: `กำลังอัปโหลด ${file.name} (${langSection.flag})...`,
                     });
 
-                    const url = await uploadToCloudflareImages(formData, 'forms');
+                    const url = await uploadToCloudflareImages(formData);
                     attachments.push({
                         url,
                         name: file.name,

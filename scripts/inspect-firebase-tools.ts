@@ -1,4 +1,5 @@
 
+// @ts-expect-error missing type definitions
 import * as fb from 'firebase-tools';
 console.log(Object.keys(fb));
 if ((fb as any).auth) {

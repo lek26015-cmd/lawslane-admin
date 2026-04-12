@@ -163,12 +163,12 @@ export default function NewLandingPage() {
 
             const heroFormData = new FormData();
             heroFormData.append('file', heroImageFile);
-            heroImageUrl = await uploadToCloudflareImages(heroFormData, 'landing-pages');
+            heroImageUrl = await uploadToCloudflareImages(heroFormData);
 
             if (logoFile) {
                 const logoFormData = new FormData();
                 logoFormData.append('file', logoFile);
-                logoUrl = await uploadToCloudflareImages(logoFormData, 'landing-pages');
+                logoUrl = await uploadToCloudflareImages(logoFormData);
             }
 
             // Save to Firestore

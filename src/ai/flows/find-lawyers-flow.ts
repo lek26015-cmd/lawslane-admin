@@ -59,6 +59,7 @@ User's Problem: {{{problem}}}
 
 export async function findLawyerSpecialties(input: FindLawyersInput): Promise<FindLawyersOutput> {
   const { firestore } = initializeFirebase();
+  if (!firestore) throw new Error("Firestore not initialized");
   const dynamicSpecialties = await getDynamicLawyerSpecialties(firestore);
 
   const { output } = await findLawyersPrompt({

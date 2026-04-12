@@ -183,6 +183,7 @@ async function fallbackChat(prompt: string, locale: string = 'th'): Promise<Chat
   console.log("[ChatFlow] Running fallback chat logic...");
   try {
     const { firestore, auth } = initializeFirebase();
+    if (!firestore) throw new Error("Firestore not initialized");
 
     // Determine language instruction for Typhoon
     let languageInstruction = "ตอบเป็นภาษาไทย";

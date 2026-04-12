@@ -14,6 +14,7 @@ async function setAdmin() {
     // Dynamic import to ensure env vars are loaded first
     const { initializeFirebase } = await import('../src/firebase');
     const { firestore } = initializeFirebase();
+    if (!firestore) throw new Error("Firestore is not initialized.");
 
     const userRef = doc(firestore, 'users', TARGET_UID);
     const userSnap = await getDoc(userRef);

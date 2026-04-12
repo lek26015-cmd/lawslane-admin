@@ -147,7 +147,7 @@ export default function AdminAdCreatePage() {
         try {
           const formData = new FormData();
           formData.append('file', imageFile);
-          finalImageUrl = await uploadToCloudflareImages(formData, 'ads');
+          finalImageUrl = await uploadToCloudflareImages(formData);
           toast({ title: "รูปภาพพร้อมแล้ว", description: "อัปโหลดสำเร็จ" });
         } catch (uploadError) {
           console.error("Upload failed:", uploadError);

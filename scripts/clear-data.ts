@@ -11,6 +11,7 @@ async function clearData() {
     // Dynamic import to ensure env vars are loaded first
     const { initializeFirebase } = await import('../src/firebase');
     const { firestore } = initializeFirebase();
+    if (!firestore) throw new Error("Firestore is not initialized.");
 
     const collections = [
         'users',

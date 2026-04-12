@@ -69,7 +69,7 @@ export default function AdminAdEditPage() {
 
         const formData = new FormData();
         formData.append('file', file);
-        const url = await uploadToCloudflareImages(formData, 'ads');
+        const url = await uploadToCloudflareImages(formData);
 
         setAd(prev => prev ? { ...prev, imageUrl: url } : null);
         setImageFile(file);

@@ -20,6 +20,7 @@ export default function AdminRegistrationRequestsPage() {
         const fetchRequests = async () => {
             try {
                 const { firestore: db } = initializeFirebase();
+                if (!db) return;
                 const q = query(collection(db, 'registrationRequests'), orderBy('createdAt', 'desc'));
                 const querySnapshot = await getDocs(q);
 

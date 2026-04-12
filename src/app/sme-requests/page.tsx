@@ -20,6 +20,7 @@ export default function AdminSmeRequestsPage() {
         const fetchRequests = async () => {
             try {
                 const { firestore: db } = initializeFirebase();
+                if (!db) return;
                 const q = query(collection(db, 'smeRequests'), orderBy('createdAt', 'desc'));
                 const querySnapshot = await getDocs(q);
 

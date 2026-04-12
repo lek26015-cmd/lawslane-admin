@@ -27,6 +27,7 @@ export default function AdminRegistrationRequestDetailsPage() {
         const fetchRequest = async () => {
             try {
                 const { firestore: db } = initializeFirebase();
+                if (!db) return;
                 const docRef = doc(db, 'registrationRequests', id);
                 const docSnap = await getDoc(docRef);
 
@@ -62,6 +63,7 @@ export default function AdminRegistrationRequestDetailsPage() {
         setUpdating(true);
         try {
             const { firestore: db } = initializeFirebase();
+            if (!db) return;
             const docRef = doc(db, 'registrationRequests', request.id);
             await updateDoc(docRef, { status: newStatus });
 

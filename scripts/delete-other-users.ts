@@ -13,6 +13,7 @@ async function deleteOtherUsers() {
 
     const { initializeFirebase } = await import('../src/firebase');
     const { firestore } = initializeFirebase();
+    if (!firestore) throw new Error("Firestore is not initialized.");
 
     // 1. Delete from 'users'
     const usersRef = collection(firestore, 'users');

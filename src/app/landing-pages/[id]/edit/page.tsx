@@ -127,13 +127,13 @@ export default function EditLandingPage() {
             if (heroImageFile) {
                 const heroFormData = new FormData();
                 heroFormData.append('file', heroImageFile);
-                finalHeroUrl = await uploadToCloudflareImages(heroFormData, 'landing-pages');
+                finalHeroUrl = await uploadToCloudflareImages(heroFormData);
             }
 
             if (logoFile) {
                 const logoFormData = new FormData();
                 logoFormData.append('file', logoFile);
-                finalLogoUrl = await uploadToCloudflareImages(logoFormData, 'landing-pages');
+                finalLogoUrl = await uploadToCloudflareImages(logoFormData);
             }
 
             // Update Firestore

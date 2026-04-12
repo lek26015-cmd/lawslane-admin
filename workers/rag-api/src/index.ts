@@ -1,6 +1,6 @@
 
 export interface Env {
-    VECTORIZE_INDEX: VectorizeIndex;
+    VECTORIZE_INDEX: any;
     AI: any;
 }
 

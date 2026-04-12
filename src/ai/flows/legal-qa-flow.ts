@@ -3,7 +3,7 @@
 import { retrieveContext } from '@/lib/rag';
 import { z } from 'zod';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getCachedAIResponse, setCachedAIResponse } from '@/lib/ai-cache';
+
 
 const LegalQaInputSchema = z.object({
     question: z.string(),
@@ -54,16 +54,12 @@ Rules:
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        // Try to get from cache first
-        const cacheInput = `question:${question}|context:${context.substring(0, 1000)}`;
-        const cached = await getCachedAIResponse<string>(cacheInput, 'legal-qa');
-        if (cached) return cached;
+
 
         const result = await model.generateContent(prompt);
         const finalResult = result.response.text();
 
-        // Save to cache
-        await setCachedAIResponse(cacheInput, 'legal-qa', finalResult);
+
 
         return finalResult;
 

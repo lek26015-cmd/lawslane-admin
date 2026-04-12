@@ -281,7 +281,7 @@ export default function AdminFormEditPage() {
                         title: `กำลังอัปโหลด ${file.name} (${langSection.flag})...`,
                     });
 
-                    const url = await uploadToCloudflareImages(formData, 'forms');
+                    const url = await uploadToCloudflareImages(formData);
                     finalAttachments.push({
                         url,
                         name: file.name,

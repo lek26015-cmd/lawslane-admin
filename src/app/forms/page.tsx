@@ -70,7 +70,8 @@ export default function AdminFormsPage() {
                             attachments: [{
                                 url: f.fileUrl,
                                 name: f.fileName || 'Document',
-                                type: f.fileType || 'pdf'
+                                type: f.fileType || 'pdf',
+                                language: 'th' as 'th' | 'en' | 'zh'
                             }]
                         };
                     }

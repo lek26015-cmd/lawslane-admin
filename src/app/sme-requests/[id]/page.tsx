@@ -8,7 +8,7 @@ import { SmeRequest } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Mail, Phone, Building, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Mail, Phone, Building, Calendar, CheckCircle, Clock, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +27,7 @@ export default function AdminSmeRequestDetailsPage() {
         const fetchRequest = async () => {
             try {
                 const { firestore: db } = initializeFirebase();
+                if (!db) return;
                 const docRef = doc(db, 'smeRequests', id);
                 const docSnap = await getDoc(docRef);
 
@@ -62,6 +63,7 @@ export default function AdminSmeRequestDetailsPage() {
         setUpdating(true);
         try {
             const { firestore: db } = initializeFirebase();
+            if (!db) return;
             const docRef = doc(db, 'smeRequests', request.id);
             await updateDoc(docRef, { status: newStatus });
 
@@ -175,6 +177,20 @@ export default function AdminSmeRequestDetailsPage() {
                                         <p className="font-medium">{request.email}</p>
                                     </div>
                                 </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary" />
+                                รายละเอียดเพิ่มเติม
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="p-4 bg-gray-50 rounded-lg text-sm leading-relaxed whitespace-pre-wrap">
+                                {request.details || 'ไม่มีรายละเอียดเพิ่มเติม'}
                             </div>
                         </CardContent>
                     </Card>

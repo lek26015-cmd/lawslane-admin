@@ -305,6 +305,7 @@ export interface SmeRequest {
   phone: string;
   email: string;
   serviceType: string;
+  details?: string;
   fileUrl?: string;
   fileName?: string;
   status: 'new' | 'contacted' | 'completed';
@@ -340,7 +341,7 @@ export interface LegalForm {
   createdAt: any;
 }
 
-export interface Cupoun {
+export interface Coupon {
   id: string; // The specific coupon code itself or auto-generated
   code: string;
   type: 'fixed' | 'percent';
