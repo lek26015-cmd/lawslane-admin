@@ -171,6 +171,7 @@ export interface ReportedTicket {
   reportedAt: Date;
   clientName?: string;
   description?: string;
+  files?: { name: string, url: string, size: number }[];
 }
 
 // Types for Lawyer Dashboard

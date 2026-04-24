@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, Upload, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { uploadToCloudflareImages } from '@/app/actions/upload-cloudflare-images';
+import { uploadFileAction } from '@/app/actions/upload-storage';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -163,12 +163,14 @@ export default function NewLandingPage() {
 
             const heroFormData = new FormData();
             heroFormData.append('file', heroImageFile);
-            heroImageUrl = await uploadToCloudflareImages(heroFormData);
+            const { path: heroPath } = await uploadFileAction(heroFormData, 'landing-pages');
+            heroImageUrl = heroPath;
 
             if (logoFile) {
                 const logoFormData = new FormData();
                 logoFormData.append('file', logoFile);
-                logoUrl = await uploadToCloudflareImages(logoFormData);
+                const { path: logoPath } = await uploadFileAction(logoFormData, 'landing-pages');
+                logoUrl = logoPath;
             }
 
             // Save to Firestore

@@ -5,20 +5,25 @@ import type { ReportedTicket } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, UserCog, Languages } from 'lucide-react';
+import { Send, Loader2, UserCog, Languages, Paperclip, FileIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SecureImage } from '@/components/secure-image';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirebase } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { translateToMultipleLanguages } from '@/app/actions/translate';
+import { getSecureDownloadUrl } from '@/app/actions/secure-view';
 import { useTranslations } from 'next-intl';
 
 interface SupportChatBoxProps {
   ticket: ReportedTicket;
   isDisabled?: boolean;
   isAdmin?: boolean;
+  onFileUpload?: (file: File) => void;
+  isUploading?: boolean;
 }
 
 interface SupportMessage {
@@ -36,6 +41,8 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const t = useTranslations('SupportTicket');
 
@@ -99,6 +106,28 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
       }
     }
   }, [messages]);
+
+  const handleFileClick = async (text: string) => {
+    const fileName = text.replace('[อัปโหลดไฟล์]', '').trim();
+    const file = ticket.files?.find((f: any) => f.name === fileName);
+
+    if (!file) return;
+
+    try {
+      const url = await getSecureDownloadUrl(file.url);
+      if (!url) return;
+
+      const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+      if (isImage) {
+        setSelectedImage(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch (err) {
+      console.error("Failed to view file:", err);
+    }
+  };
+
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -176,14 +205,24 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
                       </Avatar>
                     )}
                     <div className="flex flex-col gap-1">
-                      <div
-                        className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${ownMessage
-                          ? 'bg-foreground text-background'
-                          : 'bg-gray-200'
-                          }`}
-                      >
-                        <p>{msg.text}</p>
-                      </div>
+                        <div
+                          className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${ownMessage
+                            ? 'bg-foreground text-background'
+                            : 'bg-gray-200'
+                            }`}
+                        >
+                          {msg.text.startsWith('[อัปโหลดไฟล์]') ? (
+                            <div 
+                              className="flex items-center gap-2 py-1 cursor-pointer hover:opacity-80"
+                              onClick={() => handleFileClick(msg.text)}
+                            >
+                              <FileIcon className="w-4 h-4" />
+                              <span className="font-medium underline">{msg.text.replace('[อัปโหลดไฟล์]', '').trim()}</span>
+                            </div>
+                          ) : (
+                            <p>{msg.text}</p>
+                          )}
+                        </div>
 
                       {/* Translate button - show for messages from other party */}
                       {!ownMessage && (
@@ -230,6 +269,30 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
       </CardContent>
       <CardFooter className="p-4 border-t bg-white">
         <form onSubmit={handleSendMessage} className="flex items-center w-full space-x-2">
+          {!isDisabled && onFileUpload && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onFileUpload(file);
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isLoading || isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-full h-10 w-10 text-muted-foreground"
+              >
+                <Paperclip className="w-5 h-5" />
+              </Button>
+            </>
+          )}
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -243,11 +306,23 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: 
             disabled={isLoading || !input.trim() || isDisabled}
             className="rounded-full w-10 h-10 bg-blue-600 hover:bg-blue-700"
           >
-            <Send className="w-5 h-5" />
+            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </Button>
         </form>
       </CardFooter>
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-none">
+          {selectedImage && (
+            <img 
+              src={selectedImage} 
+              alt="Preview" 
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg" 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
+
   );
 }
 

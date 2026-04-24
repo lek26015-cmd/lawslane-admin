@@ -22,7 +22,7 @@ import type { LawyerProfile, HumanChatMessage } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Sparkles, Languages, AlertTriangle } from 'lucide-react';
+import { Send, Loader2, Sparkles, Languages, AlertTriangle, Paperclip, FileIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useChat } from '@/context/chat-context';
@@ -39,6 +39,8 @@ interface ChatBoxProps {
   chatId: string;
   isDisabled?: boolean;
   isLawyerView?: boolean;
+  onFileUpload?: (file: File) => void;
+  isUploading?: boolean;
 }
 
 // Extend message type with translation
@@ -372,14 +374,21 @@ export function ChatBox({
                       </Avatar>
                     )}
                     <div className="flex flex-col gap-1">
-                      <div
-                        className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${isOwnMessage
-                          ? 'bg-foreground text-background'
-                          : 'bg-gray-200'
-                          }`}
-                      >
-                        <p>{msg.text}</p>
-                      </div>
+                        <div
+                          className={`max-w-md rounded-lg px-4 py-2 shadow-sm text-sm ${isOwnMessage
+                            ? 'bg-foreground text-background'
+                            : 'bg-gray-200'
+                            }`}
+                        >
+                          {(msg as any).metadata?.type === 'file_upload' || msg.text.startsWith('[อัปโหลดไฟล์]') ? (
+                            <div className="flex items-center gap-2 py-1">
+                              <FileIcon className="w-4 h-4" />
+                              <span className="font-medium underline cursor-pointer">{msg.text.replace('[อัปโหลดไฟล์]', '').trim()}</span>
+                            </div>
+                          ) : (
+                            <p>{msg.text}</p>
+                          )}
+                        </div>
 
                       {/* Translate button - show for messages from other user */}
                       {!isOwnMessage && (
@@ -416,6 +425,30 @@ export function ChatBox({
       </CardContent>
       <CardFooter className="p-4 border-t bg-white">
         <form onSubmit={handleSendMessage} className="flex items-center w-full space-x-2">
+          {!isDisabled && onFileUpload && (
+            <>
+              <input
+                type="file"
+                className="hidden"
+                id="admin-chat-file-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onFileUpload(file);
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isLoading || isUploading}
+                onClick={() => document.getElementById('admin-chat-file-upload')?.click()}
+                className="rounded-full h-10 w-10 text-muted-foreground"
+              >
+                <Paperclip className="w-5 h-5" />
+              </Button>
+            </>
+          )}
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -429,7 +462,7 @@ export function ChatBox({
             disabled={isLoading || !input.trim() || isDisabled}
             className="rounded-full w-10 h-10 bg-blue-600 hover:bg-blue-700"
           >
-            <Send className="w-5 h-5" />
+            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </Button>
         </form>
       </CardFooter>

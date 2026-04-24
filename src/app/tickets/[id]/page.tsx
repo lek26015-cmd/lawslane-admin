@@ -19,7 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { SupportChatBox } from '@/components/chat/support-chat-box';
 import { Separator } from '@/components/ui/separator';
 import { useFirebase } from '@/firebase';
-import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot, arrayUnion } from 'firebase/firestore';
+import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
+
 
 
 
@@ -30,6 +32,7 @@ function AdminTicketDetailPageContent() {
 
     const [ticket, setTicket] = React.useState<any | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [isUploading, setIsUploading] = React.useState(false);
     const { toast } = useToast();
     const { firestore } = useFirebase();
 
@@ -64,7 +67,8 @@ function AdminTicketDetailPageContent() {
                     // Ensure required fields for UI
                     clientName: data.clientName || 'Unknown User',
                     problemType: data.problemType || 'General',
-                    caseId: data.caseId || 'N/A'
+                    caseId: data.caseId || 'N/A',
+                    files: data.files || []
                 });
             } else {
                 setTicket(null);
@@ -116,6 +120,62 @@ function AdminTicketDetailPageContent() {
         }
     };
 
+    const handleSupportUpload = async (file: File) => {
+        if (!file || !firestore) return;
+
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            toast({
+                variant: "destructive",
+                title: "ไฟล์มีขนาดใหญ่เกินไป",
+                description: `ไม่เกิน ${MAX_FILE_SIZE_MB}MB`,
+            });
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Import the action we just copied
+            const { uploadToFirebaseSecure } = await import('@/app/actions/upload-secure');
+            const filePath = await uploadToFirebaseSecure(formData, `support/${ticketId}`);
+
+            const fileData = {
+                name: file.name,
+                url: filePath,
+                size: file.size,
+                uploadedBy: 'admin', // In admin app, we mark it as admin
+                uploadedAt: Date.now()
+            };
+
+            await updateDoc(doc(firestore, 'tickets', ticketId), {
+                files: arrayUnion(fileData)
+            });
+
+            // Add a message with file tag
+            const messagesRef = collection(firestore, 'tickets', ticketId, 'messages');
+            await addDoc(messagesRef, {
+                text: `[อัปโหลดไฟล์] ${file.name}`,
+                senderId: 'admin',
+                senderName: 'ฝ่ายสนับสนุน',
+                role: 'admin',
+                createdAt: serverTimestamp(),
+                fileUrl: filePath
+            });
+
+            toast({
+                title: "อัปโหลดสำเร็จ",
+                description: `ไฟล์ "${file.name}" ถูกส่งแล้ว`,
+            });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Upload failed", description: error.message });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+
     const statusBadges: { [key: string]: React.ReactNode } = {
         pending: <Badge variant="outline" className="border-yellow-600 text-yellow-700 bg-yellow-50">รอดำเนินการ</Badge>,
         resolved: <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">แก้ไขแล้ว</Badge>,
@@ -154,7 +214,13 @@ function AdminTicketDetailPageContent() {
                         {statusBadges[ticket.status]}
                     </div>
                 </div>
-                <SupportChatBox ticket={reportedTicket} isDisabled={isResolved} isAdmin={true} />
+                <SupportChatBox 
+                    ticket={reportedTicket} 
+                    isDisabled={isResolved} 
+                    isAdmin={true} 
+                    onFileUpload={handleSupportUpload}
+                    isUploading={isUploading}
+                />
             </div>
 
             <div className="space-y-6">

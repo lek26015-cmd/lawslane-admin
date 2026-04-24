@@ -35,7 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useFirebase } from '@/firebase'
 import { doc, updateDoc } from 'firebase/firestore'
 import { getLegalFormById } from '@/lib/data'
-import { uploadToCloudflareImages } from '@/app/actions/upload-cloudflare-images';
+import { uploadFileAction } from '@/app/actions/upload-storage';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 import type { LegalForm, LegalFormAttachment } from '@/lib/types';
 import { translateToMultipleLanguages } from '@/app/actions/translate';
@@ -281,9 +281,9 @@ export default function AdminFormEditPage() {
                         title: `กำลังอัปโหลด ${file.name} (${langSection.flag})...`,
                     });
 
-                    const url = await uploadToCloudflareImages(formData);
+                    const { path } = await uploadFileAction(formData, 'legal-forms');
                     finalAttachments.push({
-                        url,
+                        url: path,
                         name: file.name,
                         type: getFileType(file.name),
                         language: langSection.code,

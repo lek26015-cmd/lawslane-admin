@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Textarea } from '@/components/ui/textarea'
 import { useFirebase } from '@/firebase'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { uploadToCloudflareImages } from '@/app/actions/upload-cloudflare-images';
+import { uploadFileAction } from '@/app/actions/upload-storage';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 import type { LegalFormAttachment } from '@/lib/types';
 import { translateToMultipleLanguages } from '@/app/actions/translate';
@@ -208,9 +208,9 @@ export default function AdminFormCreatePage() {
                         title: `กำลังอัปโหลด ${file.name} (${langSection.flag})...`,
                     });
 
-                    const url = await uploadToCloudflareImages(formData);
+                    const { path } = await uploadFileAction(formData, 'legal-forms');
                     attachments.push({
-                        url,
+                        url: path,
                         name: file.name,
                         type: getFileType(file.name),
                         language: langSection.code,
