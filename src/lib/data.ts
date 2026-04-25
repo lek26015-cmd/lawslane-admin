@@ -22,6 +22,17 @@ import { th } from 'date-fns/locale';
 export const getImageUrl = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl ?? '';
 export const getImageHint = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageHint ?? '';
 
+export const ensureDate = (date: any): Date => {
+  if (!date) return new Date();
+  if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+  if (date instanceof Date) return date;
+  if (typeof date === 'string' || typeof date === 'number') {
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+  return new Date();
+};
+
 // --- Lawyer Functions ---
 export async function getApprovedLawyers(db: Firestore): Promise<LawyerProfile[]> {
   if (!db) return [];
@@ -205,9 +216,9 @@ export async function getDashboardData(db: Firestore, userId: string) {
       title: data.caseTitle || '',
       status: data.status || 'active',
       lastMessage: data.lastMessage || '',
-      lastMessageTimestamp: data.lastMessageAt ? data.lastMessageAt.toDate().toISOString() : '',
+      lastMessageTimestamp: data.lastMessageAt ? ensureDate(data.lastMessageAt).toISOString() : '',
       lawyer: lawyer,
-      updatedAt: data.lastMessageAt ? data.lastMessageAt.toDate() : (data.createdAt?.toDate() || new Date()),
+      updatedAt: data.lastMessageAt ? ensureDate(data.lastMessageAt) : (data.createdAt ? ensureDate(data.createdAt) : new Date()),
       rejectReason: data.rejectReason || '',
       hasNewMessage: data.hasNewMessage || false,
     } as Case;
@@ -252,7 +263,7 @@ export async function getDashboardData(db: Firestore, userId: string) {
 
     return {
       id: d.id,
-      date: data.date.toDate(),
+      date: ensureDate(data.date),
       time: data.timeSlot || 'N/A',
       description: data.description || '',
       lawyer: lawyer,
@@ -506,7 +517,7 @@ export async function getAllUsers(db: Firestore): Promise<UserProfile[]> {
       ...data,
       type: data.type || 'บุคคลทั่วไป',
       status: data.status || 'active',
-      registeredAt: (data.registeredAt || data.createdAt)?.toDate().toLocaleDateString('th-TH') || 'N/A'
+      registeredAt: (data.registeredAt || data.createdAt) ? ensureDate(data.registeredAt || data.createdAt).toLocaleDateString('th-TH') : 'N/A'
     } as UserProfile;
   });
 }
@@ -523,7 +534,7 @@ export async function getAdmins(db: Firestore): Promise<UserProfile[]> {
       ...data,
       type: data.type || 'บุคคลทั่วไป',
       status: data.status || 'active',
-      registeredAt: (data.registeredAt || data.createdAt)?.toDate().toLocaleDateString('th-TH') || 'N/A'
+      registeredAt: (data.registeredAt || data.createdAt) ? ensureDate(data.registeredAt || data.createdAt).toLocaleDateString('th-TH') : 'N/A'
     } as UserProfile;
   });
 }
@@ -538,16 +549,7 @@ export async function getAllLawyers(db: Firestore): Promise<LawyerProfile[]> {
 
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
-      let joinedAtStr = 'N/A';
-      try {
-        if (data.joinedAt?.toDate) {
-          joinedAtStr = data.joinedAt.toDate().toLocaleDateString('th-TH');
-        } else if (data.joinedAt instanceof Date) {
-          joinedAtStr = data.joinedAt.toLocaleDateString('th-TH');
-        }
-      } catch (e) {
-        console.warn(`[getAllLawyers] Date error for ${doc.id}:`, e);
-      }
+      let joinedAtStr = data.joinedAt ? ensureDate(data.joinedAt).toLocaleDateString('th-TH') : 'N/A';
 
       return {
         id: doc.id,
@@ -613,18 +615,7 @@ export async function getAllTickets(db: Firestore): Promise<any[]> {
   const tickets = querySnapshot.docs.map((d) => {
     const data = d.data();
     const reportedAt = data.reportedAt;
-    let reportedAtStr = 'N/A';
-    try {
-      if (reportedAt?.toDate) {
-        reportedAtStr = reportedAt.toDate().toLocaleDateString('th-TH');
-      } else if (reportedAt instanceof Date) {
-        reportedAtStr = reportedAt.toLocaleDateString('th-TH');
-      } else if (typeof reportedAt === 'string') {
-        reportedAtStr = reportedAt;
-      }
-    } catch (e) {
-      console.warn("Error formatting reportedAt for ticket:", d.id, e);
-    }
+    let reportedAtStr = reportedAt ? ensureDate(reportedAt).toLocaleDateString('th-TH') : 'N/A';
 
     return {
       id: d.id,
