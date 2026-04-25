@@ -2,7 +2,10 @@
     {
         "origin": [
             "http://localhost:3000",
-            "https://lawslane.vercel.app"
+            "http://localhost:9004",
+            "https://lawslane.vercel.app",
+            "https://admin.lawslane.com",
+            "https://lawslane.com"
         ],
         "method": [
             "GET",

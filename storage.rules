@@ -1,29 +1,36 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'lek.26015@gmail.com' ||
+        request.auth.token.email.matches('.*@lawslane\\.com$') ||
+        request.auth.uid == 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' ||
+        request.auth.uid == '6rX3WqjNo9M7lX6iUe5V9r7Dk9z1' ||
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && 
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
     // Public read for profile images, articles, and public assets
     match /lawyerProfiles/{lawyerId}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && (request.auth.uid == lawyerId || 
-        request.auth.token.email == 'lek.26015@gmail.com');
+      allow write: if isAdmin() || (request.auth != null && request.auth.uid == lawyerId);
     }
 
     match /articles/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        request.auth.token.email == 'lek.26015@gmail.com';
+      allow write: if isAdmin();
     }
 
     match /ads/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        request.auth.token.email == 'lek.26015@gmail.com';
+      allow write: if isAdmin();
     }
 
     match /public/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        request.auth.token.email == 'lek.26015@gmail.com';
+      allow write: if isAdmin();
     }
 
     // Chat attachments — only participants can write
@@ -50,6 +57,12 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
       allow delete: if request.auth != null;
+    }
+
+    // Lawyer verification documents - only owner and admins can read
+    match /lawyer_documents/{userId}/{allPaths=**} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+      allow write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
     }
 
     // Default: deny everything else
