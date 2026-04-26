@@ -76,6 +76,8 @@ type Transaction = {
   amount: number;
   type: 'revenue' | 'fee' | 'payout';
   status: 'completed' | 'pending';
+  slipUrl?: string;
+  lawyerName?: string;
 };
 
 type WithdrawalRequest = {
@@ -244,6 +246,7 @@ export default function AdminFinancialsPage() {
     try {
       const appointmentsRef = collection(firestore, 'appointments');
       const chatsRef = collection(firestore, 'chats');
+      const invoicesRef = collection(firestore, 'invoices');
 
       const appointmentQuery = query(
         appointmentsRef,
@@ -253,15 +256,19 @@ export default function AdminFinancialsPage() {
         chatsRef,
         where('status', '==', 'pending_payment')
       );
+      const invoiceQuery = query(
+        invoicesRef,
+        where('status', '==', 'pending_verification')
+      );
 
-      const [appointmentSnapshot, chatSnapshot] = await Promise.all([
+      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
         getDocs(appointmentQuery),
         getDocs(chatQuery),
+        getDocs(invoiceQuery),
       ]);
 
       const pending: SlipVerificationItem[] = [];
 
-      // Helper to fetch user name
       const getUserName = async (uid: string) => {
         try {
           const userDoc = await getDocs(query(collection(firestore, 'users'), where('uid', '==', uid)));
@@ -270,7 +277,6 @@ export default function AdminFinancialsPage() {
         } catch (e) { return 'Unknown User'; }
       };
 
-      // Helper to fetch lawyer name
       const getLawyerName = async (lawyerId: string) => {
         try {
           const lawyerDocRef = doc(firestore, 'lawyerProfiles', lawyerId);
@@ -283,7 +289,6 @@ export default function AdminFinancialsPage() {
 
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
-        // Skip items without a slip (no slip to verify)
         if (!data.slipUrl && !data.hasNewPayment) continue;
         
         const userName = await getUserName(data.userId);
@@ -311,25 +316,65 @@ export default function AdminFinancialsPage() {
         const userName = await getUserName(userId);
         const lawyerName = lawyerId ? await getLawyerName(lawyerId) : 'Unknown Lawyer';
 
-        // Dynamic amount and reason for Case Opening or Chat Ticket
         const amount = data.pendingPaymentDetails?.amount || data.amount || 0;
         const reason = data.pendingPaymentDetails?.reason || (data.amount > 0 ? "Chat Ticket" : "Case Opening Fee");
+        const slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
 
-        if (amount > 0) {
+        if (amount > 0 && slipUrl) {
           pending.push({
             id: d.id,
             type: 'Chat',
             userName: userName,
             lawyerName: lawyerName,
             amount: amount,
-            reason: reason, // We'll add this to the interface if needed or just use description
+            reason: reason,
             submittedAt: data.pendingPaymentDetails?.submittedAt?.toDate() || data.createdAt?.toDate() || new Date(),
             collectionName: 'chats',
-            slipUrl: data.pendingPaymentDetails?.slipUrl || data.slipUrl,
+            slipUrl: slipUrl,
             userId: userId,
             lawyerId: lawyerId
           });
         }
+
+        if (data.installments && Array.isArray(data.installments)) {
+          data.installments.forEach((inst: any, index: number) => {
+            const instPayment = data[`pendingPaymentDetails_installment_${index}`];
+            if (instPayment && instPayment.slipUrl) {
+               pending.push({
+                id: `${d.id}_inst_${index}`,
+                type: 'Chat',
+                userName: userName,
+                lawyerName: lawyerName,
+                amount: instPayment.amount || inst.amount,
+                reason: `งวดที่ ${index + 1}: ${inst.description || 'ชำระเงินตามงวด'}`,
+                submittedAt: instPayment.submittedAt ? new Date(instPayment.submittedAt) : new Date(),
+                collectionName: 'chats',
+                slipUrl: instPayment.slipUrl,
+                userId: userId,
+                lawyerId: lawyerId
+              });
+            }
+          });
+        }
+      }
+
+      for (const d of invoiceSnapshot.docs) {
+        const data = d.data();
+        const userName = await getUserName(data.client_id);
+        const lawyerName = data.lawyer_id ? await getLawyerName(data.lawyer_id) : 'Unknown';
+        
+        pending.push({
+          id: d.id,
+          type: 'Invoice',
+          userName: userName,
+          lawyerName: lawyerName,
+          amount: data.amount,
+          submittedAt: data.created_at?.toDate() || new Date(),
+          collectionName: 'invoices',
+          slipUrl: data.evidence_url,
+          userId: data.client_id,
+          lawyerId: data.lawyer_id
+        });
       }
 
       setSlipVerifications(pending.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()));
@@ -354,17 +399,16 @@ export default function AdminFinancialsPage() {
     try {
       const appointmentsRef = collection(firestore, 'appointments');
       const chatsRef = collection(firestore, 'chats');
+      const invoicesRef = collection(firestore, 'invoices');
 
-      // Fetch all appointments and chats (in a real app, you'd paginate and filter)
-      // For now, we fetch everything and filter client-side for simplicity in this demo
-      const [appointmentSnapshot, chatSnapshot] = await Promise.all([
+      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
         getDocs(appointmentsRef),
         getDocs(chatsRef),
+        getDocs(invoicesRef),
       ]);
 
       const allTransactions: Transaction[] = [];
 
-      // Helper to fetch user name
       const getUserName = async (uid: string) => {
         try {
           const userDoc = await getDocs(query(collection(firestore, 'users'), where('uid', '==', uid)));
@@ -373,7 +417,14 @@ export default function AdminFinancialsPage() {
         } catch (e) { return 'Unknown User'; }
       };
 
-      // Process Appointments
+      const getLawyerName = async (lawyerId: string) => {
+        try {
+          const lawyerDoc = await getDoc(doc(firestore, 'lawyerProfiles', lawyerId));
+          if (lawyerDoc.exists()) return lawyerDoc.data().name;
+          return 'Unknown Lawyer';
+        } catch (e) { return 'Unknown Lawyer'; }
+      };
+
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
         if (data.status === 'pending_payment') continue;
@@ -389,40 +440,66 @@ export default function AdminFinancialsPage() {
         });
       }
 
-      // Process Chats
       for (const d of chatSnapshot.docs) {
         const data = d.data();
-        if (data.status === 'pending_payment' || (data.status === 'active' && !data.amount)) continue;
+        if (data.status === 'pending_payment' && !data.amount && !data.totalPaid) continue;
 
         const userId = data.userId || (data.participants && data.participants[0]);
         const userName = userId ? await getUserName(userId) : 'Unknown User';
+        const lawyerId = data.lawyerId || data.participants?.find((p: string) => p !== userId);
+        const lawyerName = lawyerId ? await getLawyerName(lawyerId) : '';
         
         const amount = data.amount || data.pendingPaymentDetails?.amount || 0;
-        if (amount === 0) continue;
+        if (amount > 0) {
+          allTransactions.push({
+            id: d.id,
+            date: data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
+            description: `ปรึกษาผ่านแชท/เปิดคดี - ${userName}`,
+            amount: amount,
+            type: 'revenue',
+            status: data.status === 'closed' || data.status === 'paid' || data.status === 'active' ? 'completed' : 'pending',
+            slipUrl: data.pendingPaymentDetails?.slipUrl || data.slipUrl,
+            lawyerName
+          });
+        }
+
+        if (data.installments && Array.isArray(data.installments)) {
+          data.installments.forEach((inst: any, idx: number) => {
+            if (inst.status === 'paid') {
+              allTransactions.push({
+                id: `${d.id}_inst_${idx}`,
+                date: inst.paidAt ? format(new Date(inst.paidAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
+                description: `ชำระเงินงวดที่ ${idx + 1} - ${userName}`,
+                amount: inst.amount,
+                type: 'revenue',
+                status: 'completed',
+                slipUrl: inst.slipUrl,
+                lawyerName
+              });
+            }
+          });
+        }
+      }
+
+      for (const d of invoiceSnapshot.docs) {
+        const data = d.data();
+        if (data.status === 'pending') continue;
+
+        const userName = await getUserName(data.client_id);
+        const lawyerId = data.lawyer_id;
+        const lawyerName = lawyerId ? await getLawyerName(lawyerId) : '';
 
         allTransactions.push({
           id: d.id,
-          date: data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
-          description: `ปรึกษาผ่านแชท/เปิดคดี - ${userName}`,
-          amount: amount,
+          date: data.paidAt ? format(data.paidAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : (data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A'),
+          description: `ใบแจ้งหนี้ - ${userName}`,
+          amount: data.amount,
           type: 'revenue',
-          status: data.status === 'closed' || data.status === 'paid' ? 'completed' : 'pending',
+          status: data.status === 'paid' ? 'completed' : 'pending',
+          slipUrl: data.evidence_url,
+          lawyerName
         });
       }
-
-      // Sort by date desc
-      // Note: date string format might not sort correctly, ideally use timestamp. 
-      // But for display we used string. Let's just reverse for now or rely on fetch order if we had orderBy.
-      // Better: store timestamp in Transaction object for sorting.
-      // For this quick fix, I'll just reverse assuming they come in some order or just leave as is.
-      // Actually, let's just sort by ID or something stable if we can't parse the date back easily.
-      // Or better, let's just add a rawDate field to Transaction type locally if needed, but I can't change the type easily without a separate edit.
-      // I'll just leave it unsorted or sort by the string (which is day-first, so not ideal).
-      // Let's try to sort by creating a temp array with date objects.
-
-      const sorted = allTransactions.sort((a, b) => {
-        return 0;
-      });
 
       setTransactions(allTransactions);
 
@@ -502,23 +579,69 @@ export default function AdminFinancialsPage() {
   const handleApprovePayment = async (item: SlipVerificationItem) => {
     if (!firestore) return;
 
-    const docRef = doc(firestore, item.collectionName, item.id);
-    const newStatus =
-      item.collectionName === 'appointments' ? 'pending' : 'active';
+    const isInstallment = item.id.includes('_inst_');
+    const baseId = isInstallment ? item.id.split('_inst_')[0] : item.id;
+    const instIndex = isInstallment ? parseInt(item.id.split('_inst_')[1]) : -1;
+
+    const docRef = doc(firestore, item.collectionName, baseId);
+    
+    let newStatus: string;
+    if (item.collectionName === 'invoices') {
+      newStatus = 'paid';
+    } else if (item.collectionName === 'appointments') {
+      newStatus = 'pending'; // Moves to 'pending' (appointment scheduled)
+    } else {
+      newStatus = 'active'; // Moves to 'active' (chat case active)
+    }
 
     try {
-      const updatePayload: any = { status: newStatus, hasNewPayment: false };
-      
-      // If it's a chat (Case Opening/Additional Fee), 
-      // promote the paid amount to the top level and cleanup pending objects
-      if (item.collectionName === 'chats') {
+      if (item.collectionName === 'invoices') {
+        await updateDoc(docRef, {
+          status: 'paid',
+          paidAt: serverTimestamp(),
+          hasNewPayment: false
+        });
+      } else if (isInstallment && item.collectionName === 'chats') {
+        // Handle installment specifically
         const { deleteField } = await import('firebase/firestore');
-        updatePayload.amount = item.amount;
-        updatePayload.pendingFeeRequest = deleteField();
-        updatePayload.pendingPaymentDetails = deleteField();
+        const chatSnap = await getDoc(docRef);
+        if (chatSnap.exists()) {
+           const chatData = chatSnap.data();
+           const installments = [...(chatData.installments || [])];
+           if (installments[instIndex]) {
+             installments[instIndex].status = 'paid';
+             installments[instIndex].paidAt = new Date().toISOString();
+           }
+           
+           const updatePayload: any = {
+             installments,
+             hasNewPayment: false,
+             [`pendingPaymentDetails_installment_${instIndex}`]: deleteField()
+           };
+           
+           // If it's the first installment, maybe activate the case
+           const paidCount = installments.filter((i: any) => i.status === 'paid').length;
+           if (paidCount === 1) {
+             updatePayload.status = 'active';
+           }
+           
+           await updateDoc(docRef, updatePayload);
+        }
+      } else {
+        const updatePayload: any = { status: newStatus, hasNewPayment: false };
+        
+        // If it's a chat (Case Opening/Additional Fee), 
+        // promote the paid amount to the top level and cleanup pending objects
+        if (item.collectionName === 'chats') {
+          const { deleteField } = await import('firebase/firestore');
+          updatePayload.amount = item.amount;
+          updatePayload.pendingFeeRequest = deleteField();
+          updatePayload.pendingPaymentDetails = deleteField();
+        }
+
+        await updateDoc(docRef, updatePayload);
       }
 
-      await updateDoc(docRef, updatePayload);
       toast({
         title: 'อนุมัติสำเร็จ',
         description: `รายการของ ${item.userName} ได้รับการอนุมัติแล้ว`,
@@ -619,14 +742,33 @@ export default function AdminFinancialsPage() {
   const handleRejectPayment = async () => {
     if (!firestore || !selectedRejectItem || !rejectReason) return;
 
-    const docRef = doc(firestore, selectedRejectItem.collectionName, selectedRejectItem.id);
+    const isInstallment = selectedRejectItem.id.includes('_inst_');
+    const baseId = isInstallment ? selectedRejectItem.id.split('_inst_')[0] : selectedRejectItem.id;
+    const instIndex = isInstallment ? parseInt(selectedRejectItem.id.split('_inst_')[1]) : -1;
+
+    const docRef = doc(firestore, selectedRejectItem.collectionName, baseId);
 
     try {
-      await updateDoc(docRef, {
-        status: 'pending_payment',
-        rejectReason: rejectReason,
-        hasNewPayment: false
-      });
+      if (selectedRejectItem.collectionName === 'invoices') {
+        await updateDoc(docRef, {
+          status: 'pending',
+          rejectReason: rejectReason,
+          hasNewPayment: false
+        });
+      } else if (isInstallment) {
+         const { deleteField } = await import('firebase/firestore');
+         await updateDoc(docRef, {
+            [`pendingPaymentDetails_installment_${instIndex}`]: deleteField(),
+            rejectReason: rejectReason,
+            hasNewPayment: false
+         });
+      } else {
+        await updateDoc(docRef, {
+          status: 'pending_payment',
+          rejectReason: rejectReason,
+          hasNewPayment: false
+        });
+      }
 
       toast({
         title: 'ปฏิเสธรายการแล้ว',
@@ -1131,16 +1273,30 @@ export default function AdminFinancialsPage() {
                                 </TableCell>
                                 <TableCell className="text-right space-x-2">
                                   {/* Debug Button */}
-                                  <Button variant="ghost" size="sm" onClick={() => handleDebug(t.description.includes('นัดหมาย') ? 'appointments' : 'chats', t.id)}>
+                                  <Button variant="ghost" size="sm" onClick={() => handleDebug(t.description.includes('นัดหมาย') ? 'appointments' : 'chats', t.id.split('_')[0])}>
                                     <FileJson className="h-4 w-4 text-gray-500" />
                                   </Button>
-                                  <Button variant="outline" size="sm" onClick={() => {
-                                    setIsReleaseDialogOpen(true);
-                                    setReleaseTicketId('');
-                                    setSelectedReleaseTransactionId(t.id);
-                                  }}>
-                                    ปล่อยเงิน
-                                  </Button>
+                                  {t.slipUrl && (
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                      setSelectedSlip({
+                                        url: t.slipUrl || '',
+                                        amount: t.amount,
+                                        lawyerName: t.lawyerName || 'Unknown'
+                                      });
+                                      setIsVerifierOpen(true);
+                                    }}>
+                                      <Eye className="mr-1 h-3 w-3" /> สลิป
+                                    </Button>
+                                  )}
+                                  {t.status === 'pending' && (
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                      setIsReleaseDialogOpen(true);
+                                      setReleaseTicketId('');
+                                      setSelectedReleaseTransactionId(t.id);
+                                    }}>
+                                      ปล่อยเงิน
+                                    </Button>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             ))
