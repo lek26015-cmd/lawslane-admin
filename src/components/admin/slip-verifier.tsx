@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { getSecureDownloadUrl } from '@/app/actions/secure-view';
 import jsQR from 'jsqr';
 import {
     Dialog,
@@ -25,19 +26,50 @@ export function SlipVerifier({ isOpen, onClose, slipUrl, expectedAmount, expecte
     const [scanResult, setScanResult] = useState<string | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [verificationData, setVerificationData] = useState<any | null>(null);
+    const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+    const [isResolvingUrl, setIsResolvingUrl] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
 
+    // Resolve base64_slip_ references to actual displayable URLs
     useEffect(() => {
-        if (isOpen && slipUrl) {
-            scanQRCode();
-        } else {
+        if (!isOpen || !slipUrl) {
+            setResolvedUrl(null);
             setScanResult(null);
             setScanError(null);
+            return;
+        }
+
+        if (slipUrl.startsWith('base64_slip_') || (!slipUrl.startsWith('http') && !slipUrl.startsWith('data:'))) {
+            // Need to resolve via server action
+            setIsResolvingUrl(true);
+            getSecureDownloadUrl(slipUrl)
+                .then((url) => {
+                    if (url) {
+                        setResolvedUrl(url);
+                    } else {
+                        setScanError('ไม่สามารถโหลดรูปสลิปได้ (ไม่พบข้อมูลใน Firestore)');
+                    }
+                })
+                .catch(() => {
+                    setScanError('เกิดข้อผิดพลาดในการดึงรูปสลิป');
+                })
+                .finally(() => setIsResolvingUrl(false));
+        } else {
+            // Already a valid URL or data URI
+            setResolvedUrl(slipUrl);
         }
     }, [isOpen, slipUrl]);
 
+    // Auto-scan QR once the URL is resolved
+    useEffect(() => {
+        if (resolvedUrl && isOpen) {
+            scanQRCode();
+        }
+    }, [resolvedUrl, isOpen]);
+
     const scanQRCode = async () => {
+        if (!resolvedUrl) return;
         setIsScanning(true);
         setScanResult(null);
         setScanError(null);
@@ -45,7 +77,7 @@ export function SlipVerifier({ isOpen, onClose, slipUrl, expectedAmount, expecte
 
         const img = new window.Image();
         img.crossOrigin = "Anonymous";
-        img.src = slipUrl;
+        img.src = resolvedUrl;
 
         img.onload = () => {
             const canvas = canvasRef.current;
@@ -131,16 +163,32 @@ export function SlipVerifier({ isOpen, onClose, slipUrl, expectedAmount, expecte
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col items-center gap-4">
                         <div className="relative w-full aspect-[3/4] bg-slate-100 rounded-lg overflow-hidden border">
-                            {slipUrl ? (
-                                <Image
-                                    src={slipUrl}
-                                    alt="Slip"
-                                    fill
-                                    className="object-contain"
-                                />
+                            {isResolvingUrl ? (
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <span className="text-sm">กำลังโหลดสลิป...</span>
+                                </div>
+                            ) : resolvedUrl ? (
+                                // Use native img for data: URIs since Next/Image doesn't support them
+                                resolvedUrl.startsWith('data:') ? (
+                                    <img
+                                        src={resolvedUrl}
+                                        alt="Slip"
+                                        className="object-contain w-full h-full"
+                                    />
+                                ) : (
+                                    <Image
+                                        src={resolvedUrl}
+                                        alt="Slip"
+                                        fill
+                                        className="object-contain"
+                                    />
+                                )
                             ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    ไม่มีรูปภาพ
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                                    <AlertCircle className="w-6 h-6 text-red-400" />
+                                    <span className="text-sm">ไม่สามารถโหลดรูปสลิปได้</span>
+                                    <span className="text-xs text-muted-foreground/60">slipUrl: {slipUrl?.substring(0, 30)}...</span>
                                 </div>
                             )}
                         </div>
