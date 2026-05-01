@@ -129,6 +129,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/b2b-surveys',
+        destination: '/surveys',
+        permanent: true,
+      },
+      {
+        source: '/sme-surveys',
+        destination: '/surveys',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
