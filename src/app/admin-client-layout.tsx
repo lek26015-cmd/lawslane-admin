@@ -258,6 +258,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน" },
                 { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME" },
                 { href: "/b2b-surveys", icon: <FileQuestion className="h-4 w-4" />, label: "แบบสำรวจ B2B" },
+                { href: "/sme-surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสอบถาม SME" },
             ]
         },
         {
