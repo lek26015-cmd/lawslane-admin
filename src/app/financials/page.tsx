@@ -428,11 +428,11 @@ export default function AdminFinancialsPage() {
       const chatsRef = collection(firestore, 'chats');
       const invoicesRef = collection(firestore, 'invoices');
 
-      // Fetch docs (Ideally we should have limits here, but sticking to existing logic with optimization)
+      // Fetch docs (Removing orderBy to avoid Missing Index errors, sorting will be done client-side)
       const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
-        getDocs(query(appointmentsRef, limit(100), orderBy('createdAt', 'desc'))),
-        getDocs(query(chatsRef, limit(100), orderBy('createdAt', 'desc'))),
-        getDocs(query(invoicesRef, limit(100), orderBy('createdAt', 'desc'))),
+        getDocs(query(appointmentsRef, limit(100))),
+        getDocs(query(chatsRef, limit(100))),
+        getDocs(query(invoicesRef, limit(100))),
       ]);
 
       const allTransactions: Transaction[] = [];
