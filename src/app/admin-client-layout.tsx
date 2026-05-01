@@ -36,6 +36,7 @@ import {
     GraduationCap,
     Book,
     FileQuestion,
+    ClipboardList,
     Package,
     Percent,
     ShoppingBag
