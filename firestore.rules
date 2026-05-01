@@ -19,7 +19,8 @@ service cloud.firestore {
           request.auth.uid == '6rX3WqjNo9M7lX6iUe5V9r7Dk9z1' ||
           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin' ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('superAdmin', false) == true
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('superAdmin', false) == true ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('superAdmin', '') == 'true'
           ))
         );
     }
@@ -51,7 +52,7 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid in resource.data.participants;
       }
       
-      allow get, list: if isSignedIn(); // Broad access for now to fix dashbaord errors
+      allow get, list: if isSignedIn(); 
       allow create: if isSignedIn();
       allow update: if isParticipant() || isAdmin();
 
@@ -79,12 +80,12 @@ service cloud.firestore {
 
     match /appointments/{appointmentId} {
         allow create: if isSignedIn();
-        allow read, list, update: if isOwner(resource.data.get('userId', null)) || isOwner(resource.data.get('lawyerId', null)) || isAdmin();
+        allow read, list, update: if isAdmin() || isOwner(resource.data.get('userId', null)) || isOwner(resource.data.get('lawyerId', null));
     }
 
     match /tickets/{ticketId} {
         allow create: if isSignedIn();
-        allow read, list, update: if isOwner(resource.data.userId) || isAdmin();
+        allow read, list, update: if isAdmin() || isOwner(resource.data.userId);
 
         match /messages/{messageId} {
             allow read, list: if isAdmin() || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId);
@@ -94,7 +95,7 @@ service cloud.firestore {
 
     match /withdrawals/{withdrawalId} {
         allow create: if isSignedIn() && request.resource.data.lawyerId == request.auth.uid;
-        allow read, list, update: if isOwner(resource.data.get('lawyerId', null)) || isAdmin();
+        allow read, list, update: if isAdmin() || isOwner(resource.data.get('lawyerId', null));
     }
 
     match /invoices/{invoiceId} {

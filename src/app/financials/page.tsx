@@ -297,10 +297,10 @@ export default function AdminFinancialsPage() {
         for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
         
         const snaps = await Promise.all(chunks.map(chunk => 
-          getDocs(query(collection(firestore, 'users'), where('uid', 'in', chunk)))
+          getDocs(query(collection(firestore, 'users'), where('__name__', 'in', chunk)))
         ));
         snaps.forEach(snap => snap.docs.forEach(d => {
-          userProfiles[d.data().uid] = d.data().name || 'Unknown User';
+          userProfiles[d.id] = d.data().name || 'Unknown User';
         }));
       }
 
@@ -459,8 +459,8 @@ export default function AdminFinancialsPage() {
         const idsArray = Array.from(userIds);
         const chunks = [];
         for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
-        const snaps = await Promise.all(chunks.map(chunk => getDocs(query(collection(firestore, 'users'), where('uid', 'in', chunk)))));
-        snaps.forEach(snap => snap.docs.forEach(d => { userProfiles[d.data().uid] = d.data().name || 'Unknown User'; }));
+        const snaps = await Promise.all(chunks.map(chunk => getDocs(query(collection(firestore, 'users'), where('__name__', 'in', chunk)))));
+        snaps.forEach(snap => snap.docs.forEach(d => { userProfiles[d.id] = d.data().name || 'Unknown User'; }));
       }
 
       // Batch Fetch Lawyers
