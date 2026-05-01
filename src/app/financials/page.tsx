@@ -64,7 +64,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { getFinancialStats } from '@/lib/data';
+import { getFinancialStats, ensureDate } from '@/lib/data';
 import { useSearchParams } from 'next/navigation';
 
 import { SlipVerifier } from '@/components/admin/slip-verifier';
@@ -268,39 +268,69 @@ export default function AdminFinancialsPage() {
       ]);
 
       const pending: SlipVerificationItem[] = [];
+      const userIds = new Set<string>();
+      const lawyerIds = new Set<string>();
 
-      const getUserName = async (uid: string) => {
-        try {
-          const userDoc = await getDocs(query(collection(firestore, 'users'), where('uid', '==', uid)));
-          if (!userDoc.empty) return userDoc.docs[0].data().name;
-          return 'Unknown User';
-        } catch (e) { return 'Unknown User'; }
-      };
+      // Collect IDs
+      appointmentSnapshot.docs.forEach(d => {
+        const data = d.data();
+        if (data.userId) userIds.add(data.userId);
+        if (data.lawyerId) lawyerIds.add(data.lawyerId);
+      });
+      chatSnapshot.docs.forEach(d => {
+        const data = d.data();
+        const userId = data.userId || (data.participants && data.participants[0]);
+        if (userId) userIds.add(userId);
+        if (data.lawyerId) lawyerIds.add(data.lawyerId);
+      });
+      invoiceSnapshot.docs.forEach(d => {
+        const data = d.data();
+        if (data.client_id) userIds.add(data.client_id);
+        if (data.lawyer_id) lawyerIds.add(data.lawyer_id);
+      });
 
-      const getLawyerName = async (lawyerId: string) => {
-        try {
-          const lawyerDocRef = doc(firestore, 'lawyerProfiles', lawyerId);
-          const lawyerDoc = await getDoc(lawyerDocRef);
-          if (lawyerDoc.exists()) return lawyerDoc.data().name;
-          return 'Unknown Lawyer';
-        } catch (e) { return 'Unknown Lawyer'; }
+      // Batch Fetch Users
+      const userProfiles: Record<string, string> = {};
+      if (userIds.size > 0) {
+        const idsArray = Array.from(userIds);
+        const chunks = [];
+        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
+        
+        const snaps = await Promise.all(chunks.map(chunk => 
+          getDocs(query(collection(firestore, 'users'), where('uid', 'in', chunk)))
+        ));
+        snaps.forEach(snap => snap.docs.forEach(d => {
+          userProfiles[d.data().uid] = d.data().name || 'Unknown User';
+        }));
       }
 
+      // Batch Fetch Lawyers
+      const lawyerProfiles: Record<string, string> = {};
+      if (lawyerIds.size > 0) {
+        const idsArray = Array.from(lawyerIds);
+        const chunks = [];
+        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
+        
+        const snaps = await Promise.all(chunks.map(chunk => 
+          getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)))
+        ));
+        snaps.forEach(snap => snap.docs.forEach(d => {
+          lawyerProfiles[d.id] = d.data().name || 'Unknown Lawyer';
+        }));
+      }
 
+      // Process Snapshots
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
         if (!data.slipUrl && !data.hasNewPayment) continue;
         
-        const userName = await getUserName(data.userId);
-        const lawyerName = await getLawyerName(data.lawyerId);
-        const amount = data.amount || 3500;
         pending.push({
           id: d.id,
           type: 'Appointment',
-          userName: userName,
-          lawyerName: lawyerName,
-          amount: amount,
-          submittedAt: data.createdAt?.toDate() || new Date(),
+          userName: userProfiles[data.userId] || 'Unknown User',
+          lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
+          amount: data.amount || 3500,
+          submittedAt: ensureDate(data.createdAt),
           collectionName: 'appointments',
           slipUrl: data.slipUrl,
           userId: data.userId,
@@ -313,8 +343,8 @@ export default function AdminFinancialsPage() {
         const userId = data.userId || (data.participants && data.participants[0]);
         const lawyerId = data.lawyerId;
 
-        const userName = await getUserName(userId);
-        const lawyerName = lawyerId ? await getLawyerName(lawyerId) : 'Unknown Lawyer';
+        const userName = userProfiles[userId] || 'Unknown User';
+        const lawyerName = lawyerId ? (lawyerProfiles[lawyerId] || 'Unknown Lawyer') : 'Unknown Lawyer';
 
         const amount = data.pendingPaymentDetails?.amount || data.amount || 0;
         const reason = data.pendingPaymentDetails?.reason || (data.amount > 0 ? "Chat Ticket" : "Case Opening Fee");
@@ -328,7 +358,7 @@ export default function AdminFinancialsPage() {
             lawyerName: lawyerName,
             amount: amount,
             reason: reason,
-            submittedAt: data.pendingPaymentDetails?.submittedAt?.toDate() || data.createdAt?.toDate() || new Date(),
+            submittedAt: ensureDate(data.pendingPaymentDetails?.submittedAt || data.createdAt),
             collectionName: 'chats',
             slipUrl: slipUrl,
             userId: userId,
@@ -347,7 +377,7 @@ export default function AdminFinancialsPage() {
                 lawyerName: lawyerName,
                 amount: instPayment.amount || inst.amount,
                 reason: `งวดที่ ${index + 1}: ${inst.description || 'ชำระเงินตามงวด'}`,
-                submittedAt: instPayment.submittedAt ? new Date(instPayment.submittedAt) : new Date(),
+                submittedAt: ensureDate(instPayment.submittedAt),
                 collectionName: 'chats',
                 slipUrl: instPayment.slipUrl,
                 userId: userId,
@@ -360,16 +390,13 @@ export default function AdminFinancialsPage() {
 
       for (const d of invoiceSnapshot.docs) {
         const data = d.data();
-        const userName = await getUserName(data.client_id);
-        const lawyerName = data.lawyer_id ? await getLawyerName(data.lawyer_id) : 'Unknown';
-        
         pending.push({
           id: d.id,
           type: 'Invoice',
-          userName: userName,
-          lawyerName: lawyerName,
+          userName: userProfiles[data.client_id] || 'Unknown',
+          lawyerName: data.lawyer_id ? (lawyerProfiles[data.lawyer_id] || 'Unknown') : 'Unknown',
           amount: data.amount,
-          submittedAt: data.created_at?.toDate() || new Date(),
+          submittedAt: ensureDate(data.created_at || data.createdAt),
           collectionName: 'invoices',
           slipUrl: data.evidence_url,
           userId: data.client_id,
@@ -401,39 +428,59 @@ export default function AdminFinancialsPage() {
       const chatsRef = collection(firestore, 'chats');
       const invoicesRef = collection(firestore, 'invoices');
 
+      // Fetch docs (Ideally we should have limits here, but sticking to existing logic with optimization)
       const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
-        getDocs(appointmentsRef),
-        getDocs(chatsRef),
-        getDocs(invoicesRef),
+        getDocs(query(appointmentsRef, limit(100), orderBy('createdAt', 'desc'))),
+        getDocs(query(chatsRef, limit(100), orderBy('createdAt', 'desc'))),
+        getDocs(query(invoicesRef, limit(100), orderBy('createdAt', 'desc'))),
       ]);
 
       const allTransactions: Transaction[] = [];
+      const userIds = new Set<string>();
+      const lawyerIds = new Set<string>();
 
-      const getUserName = async (uid: string) => {
-        try {
-          const userDoc = await getDocs(query(collection(firestore, 'users'), where('uid', '==', uid)));
-          if (!userDoc.empty) return userDoc.docs[0].data().name;
-          return 'Unknown User';
-        } catch (e) { return 'Unknown User'; }
-      };
+      // Collect IDs
+      appointmentSnapshot.docs.forEach(d => { if (d.data().userId) userIds.add(d.data().userId); });
+      chatSnapshot.docs.forEach(d => {
+        const data = d.data();
+        const userId = data.userId || (data.participants && data.participants[0]);
+        if (userId) userIds.add(userId);
+        const lawyerId = data.lawyerId || data.participants?.find((p: string) => p !== userId);
+        if (lawyerId) lawyerIds.add(lawyerId);
+      });
+      invoiceSnapshot.docs.forEach(d => {
+        if (d.data().client_id) userIds.add(d.data().client_id);
+        if (d.data().lawyer_id) lawyerIds.add(d.data().lawyer_id);
+      });
 
-      const getLawyerName = async (lawyerId: string) => {
-        try {
-          const lawyerDoc = await getDoc(doc(firestore, 'lawyerProfiles', lawyerId));
-          if (lawyerDoc.exists()) return lawyerDoc.data().name;
-          return 'Unknown Lawyer';
-        } catch (e) { return 'Unknown Lawyer'; }
-      };
+      // Batch Fetch Users
+      const userProfiles: Record<string, string> = {};
+      if (userIds.size > 0) {
+        const idsArray = Array.from(userIds);
+        const chunks = [];
+        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
+        const snaps = await Promise.all(chunks.map(chunk => getDocs(query(collection(firestore, 'users'), where('uid', 'in', chunk)))));
+        snaps.forEach(snap => snap.docs.forEach(d => { userProfiles[d.data().uid] = d.data().name || 'Unknown User'; }));
+      }
+
+      // Batch Fetch Lawyers
+      const lawyerProfiles: Record<string, string> = {};
+      if (lawyerIds.size > 0) {
+        const idsArray = Array.from(lawyerIds);
+        const chunks = [];
+        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
+        const snaps = await Promise.all(chunks.map(chunk => getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)))));
+        snaps.forEach(snap => snap.docs.forEach(d => { lawyerProfiles[d.id] = d.data().name || 'Unknown Lawyer'; }));
+      }
 
       for (const d of appointmentSnapshot.docs) {
         const data = d.data();
         if (data.status === 'pending_payment') continue;
 
-        const userName = await getUserName(data.userId);
         allTransactions.push({
           id: d.id,
-          date: data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
-          description: `นัดหมายปรึกษา - ${userName}`,
+          date: data.createdAt ? format(ensureDate(data.createdAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
+          description: `นัดหมายปรึกษา - ${userProfiles[data.userId] || 'Unknown User'}`,
           amount: data.amount || 3500,
           type: 'revenue',
           status: data.status === 'completed' ? 'completed' : 'pending',
@@ -445,15 +492,15 @@ export default function AdminFinancialsPage() {
         if (data.status === 'pending_payment' && !data.amount && !data.totalPaid) continue;
 
         const userId = data.userId || (data.participants && data.participants[0]);
-        const userName = userId ? await getUserName(userId) : 'Unknown User';
+        const userName = userProfiles[userId] || 'Unknown User';
         const lawyerId = data.lawyerId || data.participants?.find((p: string) => p !== userId);
-        const lawyerName = lawyerId ? await getLawyerName(lawyerId) : '';
+        const lawyerName = lawyerProfiles[lawyerId] || '';
         
         const amount = data.amount || data.pendingPaymentDetails?.amount || 0;
         if (amount > 0) {
           allTransactions.push({
             id: d.id,
-            date: data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
+            date: data.createdAt ? format(ensureDate(data.createdAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
             description: `ปรึกษาผ่านแชท/เปิดคดี - ${userName}`,
             amount: amount,
             type: 'revenue',
@@ -468,7 +515,7 @@ export default function AdminFinancialsPage() {
             if (inst.status === 'paid') {
               allTransactions.push({
                 id: `${d.id}_inst_${idx}`,
-                date: inst.paidAt ? format(new Date(inst.paidAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
+                date: inst.paidAt ? format(ensureDate(inst.paidAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
                 description: `ชำระเงินงวดที่ ${idx + 1} - ${userName}`,
                 amount: inst.amount,
                 type: 'revenue',
@@ -485,23 +532,20 @@ export default function AdminFinancialsPage() {
         const data = d.data();
         if (data.status === 'pending') continue;
 
-        const userName = await getUserName(data.client_id);
-        const lawyerId = data.lawyer_id;
-        const lawyerName = lawyerId ? await getLawyerName(lawyerId) : '';
-
         allTransactions.push({
           id: d.id,
-          date: data.paidAt ? format(data.paidAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : (data.createdAt ? format(data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A'),
-          description: `ใบแจ้งหนี้ - ${userName}`,
+          date: data.paidAt ? format(ensureDate(data.paidAt), 'd MMM yyyy, HH:mm', { locale: th }) : (data.createdAt ? format(ensureDate(data.createdAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A'),
+          description: `ใบแจ้งหนี้ - ${userProfiles[data.client_id] || 'Unknown User'}`,
           amount: data.amount,
           type: 'revenue',
           status: data.status === 'paid' ? 'completed' : 'pending',
           slipUrl: data.evidence_url,
-          lawyerName
+          lawyerName: lawyerProfiles[data.lawyer_id] || ''
         });
       }
 
-      setTransactions(allTransactions);
+      setTransactions(allTransactions.sort((a, b) => b.id.localeCompare(a.id))); // Simple sort, or use dates if parsed
+
 
     } catch (error) {
       console.error('Error fetching transactions:', error);
