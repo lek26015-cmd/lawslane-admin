@@ -20,6 +20,7 @@ import { SupportChatBox } from '@/components/chat/support-chat-box';
 import { Separator } from '@/components/ui/separator';
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot, arrayUnion } from 'firebase/firestore';
+import { getMainLink } from '@/lib/domain-utils';
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 
 
@@ -247,12 +248,17 @@ function AdminTicketDetailPageContent() {
                         )}
                         <Separator />
                         <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground flex items-center gap-2"><User /> ผู้แจ้งปัญหา</span>
-                            <Link href={`/customers/cus_001`} className="font-semibold text-primary hover:underline">{ticket.clientName}</Link>
+                            <span className="text-muted-foreground flex items-center gap-2"><User className="w-4 h-4" /> ผู้แจ้งปัญหา</span>
+                            <Link href={`/customers/${ticket.userId}`} className="font-semibold text-primary hover:underline">{ticket.clientName}</Link>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground flex items-center gap-2"><Briefcase /> เคสที่เกี่ยวข้อง</span>
-                            <span className="font-mono">{ticket.caseId}</span>
+                            <span className="text-muted-foreground flex items-center gap-2"><Briefcase className="w-4 h-4" /> เคสที่เกี่ยวข้อง</span>
+                            <a 
+                                href={getMainLink(`/chat/${ticket.caseId}?view=admin`, 'admin')} 
+                                className="font-mono text-primary hover:underline"
+                            >
+                                {ticket.caseId}
+                            </a>
                         </div>
                     </CardContent>
                 </Card>

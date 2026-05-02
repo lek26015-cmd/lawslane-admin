@@ -36,6 +36,7 @@ import type { UserProfile, Case } from '@/lib/types'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { getDashboardData } from '@/lib/data'
+import { getMainLink } from '@/lib/domain-utils';
 import { useToast } from '@/hooks/use-toast'
 import {
   AlertDialog,
@@ -267,9 +268,9 @@ export default function AdminCustomerDetailPage() {
                   {cases.map(c => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">
-                        <Link href={`/chat/${c.id}?view=admin`} className="hover:underline">
+                        <a href={getMainLink(`/chat/${c.id}?view=admin`, 'admin')} className="hover:underline">
                           {c.title}
-                        </Link>
+                        </a>
                       </TableCell>
                       <TableCell>{c.lawyer?.name || 'ไม่ระบุ'}</TableCell>
                       <TableCell>

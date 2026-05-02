@@ -351,7 +351,7 @@ export async function getLawyerDashboardData(db: Firestore, lawyerId: string): P
         userId: data.userId || '',
         caseTitle: data.description,
         description: data.description,
-        requestedAt: data.createdAt?.toDate() || new Date(),
+        requestedAt: ensureDate(data.createdAt),
       };
     });
 
@@ -422,7 +422,7 @@ export async function getAdminLawyerDashboardData(db: Firestore): Promise<{ newR
         userId: data.userId || '',
         caseTitle: data.description,
         description: data.description,
-        requestedAt: data.createdAt?.toDate() || new Date(),
+        requestedAt: ensureDate(data.createdAt),
       }
     }));
   } catch (error) {
@@ -458,13 +458,15 @@ export async function getAdminLawyerDashboardData(db: Firestore): Promise<{ newR
         } catch (e) { }
       }
 
+      const lastUpdateDate = ensureDate(chatData.lastMessageAt || chatData.createdAt);
+
       return {
         id: d.id,
         title: chatData.caseTitle || 'Unknown Case',
         clientName: clientName, // This might be the lawyer's name in some cases, but acceptable for admin overview
         clientId: clientId,
         status: chatData.status,
-        lastUpdate: chatData.lastMessageAt?.toDate().toLocaleDateString('th-TH') || 'N/A',
+        lastUpdate: lastUpdateDate.toLocaleDateString('th-TH') || 'N/A',
       };
     }));
   } catch (error) {
@@ -496,7 +498,7 @@ export async function getLawyerAppointmentRequestById(db: Firestore, id: string)
       userId: data.userId || '', // Include userId
       caseTitle: data.description,
       description: data.description,
-      requestedAt: data.createdAt.toDate(),
+      requestedAt: ensureDate(data.createdAt),
     };
   }
   return undefined;

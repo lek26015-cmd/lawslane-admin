@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getMainLink } from '@/lib/domain-utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -182,7 +183,9 @@ export default function LawyerDashboardPage() {
       title: 'รับเคสสำเร็จ!',
       description: `เคส "${request.caseTitle}" ได้ถูกเพิ่มในรายการเคสที่กำลังดำเนินการ`,
     });
-    router.push(`/chat/${newChatId}?lawyerId=${user.uid}&clientId=...&view=lawyer`);
+    const { getMainLink } = await import('@/lib/domain-utils');
+    const chatUrl = getMainLink(`/chat/${newChatId}?lawyerId=${user.uid}&clientId=...&view=lawyer`, 'admin');
+    router.push(chatUrl);
   };
 
   const isMockAdmin = lawyerProfile?.licenseNumber === 'ADMIN';
@@ -319,7 +322,7 @@ export default function LawyerDashboardPage() {
               </CardHeader>
               <CardContent>
                 {activeCases.map((caseItem) => (
-                  <Link href={`/chat/${caseItem.id}?lawyerId=${user.uid}&clientId=${caseItem.clientId}&view=lawyer`} key={caseItem.id}>
+                  <a href={getMainLink(`/chat/${caseItem.id}?lawyerId=${user.uid}&clientId=${caseItem.clientId}&view=lawyer`, 'admin')} key={caseItem.id}>
                     <div className="flex items-center justify-between p-4 rounded-3xl hover:bg-gray-200/50 transition-colors">
                       <div>
                         <div className="flex items-center gap-2">
@@ -344,7 +347,7 @@ export default function LawyerDashboardPage() {
                         <Button size="sm" className="rounded-full">เข้าสู่ห้องแชท</Button>
                       </div>
                     </div>
-                  </Link>
+                  </a>
                 ))}
               </CardContent>
             </Card>
@@ -359,7 +362,7 @@ export default function LawyerDashboardPage() {
               </CardHeader>
               <CardContent>
                 {completedCases.map((caseItem) => (
-                  <Link href={`/chat/${caseItem.id}?lawyerId=${user.uid}&clientId=${caseItem.clientId}&view=lawyer&status=closed`} key={caseItem.id}>
+                  <a href={getMainLink(`/chat/${caseItem.id}?lawyerId=${user.uid}&clientId=${caseItem.clientId}&view=lawyer&status=closed`, 'admin')} key={caseItem.id}>
                     <div className="flex items-center justify-between p-4 rounded-3xl hover:bg-gray-200/50 transition-colors">
                       <div>
                         <p className="font-semibold">{caseItem.title}</p>
@@ -367,7 +370,7 @@ export default function LawyerDashboardPage() {
                       </div>
                       <Badge variant="outline">ดูประวัติ</Badge>
                     </div>
-                  </Link>
+                  </a>
                 ))}
               </CardContent>
             </Card>

@@ -100,7 +100,9 @@ function RequestDetailPageContent() {
         description: `เคส "${request.caseTitle}" ได้ถูกเพิ่มในรายการเคสที่กำลังดำเนินการ`,
       });
 
-      router.push(`/chat/${newChatRef.id}`);
+      const { getMainLink } = await import('@/lib/domain-utils');
+      const chatUrl = getMainLink(`/chat/${newChatRef.id}`, 'admin');
+      router.push(chatUrl);
     } catch (error) {
       console.error("Error accepting case:", error);
       toast({

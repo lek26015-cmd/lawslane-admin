@@ -58,9 +58,11 @@ import {
   addDoc,
   serverTimestamp,
   limit,
+  orderBy,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getFinancialStats, ensureDate } from '@/lib/data';
+import { getMainLink } from '@/lib/domain-utils';
 import { useSearchParams } from 'next/navigation';
 import { SlipVerifier } from '@/components/admin/slip-verifier';
 import { Textarea } from '@/components/ui/textarea';
@@ -166,9 +168,24 @@ function FinancialsContent() {
 
     try {
       const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
-        getDocs(query(collection(firestore, 'appointments'), where('status', '==', 'pending_payment'))),
-        getDocs(query(collection(firestore, 'chats'), where('status', '==', 'pending_payment'))),
-        getDocs(query(collection(firestore, 'invoices'), where('status', '==', 'pending_verification'))),
+        getDocs(query(
+          collection(firestore, 'appointments'), 
+          where('status', '==', 'pending_payment'),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        )),
+        getDocs(query(
+          collection(firestore, 'chats'), 
+          where('status', '==', 'pending_payment'),
+          orderBy('lastMessageAt', 'desc'),
+          limit(100)
+        )),
+        getDocs(query(
+          collection(firestore, 'invoices'), 
+          where('status', '==', 'pending_verification'),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        )),
       ]);
 
       const pending: SlipVerificationItem[] = [];
@@ -282,9 +299,9 @@ function FinancialsContent() {
 
     try {
       const [appSnap, chatSnap, invSnap] = await Promise.all([
-        getDocs(query(collection(firestore, 'appointments'), limit(100))),
-        getDocs(query(collection(firestore, 'chats'), limit(100))),
-        getDocs(query(collection(firestore, 'invoices'), limit(100))),
+        getDocs(query(collection(firestore, 'appointments'), orderBy('createdAt', 'desc'), limit(150))),
+        getDocs(query(collection(firestore, 'chats'), orderBy('lastMessageAt', 'desc'), limit(150))),
+        getDocs(query(collection(firestore, 'invoices'), orderBy('createdAt', 'desc'), limit(150))),
       ]);
 
       const allTransactions: Transaction[] = [];
@@ -425,7 +442,17 @@ function FinancialsContent() {
                 slipVerifications.map(item => (
                   <TableRow key={item.id}>
                     <TableCell>{format(item.submittedAt, 'd MMM HH:mm', { locale: th })}</TableCell>
-                    <TableCell>{item.userName}<br/><Badge variant="outline" className="text-[10px]">{item.type}</Badge></TableCell>
+                    <TableCell>
+                      {item.userName}<br/>
+                      <div className="flex gap-1 mt-1">
+                        <Badge variant="outline" className="text-[10px]">{item.type}</Badge>
+                        {item.collectionName === 'chats' && (
+                          <a href={getMainLink(`/chat/${item.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
+                            <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
+                          </a>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-bold">฿{item.amount.toLocaleString()}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button variant="outline" size="sm" onClick={() => { 
@@ -454,7 +481,19 @@ function FinancialsContent() {
                 transactions.map(t => (
                   <TableRow key={t.id}>
                     <TableCell>{t.date}</TableCell>
-                    <TableCell>{t.description}<br/><Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600' : ''}>{t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}</Badge></TableCell>
+                    <TableCell>
+                      {t.description}<br/>
+                      <div className="flex gap-1 mt-1">
+                        <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600' : ''}>
+                          {t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}
+                        </Badge>
+                        {t.description.includes('แชท/คดี') && (
+                          <a href={getMainLink(`/chat/${t.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
+                            <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
+                          </a>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right font-bold">฿{t.amount.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       {t.slipUrl && <Button variant="ghost" size="sm" onClick={() => { setSelectedSlip({ url: t.slipUrl!, amount: t.amount, lawyerName: '...' }); setIsVerifierOpen(true); }}><Eye className="w-4 h-4" /></Button>}
