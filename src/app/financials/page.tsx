@@ -405,12 +405,12 @@ export default function AdminFinancialsPage() {
       }
 
       setSlipVerifications(pending.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching pending payments:', error);
       toast({
         variant: 'destructive',
         title: 'เกิดข้อผิดพลาด',
-        description: 'ไม่สามารถดึงข้อมูลรายการรอตรวจสอบได้',
+        description: `ไม่สามารถดึงข้อมูลรายการรอตรวจสอบได้: ${error.message || String(error)}`,
       });
     } finally {
       setIsLoading(false);
@@ -547,12 +547,12 @@ export default function AdminFinancialsPage() {
       setTransactions(allTransactions.sort((a, b) => b.id.localeCompare(a.id))); // Simple sort, or use dates if parsed
 
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching transactions:', error);
       toast({
         variant: 'destructive',
         title: 'เกิดข้อผิดพลาด',
-        description: 'ไม่สามารถดึงข้อมูลธุรกรรมได้',
+        description: `ไม่สามารถดึงข้อมูลธุรกรรมได้: ${error.message || String(error)}`,
       });
     } finally {
       setIsLoading(false);
@@ -598,12 +598,12 @@ export default function AdminFinancialsPage() {
       requests.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
       setWithdrawalRequests(requests);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching withdrawals:', error);
       toast({
         variant: 'destructive',
         title: 'เกิดข้อผิดพลาด',
-        description: 'ไม่สามารถดึงข้อมูลคำร้องถอนเงินได้',
+        description: `ไม่สามารถดึงข้อมูลคำร้องถอนเงินได้: ${error.message || String(error)}`,
       });
     } finally {
       setIsLoading(false);
