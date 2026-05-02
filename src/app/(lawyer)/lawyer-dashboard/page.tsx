@@ -177,7 +177,7 @@ export default function LawyerDashboardPage() {
     )
   }
 
-  const handleAcceptCase = (request: LawyerAppointmentRequest) => {
+  const handleAcceptCase = async (request: LawyerAppointmentRequest) => {
     const newChatId = uuidv4();
     toast({
       title: 'รับเคสสำเร็จ!',

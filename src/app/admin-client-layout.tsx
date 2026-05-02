@@ -39,7 +39,8 @@ import {
     ClipboardList,
     Package,
     Percent,
-    ShoppingBag
+    ShoppingBag,
+    MessageSquare
 } from 'lucide-react';
 import React, { useState, useEffect, useContext } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -249,6 +250,12 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า" },
                 { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ" },
                 { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย" },
+            ]
+        },
+        {
+            title: "ห้องสนทนา",
+            items: [
+                { href: "/chats", icon: <MessageSquare className="h-4 w-4" />, label: "แชททั้งหมด" },
             ]
         },
 

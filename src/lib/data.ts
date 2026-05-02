@@ -939,3 +939,94 @@ export async function syncLawyersToRegistry(db: Firestore): Promise<{ success: n
     throw error;
   }
 }
+
+export async function getAllChatsForAdmin(db: Firestore): Promise<any[]> {
+  if (!db) return [];
+
+  try {
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, orderBy('lastMessageAt', 'desc'), limit(150));
+    const querySnapshot = await getDocs(q);
+
+    // Collect all unique participant IDs
+    const allParticipantIds = new Set<string>();
+    querySnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.participants && Array.isArray(data.participants)) {
+        data.participants.forEach((id: string) => allParticipantIds.add(id));
+      }
+      if (data.userId) allParticipantIds.add(data.userId);
+      if (data.lawyerId) allParticipantIds.add(data.lawyerId);
+    });
+
+    const participantIds = Array.from(allParticipantIds);
+    const profiles: Record<string, { name: string; role?: string }> = {};
+
+    if (participantIds.length > 0) {
+      // Fetch from users collection
+      const chunks = [];
+      for (let i = 0; i < participantIds.length; i += 30) {
+        chunks.push(participantIds.slice(i, i + 30));
+      }
+
+      const userSnaps = await Promise.all(chunks.map(chunk =>
+        getDocs(query(collection(db, 'users'), where('__name__', 'in', chunk)))
+      ));
+
+      userSnaps.forEach(snap => {
+        snap.docs.forEach(doc => {
+          const data = doc.data();
+          profiles[doc.id] = { name: data.name || data.email || 'Unknown', role: data.role };
+        });
+      });
+
+      // Fetch from lawyerProfiles for those that might have different names or are missing
+      const lawyerSnaps = await Promise.all(chunks.map(chunk =>
+        getDocs(query(collection(db, 'lawyerProfiles'), where('__name__', 'in', chunk)))
+      ));
+
+      lawyerSnaps.forEach(snap => {
+        snap.docs.forEach(doc => {
+          const data = doc.data();
+          // Update or add if not in users
+          profiles[doc.id] = { name: data.name || profiles[doc.id]?.name || 'Unknown', role: 'lawyer' };
+        });
+      });
+    }
+
+    return querySnapshot.docs.map(d => {
+      const data = d.data();
+      const participants = data.participants || [];
+
+      // Try to identify lawyer and client
+      let lawyerId = data.lawyerId;
+      let clientId = data.userId;
+
+      if (!lawyerId || !clientId) {
+        participants.forEach((id: string) => {
+          if (profiles[id]?.role === 'lawyer') lawyerId = id;
+          else if (profiles[id]?.role === 'customer' || !clientId) clientId = id;
+        });
+      }
+
+      // If still not found, just pick from participants
+      if (!lawyerId && participants.length > 0) lawyerId = participants[0];
+      if (!clientId && participants.length > 1) clientId = participants[1];
+
+      return {
+        id: d.id,
+        caseTitle: data.caseTitle || 'Untitled Case',
+        status: data.status || 'active',
+        lastMessage: data.lastMessage || '',
+        lastMessageAt: data.lastMessageAt ? ensureDate(data.lastMessageAt) : (data.createdAt ? ensureDate(data.createdAt) : new Date()),
+        lawyerName: profiles[lawyerId]?.name || 'Unknown Lawyer',
+        lawyerId: lawyerId || '',
+        clientName: profiles[clientId]?.name || 'Unknown Client',
+        clientId: clientId || '',
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching all chats for admin:", error);
+    return [];
+  }
+}
