@@ -17,11 +17,7 @@ service cloud.firestore {
           request.auth.uid == 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || 
           request.auth.token.email == 'lek.26015@gmail.com' ||
           request.auth.uid == '6rX3WqjNo9M7lX6iUe5V9r7Dk9z1' ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin' ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('superAdmin', false) == true ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('superAdmin', '') == 'true'
-          ))
+          request.auth.token.email == 'admin@lawslane.com'
         );
     }
 
