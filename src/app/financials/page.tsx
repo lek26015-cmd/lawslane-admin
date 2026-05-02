@@ -224,8 +224,16 @@ function FinancialsContent() {
       chatSnapshot.docs.forEach(d => {
         const data = d.data();
         const uId = data.userId || data.participants?.[0];
-        const slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
-        if (slipUrl) {
+        const attachments = data.attachments;
+        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
+        
+        // If no direct slipUrl, try to find the first image in attachments
+        if (!slipUrl && Array.isArray(attachments) && attachments.length > 0) {
+          const firstImage = attachments.find((a: any) => a.url && (a.url.includes('r2.dev') || a.url.includes('firebasestorage') || a.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
+          if (firstImage) slipUrl = firstImage.url;
+        }
+
+        if (slipUrl || data.status === 'pending_payment') {
           pending.push({
             id: d.id,
             type: 'Chat',
@@ -315,6 +323,14 @@ function FinancialsContent() {
       chatSnap.docs.forEach(d => {
         const data = d.data();
         const uId = data.userId || data.participants?.[0];
+        const attachments = data.attachments;
+        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
+        
+        if (!slipUrl && Array.isArray(attachments) && attachments.length > 0) {
+          const firstImage = attachments.find((a: any) => a.url && (a.url.includes('r2.dev') || a.url.includes('firebasestorage') || a.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
+          if (firstImage) slipUrl = firstImage.url;
+        }
+
         const amount = data.amount || data.totalPaid || data.pendingPaymentDetails?.amount || 0;
         if (amount >= 0) {
           allTransactions.push({
@@ -324,7 +340,7 @@ function FinancialsContent() {
             amount: amount,
             type: 'revenue',
             status: (data.status === 'paid' || data.status === 'active' || data.status === 'closed') ? 'completed' : 'pending',
-            slipUrl: data.pendingPaymentDetails?.slipUrl || data.slipUrl
+            slipUrl: slipUrl
           });
         }
       });
