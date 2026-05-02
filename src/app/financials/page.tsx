@@ -26,6 +26,7 @@ import {
   CheckCircle,
   Eye,
   ShieldAlert,
+  FileJson,
 } from 'lucide-react';
 import {
   Bar,
@@ -108,6 +109,7 @@ function FinancialsContent() {
   const [activeTab, setActiveTab] = React.useState('overview');
   const [slipVerifications, setSlipVerifications] = React.useState<SlipVerificationItem[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [withdrawalRequests, setWithdrawalRequests] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [stats, setStats] = React.useState({
     totalServiceValue: 0,
@@ -122,9 +124,9 @@ function FinancialsContent() {
   const [rejectReason, setRejectReason] = React.useState('');
   const [selectedRejectItem, setSelectedRejectItem] = React.useState<SlipVerificationItem | null>(null);
 
-  // Simple Admin Check
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [checkingAuth, setCheckingAuth] = React.useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
 
   React.useEffect(() => {
     const tab = searchParams.get('tab');
@@ -134,56 +136,81 @@ function FinancialsContent() {
   React.useEffect(() => {
     if (!firestore) return;
     
-    // Quick admin check
     const checkAdmin = async () => {
       try {
-        const { getAuth } = await import('firebase/auth');
+        const { getAuth, onAuthStateChanged } = await import('firebase/auth');
         const auth = getAuth();
-        const user = auth.currentUser;
-        if (user) {
-          const userDoc = await getDoc(doc(firestore, 'users', user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.role === 'admin' || data.superAdmin === true || data.superAdmin === 'true' || user.email === 'lek.26015@gmail.com') {
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const userDoc = await getDoc(doc(firestore!, 'users', user.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              const isSuper = !!userData.superAdmin || userData.superAdmin === 'true' || user.email === 'lek.26015@gmail.com' || user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+              setIsSuperAdmin(isSuper);
               setIsAuthorized(true);
             }
           }
-        }
+          setCheckingAuth(false);
+        });
       } catch (e) {
         console.error("Auth check error", e);
-      } finally {
         setCheckingAuth(false);
       }
     };
     checkAdmin();
   }, [firestore]);
 
-  // Fetch functions with simplified logic
-  const fetchData = React.useCallback(async () => {
+  const fetchPendingPayments = React.useCallback(async () => {
     if (!firestore || !isAuthorized) return;
     setIsLoading(true);
 
     try {
-      // Fetch Stats
-      const financialStats = await getFinancialStats(firestore);
-      setStats(financialStats);
+      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
+        getDocs(query(collection(firestore, 'appointments'), where('status', '==', 'pending_payment'))),
+        getDocs(query(collection(firestore, 'chats'), where('status', '==', 'pending_payment'))),
+        getDocs(query(collection(firestore, 'invoices'), where('status', '==', 'pending_verification'))),
+      ]);
 
-      // Fetch Pending
       const pending: SlipVerificationItem[] = [];
-      
-      const appSnap = await getDocs(query(collection(firestore, 'appointments'), where('status', '==', 'pending_payment'), limit(50)));
-      const chatSnap = await getDocs(query(collection(firestore, 'chats'), where('status', '==', 'pending_payment'), limit(50)));
-      const invSnap = await getDocs(query(collection(firestore, 'invoices'), where('status', '==', 'pending_verification'), limit(50)));
+      const userIds = new Set<string>();
+      const lawyerIds = new Set<string>();
 
-      // Process with individual name fetching if needed, but keep it safe
-      for (const d of appSnap.docs) {
+      [...appointmentSnapshot.docs, ...chatSnapshot.docs, ...invoiceSnapshot.docs].forEach(d => {
+        const data = d.data();
+        const uId = data.userId || data.client_id || data.participants?.[0];
+        const lId = data.lawyerId || data.lawyer_id;
+        if (uId) userIds.add(uId);
+        if (lId) lawyerIds.add(lId);
+      });
+
+      const userProfiles: Record<string, string> = {};
+      if (userIds.size > 0) {
+        const ids = Array.from(userIds);
+        for (let i = 0; i < ids.length; i += 30) {
+          const chunk = ids.slice(i, i + 30);
+          const snaps = await getDocs(query(collection(firestore, 'users'), where('__name__', 'in', chunk)));
+          snaps.forEach(snapDoc => { userProfiles[snapDoc.id] = snapDoc.data().name || 'Unknown User'; });
+        }
+      }
+
+      const lawyerProfiles: Record<string, string> = {};
+      if (lawyerIds.size > 0) {
+        const ids = Array.from(lawyerIds);
+        for (let i = 0; i < ids.length; i += 30) {
+          const chunk = ids.slice(i, i + 30);
+          const snaps = await getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)));
+          snaps.forEach(snapDoc => { lawyerProfiles[snapDoc.id] = snapDoc.data().name || 'Unknown Lawyer'; });
+        }
+      }
+
+      appointmentSnapshot.docs.forEach(d => {
         const data = d.data();
         if (data.slipUrl || data.hasNewPayment) {
           pending.push({
             id: d.id,
             type: 'Appointment',
-            userName: 'Loading...',
-            lawyerName: 'Loading...',
+            userName: userProfiles[data.userId] || 'Unknown User',
+            lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
             amount: data.amount || 3500,
             submittedAt: ensureDate(data.createdAt),
             collectionName: 'appointments',
@@ -192,61 +219,143 @@ function FinancialsContent() {
             lawyerId: data.lawyerId
           });
         }
-      }
+      });
 
-      for (const d of chatSnap.docs) {
+      chatSnapshot.docs.forEach(d => {
         const data = d.data();
+        const uId = data.userId || data.participants?.[0];
         const slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
         if (slipUrl) {
           pending.push({
             id: d.id,
             type: 'Chat',
-            userName: 'Loading...',
-            lawyerName: 'Loading...',
+            userName: userProfiles[uId] || 'Unknown User',
+            lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
             amount: data.pendingPaymentDetails?.amount || data.amount || 0,
             submittedAt: ensureDate(data.pendingPaymentDetails?.submittedAt || data.createdAt),
             collectionName: 'chats',
             slipUrl: slipUrl,
-            userId: data.userId || data.participants?.[0],
+            userId: uId,
             lawyerId: data.lawyerId
           });
         }
+      });
+
+      invoiceSnapshot.docs.forEach(d => {
+        const data = d.data();
+        pending.push({
+          id: d.id,
+          type: 'Invoice',
+          userName: userProfiles[data.client_id] || 'Unknown User',
+          lawyerName: lawyerProfiles[data.lawyer_id] || 'Unknown Lawyer',
+          amount: data.amount,
+          submittedAt: ensureDate(data.createdAt || data.created_at),
+          collectionName: 'invoices',
+          slipUrl: data.evidence_url,
+          userId: data.client_id,
+          lawyerId: data.lawyer_id
+        });
+      });
+
+      setSlipVerifications(pending.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()));
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [firestore, isAuthorized, toast]);
+
+  const fetchTransactions = React.useCallback(async () => {
+    if (!firestore || !isAuthorized) return;
+    setIsLoading(true);
+
+    try {
+      const [appSnap, chatSnap, invSnap] = await Promise.all([
+        getDocs(query(collection(firestore, 'appointments'), limit(100))),
+        getDocs(query(collection(firestore, 'chats'), limit(100))),
+        getDocs(query(collection(firestore, 'invoices'), limit(100))),
+      ]);
+
+      const allTx: Transaction[] = [];
+      const userIds = new Set<string>();
+
+      [...appSnap.docs, ...chatSnap.docs, ...invSnap.docs].forEach(d => {
+        const data = d.data();
+        const uId = data.userId || data.client_id || data.participants?.[0];
+        if (uId) userIds.add(uId);
+      });
+
+      const userProfiles: Record<string, string> = {};
+      if (userIds.size > 0) {
+        const ids = Array.from(userIds);
+        for (let i = 0; i < ids.length; i += 30) {
+          const chunk = ids.slice(i, i + 30);
+          const snaps = await getDocs(query(collection(firestore, 'users'), where('__name__', 'in', chunk)));
+          snaps.forEach(snapDoc => { userProfiles[snapDoc.id] = snapDoc.data().name || 'Unknown User'; });
+        }
       }
 
-      setSlipVerifications(pending);
+      appSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.status !== 'pending_payment') {
+          allTx.push({
+            id: d.id,
+            date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
+            description: `นัดหมาย - ${userProfiles[data.userId] || 'Unknown'}`,
+            amount: data.amount || 3500,
+            type: 'revenue',
+            status: data.status === 'completed' ? 'completed' : 'pending',
+          });
+        }
+      });
 
-      // Fetch Transactions (Simplified)
-      const allTx: Transaction[] = [];
-      const txSnap = await getDocs(query(collection(firestore, 'invoices'), where('status', '==', 'paid'), limit(50)));
-      txSnap.docs.forEach(d => {
+      chatSnap.docs.forEach(d => {
+        const data = d.data();
+        const uId = data.userId || data.participants?.[0];
+        const amount = data.amount || data.totalPaid || data.pendingPaymentDetails?.amount || 0;
+        if (amount >= 0) { // Allow 0 to see active chats
+          allTx.push({
+            id: d.id,
+            date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
+            description: `แชท/คดี - ${userProfiles[uId] || 'Unknown'}`,
+            amount: amount,
+            type: 'revenue',
+            status: (data.status === 'paid' || data.status === 'active' || data.status === 'closed') ? 'completed' : 'pending',
+            slipUrl: data.pendingPaymentDetails?.slipUrl || data.slipUrl
+          });
+        }
+      });
+
+      invSnap.docs.forEach(d => {
         const data = d.data();
         allTx.push({
           id: d.id,
           date: format(ensureDate(data.paidAt || data.createdAt), 'd MMM yyyy', { locale: th }),
-          description: `Invoice - ${d.id}`,
+          description: `ใบแจ้งหนี้ - ${userProfiles[data.client_id] || 'Unknown'}`,
           amount: data.amount,
           type: 'revenue',
-          status: 'completed',
+          status: data.status === 'paid' ? 'completed' : 'pending',
           slipUrl: data.evidence_url
         });
       });
-      setTransactions(allTx);
 
-    } catch (error: any) {
-      console.error("Data fetch error", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || "Failed to fetch data"
-      });
+      setTransactions(allTx.sort((a, b) => b.id.localeCompare(a.id)));
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsLoading(false);
     }
   }, [firestore, isAuthorized, toast]);
 
   React.useEffect(() => {
-    if (isAuthorized) fetchData();
-  }, [isAuthorized, fetchData]);
+    if (isAuthorized) {
+      getFinancialStats(firestore!).then(setStats);
+      if (activeTab === 'verification') fetchPendingPayments();
+      else if (activeTab === 'transactions') fetchTransactions();
+    }
+  }, [isAuthorized, activeTab, fetchPendingPayments, fetchTransactions, firestore]);
 
   if (checkingAuth) return <div className="p-8 text-center">Checking permissions...</div>;
   if (!isAuthorized) return (
@@ -261,146 +370,83 @@ function FinancialsContent() {
     <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-8 lg:p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financials (Stable Mode)</h1>
-          <p className="text-muted-foreground">จัดการข้อมูลการเงินและความปลอดภัย</p>
+          <h1 className="text-2xl font-bold tracking-tight">Financials (Complete View)</h1>
+          <p className="text-muted-foreground">จัดการธุรกรรมและรายได้ทั้งหมดของแพลตฟอร์ม</p>
         </div>
-        <Button onClick={fetchData} disabled={isLoading}>
+        <Button onClick={() => activeTab === 'verification' ? fetchPendingPayments() : fetchTransactions()} disabled={isLoading}>
           {isLoading ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">ยอดบริการรวม</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">฿{stats.totalServiceValue.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">รายได้เดือนนี้</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">฿{stats.platformRevenueThisMonth.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">รายได้ทั้งหมด</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">฿{stats.platformTotalRevenue.toLocaleString()}</div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-6"><div className="text-sm font-medium text-muted-foreground">ยอดบริการรวม</div><div className="text-2xl font-bold">฿{stats.totalServiceValue.toLocaleString()}</div></CardContent></Card>
+        <Card><CardContent className="pt-6"><div className="text-sm font-medium text-muted-foreground">รายได้แพลตฟอร์ม (เดือนนี้)</div><div className="text-2xl font-bold text-green-600">฿{stats.platformRevenueThisMonth.toLocaleString()}</div></CardContent></Card>
+        <Card><CardContent className="pt-6"><div className="text-sm font-medium text-muted-foreground">รายได้แพลตฟอร์ม (รวม)</div><div className="text-2xl font-bold">฿{stats.platformTotalRevenue.toLocaleString()}</div></CardContent></Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-3 md:w-[400px]">
           <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
-          <TabsTrigger value="verification">ตรวจสอบสลิป ({slipVerifications.length})</TabsTrigger>
+          <TabsTrigger value="verification">ตรวจสลิป ({slipVerifications.length})</TabsTrigger>
           <TabsTrigger value="transactions">ธุรกรรม</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>แนวโน้มรายได้</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="total" fill="#0f172a" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <Card><CardHeader><CardTitle>สถิติรายได้รายเดือน</CardTitle></CardHeader><CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%"><BarChart data={stats.monthlyData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="month" /><YAxis /><Tooltip /><Bar dataKey="total" fill="#0f172a" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
+          </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="verification" className="mt-4">
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>วันที่</TableHead>
-                  <TableHead>ประเภท</TableHead>
-                  <TableHead>จำนวนเงิน</TableHead>
-                  <TableHead className="text-right">จัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {slipVerifications.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">ไม่มีรายการรอตรวจสอบ</TableCell></TableRow>
-                ) : (
-                  slipVerifications.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell>{format(item.submittedAt, 'd MMM HH:mm', { locale: th })}</TableCell>
-                      <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
-                      <TableCell className="font-bold">฿{item.amount.toLocaleString()}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => {
-                          setSelectedSlip({ url: item.slipUrl || '', amount: item.amount, lawyerName: '...' });
-                          setIsVerifierOpen(true);
-                        }}><Eye className="w-4 h-4 mr-1" /> ดูสลิป</Button>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700">อนุมัติ</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+          <Card><Table>
+            <TableHeader><TableRow><TableHead>วันที่</TableHead><TableHead>ลูกค้า</TableHead><TableHead>ยอด</TableHead><TableHead className="text-right">จัดการ</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {slipVerifications.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-8">ไม่มีรายการ</TableCell></TableRow> :
+                slipVerifications.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell>{format(item.submittedAt, 'd MMM HH:mm', { locale: th })}</TableCell>
+                    <TableCell>{item.userName}<br/><Badge variant="outline" className="text-[10px]">{item.type}</Badge></TableCell>
+                    <TableCell className="font-bold">฿{item.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedSlip({ url: item.slipUrl || '', amount: item.amount, lawyerName: item.lawyerName }); setIsVerifierOpen(true); }}><Eye className="w-3 h-3 mr-1" /> ดูสลิป</Button>
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700">อนุมัติ</Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              }
+            </TableBody>
+          </Table></Card>
         </TabsContent>
 
         <TabsContent value="transactions" className="mt-4">
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>วันที่</TableHead>
-                  <TableHead>รายการ</TableHead>
-                  <TableHead className="text-right">จำนวน</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">ไม่มีข้อมูลธุรกรรม</TableCell></TableRow>
-                ) : (
-                  transactions.map(t => (
-                    <TableRow key={t.id}>
-                      <TableCell>{t.date}</TableCell>
-                      <TableCell>{t.description}</TableCell>
-                      <TableCell className="text-right font-bold">฿{t.amount.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+          <Card><Table>
+            <TableHeader><TableRow><TableHead>วันที่</TableHead><TableHead>รายการ</TableHead><TableHead className="text-right">จำนวน</TableHead><TableHead className="text-right">หลักฐาน</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {transactions.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-8">ไม่มีข้อมูล</TableCell></TableRow> :
+                transactions.map(t => (
+                  <TableRow key={t.id}>
+                    <TableCell>{t.date}</TableCell>
+                    <TableCell>{t.description}<br/><Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600' : ''}>{t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}</Badge></TableCell>
+                    <TableCell className="text-right font-bold">฿{t.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      {t.slipUrl && <Button variant="ghost" size="sm" onClick={() => { setSelectedSlip({ url: t.slipUrl!, amount: t.amount, lawyerName: '...' }); setIsVerifierOpen(true); }}><Eye className="w-4 h-4" /></Button>}
+                    </TableCell>
+                  </TableRow>
+                ))
+              }
+            </TableBody>
+          </Table></Card>
         </TabsContent>
       </Tabs>
 
-      {selectedSlip && (
-        <SlipVerifier
-          isOpen={isVerifierOpen}
-          onClose={() => setIsVerifierOpen(false)}
-          slipUrl={selectedSlip.url}
-          expectedAmount={selectedSlip.amount}
-          expectedLawyerName={selectedSlip.lawyerName}
-        />
-      )}
+      {selectedSlip && <SlipVerifier isOpen={isVerifierOpen} onClose={() => setIsVerifierOpen(false)} slipUrl={selectedSlip.url} expectedAmount={selectedSlip.amount} expectedLawyerName={selectedSlip.lawyerName} />}
     </main>
   );
 }
 
 export default function AdminFinancialsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading Page...</div>}>
+    <Suspense fallback={<div className="p-8 text-center">กำลังโหลด...</div>}>
       <FinancialsContent />
     </Suspense>
   );
