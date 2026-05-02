@@ -2,13 +2,13 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,15 +24,9 @@ import {
   TrendingUp,
   HandCoins,
   CheckCircle,
-  Clock,
   Eye,
-  ScanLine,
-  FileJson,
   ShieldAlert,
 } from 'lucide-react';
-
-
-
 import {
   Bar,
   BarChart,
@@ -62,13 +56,25 @@ import {
   updateDoc,
   addDoc,
   serverTimestamp,
+  limit,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getFinancialStats, ensureDate } from '@/lib/data';
 import { useSearchParams } from 'next/navigation';
-
 import { SlipVerifier } from '@/components/admin/slip-verifier';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
+// Types
 type Transaction = {
   id: string;
   date: string;
@@ -80,54 +86,28 @@ type Transaction = {
   lawyerName?: string;
 };
 
-type WithdrawalRequest = {
-  id: string;
-  lawyerId: string;
-  lawyerName: string;
-  amount: number;
-  bankName: string;
-  accountNumber: string;
-  accountName: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: Date;
-};
-
 type SlipVerificationItem = {
   id: string;
-  type: 'Appointment' | 'Chat';
+  type: 'Appointment' | 'Chat' | 'Invoice';
   userName: string;
   lawyerName: string;
   amount: number;
   reason?: string;
   submittedAt: Date;
-  collectionName: 'appointments' | 'chats';
+  collectionName: 'appointments' | 'chats' | 'invoices';
   slipUrl?: string;
   userId: string;
   lawyerId?: string;
 };
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from '@/components/ui/textarea';
-
-export default function AdminFinancialsPage() {
+function FinancialsContent() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = React.useState(() => searchParams.get('tab') || 'overview');
-  const [slipVerifications, setSlipVerifications] = React.useState<
-    SlipVerificationItem[]
-  >([]);
-  const [withdrawalRequests, setWithdrawalRequests] = React.useState<WithdrawalRequest[]>([]);
+  
+  const [activeTab, setActiveTab] = React.useState('overview');
+  const [slipVerifications, setSlipVerifications] = React.useState<SlipVerificationItem[]>([]);
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [stats, setStats] = React.useState({
     totalServiceValue: 0,
@@ -138,26 +118,13 @@ export default function AdminFinancialsPage() {
 
   const [isVerifierOpen, setIsVerifierOpen] = React.useState(false);
   const [selectedSlip, setSelectedSlip] = React.useState<{ url: string, amount: number, lawyerName: string } | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Manual Release State
-  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = React.useState(false);
-  const [releaseTicketId, setReleaseTicketId] = React.useState('');
-  const [selectedReleaseTransactionId, setSelectedReleaseTransactionId] = React.useState<string | null>(null);
-
-  // Debug State
-  const [debugData, setDebugData] = React.useState<any>(null);
-  const [isDebugOpen, setIsDebugOpen] = React.useState(false);
-
-  // Rejection State
   const [isRejectDialogOpen, setIsRejectDialogOpen] = React.useState(false);
   const [rejectReason, setRejectReason] = React.useState('');
   const [selectedRejectItem, setSelectedRejectItem] = React.useState<SlipVerificationItem | null>(null);
 
-  // Permission State
-  const [adminPermissions, setAdminPermissions] = React.useState<string[] | null>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
-  const [isVerifyingPermission, setIsVerifyingPermission] = React.useState(true);
+  // Simple Admin Check
+  const [isAuthorized, setIsAuthorized] = React.useState(false);
+  const [checkingAuth, setCheckingAuth] = React.useState(true);
 
   React.useEffect(() => {
     const tab = searchParams.get('tab');
@@ -166,1329 +133,275 @@ export default function AdminFinancialsPage() {
 
   React.useEffect(() => {
     if (!firestore) return;
-
-    // We should ideally use a context for this, but for now we fetch it here
-    const fetchUserPermissions = async () => {
-      import('firebase/auth').then(({ getAuth, onAuthStateChanged }) => {
+    
+    // Quick admin check
+    const checkAdmin = async () => {
+      try {
+        const { getAuth } = await import('firebase/auth');
         const auth = getAuth();
-        onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            const userDoc = await getDoc(doc(firestore!, 'users', user.uid));
-            if (userDoc.exists()) {
-              const userData = userDoc.data();
-              const isSuper = !!userData.superAdmin || user.email === 'lek.26015@gmail.com';
-              setIsSuperAdmin(isSuper);
-              setAdminPermissions(isSuper ? null : (userData.adminPermissions ?? null));
+        const user = auth.currentUser;
+        if (user) {
+          const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.role === 'admin' || data.superAdmin === true || data.superAdmin === 'true' || user.email === 'lek.26015@gmail.com') {
+              setIsAuthorized(true);
             }
           }
-          setIsVerifyingPermission(false);
-        });
-      });
-    };
-
-    fetchUserPermissions();
-  }, [firestore]);
-
-  const hasPermission = React.useCallback((permission: string) => {
-    if (isSuperAdmin || adminPermissions === null) return true;
-    return adminPermissions.includes(permission);
-  }, [isSuperAdmin, adminPermissions]);
-
-  const handleDebug = async (collectionName: string, id: string) => {
-    if (!firestore) return;
-    try {
-      const docRef = doc(firestore, collectionName, id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // Convert timestamps to string for display
-        const displayData = Object.entries(data).reduce((acc: any, [key, value]) => {
-          if (value && typeof value === 'object' && 'toDate' in value) {
-            acc[key] = value.toDate().toISOString();
-          } else {
-            acc[key] = value;
-          }
-          return acc;
-        }, { id: docSnap.id }); // Include ID
-
-        setDebugData(displayData);
-        setIsDebugOpen(true);
+        }
+      } catch (e) {
+        console.error("Auth check error", e);
+      } finally {
+        setCheckingAuth(false);
       }
-    } catch (e) {
-      console.error("Debug fetch error:", e);
-      toast({ title: "Error", description: "Failed to fetch debug data" });
-    }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setSelectedSlip({
-        url: url,
-        amount: 0,
-        lawyerName: 'ทดสอบระบบ'
-      });
-      setIsVerifierOpen(true);
-    }
-  };
-
-  React.useEffect(() => {
-    if (firestore) {
-      getFinancialStats(firestore).then(setStats);
-    }
+    };
+    checkAdmin();
   }, [firestore]);
 
-  const fetchPendingPayments = React.useCallback(async () => {
-    if (!firestore) return;
+  // Fetch functions with simplified logic
+  const fetchData = React.useCallback(async () => {
+    if (!firestore || !isAuthorized) return;
     setIsLoading(true);
 
     try {
-      const appointmentsRef = collection(firestore, 'appointments');
-      const chatsRef = collection(firestore, 'chats');
-      const invoicesRef = collection(firestore, 'invoices');
+      // Fetch Stats
+      const financialStats = await getFinancialStats(firestore);
+      setStats(financialStats);
 
-      const appointmentQuery = query(
-        appointmentsRef,
-        where('status', '==', 'pending_payment')
-      );
-      const chatQuery = query(
-        chatsRef,
-        where('status', '==', 'pending_payment')
-      );
-      const invoiceQuery = query(
-        invoicesRef,
-        where('status', '==', 'pending_verification')
-      );
-
-      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
-        getDocs(appointmentQuery),
-        getDocs(chatQuery),
-        getDocs(invoiceQuery),
-      ]);
-
+      // Fetch Pending
       const pending: SlipVerificationItem[] = [];
-      const userIds = new Set<string>();
-      const lawyerIds = new Set<string>();
+      
+      const appSnap = await getDocs(query(collection(firestore, 'appointments'), where('status', '==', 'pending_payment'), limit(50)));
+      const chatSnap = await getDocs(query(collection(firestore, 'chats'), where('status', '==', 'pending_payment'), limit(50)));
+      const invSnap = await getDocs(query(collection(firestore, 'invoices'), where('status', '==', 'pending_verification'), limit(50)));
 
-      // Collect IDs
-      appointmentSnapshot.docs.forEach(d => {
+      // Process with individual name fetching if needed, but keep it safe
+      for (const d of appSnap.docs) {
         const data = d.data();
-        if (data.userId) userIds.add(data.userId);
-        if (data.lawyerId) lawyerIds.add(data.lawyerId);
-      });
-      chatSnapshot.docs.forEach(d => {
-        const data = d.data();
-        const userId = data.userId || (data.participants && data.participants[0]);
-        if (userId) userIds.add(userId);
-        if (data.lawyerId) lawyerIds.add(data.lawyerId);
-      });
-      invoiceSnapshot.docs.forEach(d => {
-        const data = d.data();
-        if (data.client_id) userIds.add(data.client_id);
-        if (data.lawyer_id) lawyerIds.add(data.lawyer_id);
-      });
-
-      // Batch Fetch Users
-      const userProfiles: Record<string, string> = {};
-      if (userIds.size > 0) {
-        const idsArray = Array.from(userIds);
-        const chunks = [];
-        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
-        
-        const snaps = await Promise.all(chunks.map(chunk => 
-          getDocs(query(collection(firestore, 'users'), where('__name__', 'in', chunk)))
-        ));
-        snaps.forEach(snap => snap.docs.forEach(d => {
-          userProfiles[d.id] = d.data().name || 'Unknown User';
-        }));
+        if (data.slipUrl || data.hasNewPayment) {
+          pending.push({
+            id: d.id,
+            type: 'Appointment',
+            userName: 'Loading...',
+            lawyerName: 'Loading...',
+            amount: data.amount || 3500,
+            submittedAt: ensureDate(data.createdAt),
+            collectionName: 'appointments',
+            slipUrl: data.slipUrl,
+            userId: data.userId,
+            lawyerId: data.lawyerId
+          });
+        }
       }
 
-      // Batch Fetch Lawyers
-      const lawyerProfiles: Record<string, string> = {};
-      if (lawyerIds.size > 0) {
-        const idsArray = Array.from(lawyerIds);
-        const chunks = [];
-        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
-        
-        const snaps = await Promise.all(chunks.map(chunk => 
-          getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)))
-        ));
-        snaps.forEach(snap => snap.docs.forEach(d => {
-          lawyerProfiles[d.id] = d.data().name || 'Unknown Lawyer';
-        }));
-      }
-
-      // Process Snapshots
-      for (const d of appointmentSnapshot.docs) {
+      for (const d of chatSnap.docs) {
         const data = d.data();
-        if (!data.slipUrl && !data.hasNewPayment) continue;
-        
-        pending.push({
-          id: d.id,
-          type: 'Appointment',
-          userName: userProfiles[data.userId] || 'Unknown User',
-          lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
-          amount: data.amount || 3500,
-          submittedAt: ensureDate(data.createdAt),
-          collectionName: 'appointments',
-          slipUrl: data.slipUrl,
-          userId: data.userId,
-          lawyerId: data.lawyerId
-        });
-      }
-
-      for (const d of chatSnapshot.docs) {
-        const data = d.data();
-        const userId = data.userId || (data.participants && data.participants[0]);
-        const lawyerId = data.lawyerId;
-
-        const userName = userProfiles[userId] || 'Unknown User';
-        const lawyerName = lawyerId ? (lawyerProfiles[lawyerId] || 'Unknown Lawyer') : 'Unknown Lawyer';
-
-        const amount = data.pendingPaymentDetails?.amount || data.amount || 0;
-        const reason = data.pendingPaymentDetails?.reason || (data.amount > 0 ? "Chat Ticket" : "Case Opening Fee");
         const slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
-
-        if (amount > 0 && slipUrl) {
+        if (slipUrl) {
           pending.push({
             id: d.id,
             type: 'Chat',
-            userName: userName,
-            lawyerName: lawyerName,
-            amount: amount,
-            reason: reason,
+            userName: 'Loading...',
+            lawyerName: 'Loading...',
+            amount: data.pendingPaymentDetails?.amount || data.amount || 0,
             submittedAt: ensureDate(data.pendingPaymentDetails?.submittedAt || data.createdAt),
             collectionName: 'chats',
             slipUrl: slipUrl,
-            userId: userId,
-            lawyerId: lawyerId
-          });
-        }
-
-        if (data.installments && Array.isArray(data.installments)) {
-          data.installments.forEach((inst: any, index: number) => {
-            const instPayment = data[`pendingPaymentDetails_installment_${index}`];
-            if (instPayment && instPayment.slipUrl) {
-               pending.push({
-                id: `${d.id}_inst_${index}`,
-                type: 'Chat',
-                userName: userName,
-                lawyerName: lawyerName,
-                amount: instPayment.amount || inst.amount,
-                reason: `งวดที่ ${index + 1}: ${inst.description || 'ชำระเงินตามงวด'}`,
-                submittedAt: ensureDate(instPayment.submittedAt),
-                collectionName: 'chats',
-                slipUrl: instPayment.slipUrl,
-                userId: userId,
-                lawyerId: lawyerId
-              });
-            }
+            userId: data.userId || data.participants?.[0],
+            lawyerId: data.lawyerId
           });
         }
       }
 
-      for (const d of invoiceSnapshot.docs) {
+      setSlipVerifications(pending);
+
+      // Fetch Transactions (Simplified)
+      const allTx: Transaction[] = [];
+      const txSnap = await getDocs(query(collection(firestore, 'invoices'), where('status', '==', 'paid'), limit(50)));
+      txSnap.docs.forEach(d => {
         const data = d.data();
-        pending.push({
+        allTx.push({
           id: d.id,
-          type: 'Invoice',
-          userName: userProfiles[data.client_id] || 'Unknown',
-          lawyerName: data.lawyer_id ? (lawyerProfiles[data.lawyer_id] || 'Unknown') : 'Unknown',
-          amount: data.amount,
-          submittedAt: ensureDate(data.created_at || data.createdAt),
-          collectionName: 'invoices',
-          slipUrl: data.evidence_url,
-          userId: data.client_id,
-          lawyerId: data.lawyer_id
-        });
-      }
-
-      setSlipVerifications(pending.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()));
-    } catch (error: any) {
-      console.error('Error fetching pending payments:', error);
-      toast({
-        variant: 'destructive',
-        title: 'เกิดข้อผิดพลาด',
-        description: `ไม่สามารถดึงข้อมูลรายการรอตรวจสอบได้: ${error.message || String(error)}`,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [firestore, toast]);
-
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-
-  const fetchTransactions = React.useCallback(async () => {
-    if (!firestore) return;
-    setIsLoading(true);
-
-    try {
-      const appointmentsRef = collection(firestore, 'appointments');
-      const chatsRef = collection(firestore, 'chats');
-      const invoicesRef = collection(firestore, 'invoices');
-
-      // Fetch docs (Removing orderBy to avoid Missing Index errors, sorting will be done client-side)
-      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
-        getDocs(query(appointmentsRef, limit(100))),
-        getDocs(query(chatsRef, limit(100))),
-        getDocs(query(invoicesRef, limit(100))),
-      ]);
-
-      const allTransactions: Transaction[] = [];
-      const userIds = new Set<string>();
-      const lawyerIds = new Set<string>();
-
-      // Collect IDs
-      appointmentSnapshot.docs.forEach(d => { if (d.data().userId) userIds.add(d.data().userId); });
-      chatSnapshot.docs.forEach(d => {
-        const data = d.data();
-        const userId = data.userId || (data.participants && data.participants[0]);
-        if (userId) userIds.add(userId);
-        const lawyerId = data.lawyerId || data.participants?.find((p: string) => p !== userId);
-        if (lawyerId) lawyerIds.add(lawyerId);
-      });
-      invoiceSnapshot.docs.forEach(d => {
-        if (d.data().client_id) userIds.add(d.data().client_id);
-        if (d.data().lawyer_id) lawyerIds.add(d.data().lawyer_id);
-      });
-
-      // Batch Fetch Users
-      const userProfiles: Record<string, string> = {};
-      if (userIds.size > 0) {
-        const idsArray = Array.from(userIds);
-        const chunks = [];
-        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
-        const snaps = await Promise.all(chunks.map(chunk => getDocs(query(collection(firestore, 'users'), where('__name__', 'in', chunk)))));
-        snaps.forEach(snap => snap.docs.forEach(d => { userProfiles[d.id] = d.data().name || 'Unknown User'; }));
-      }
-
-      // Batch Fetch Lawyers
-      const lawyerProfiles: Record<string, string> = {};
-      if (lawyerIds.size > 0) {
-        const idsArray = Array.from(lawyerIds);
-        const chunks = [];
-        for (let i = 0; i < idsArray.length; i += 30) chunks.push(idsArray.slice(i, i + 30));
-        const snaps = await Promise.all(chunks.map(chunk => getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)))));
-        snaps.forEach(snap => snap.docs.forEach(d => { lawyerProfiles[d.id] = d.data().name || 'Unknown Lawyer'; }));
-      }
-
-      for (const d of appointmentSnapshot.docs) {
-        const data = d.data();
-        if (data.status === 'pending_payment') continue;
-
-        allTransactions.push({
-          id: d.id,
-          date: data.createdAt ? format(ensureDate(data.createdAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
-          description: `นัดหมายปรึกษา - ${userProfiles[data.userId] || 'Unknown User'}`,
-          amount: data.amount || 3500,
-          type: 'revenue',
-          status: data.status === 'completed' ? 'completed' : 'pending',
-        });
-      }
-
-      for (const d of chatSnapshot.docs) {
-        const data = d.data();
-        if (data.status === 'pending_payment' && !data.amount && !data.totalPaid) continue;
-
-        const userId = data.userId || (data.participants && data.participants[0]);
-        const userName = userProfiles[userId] || 'Unknown User';
-        const lawyerId = data.lawyerId || data.participants?.find((p: string) => p !== userId);
-        const lawyerName = lawyerProfiles[lawyerId] || '';
-        
-        const amount = data.amount || data.pendingPaymentDetails?.amount || 0;
-        if (amount > 0) {
-          allTransactions.push({
-            id: d.id,
-            date: data.createdAt ? format(ensureDate(data.createdAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
-            description: `ปรึกษาผ่านแชท/เปิดคดี - ${userName}`,
-            amount: amount,
-            type: 'revenue',
-            status: data.status === 'closed' || data.status === 'paid' || data.status === 'active' ? 'completed' : 'pending',
-            slipUrl: data.pendingPaymentDetails?.slipUrl || data.slipUrl,
-            lawyerName
-          });
-        }
-
-        if (data.installments && Array.isArray(data.installments)) {
-          data.installments.forEach((inst: any, idx: number) => {
-            if (inst.status === 'paid') {
-              allTransactions.push({
-                id: `${d.id}_inst_${idx}`,
-                date: inst.paidAt ? format(ensureDate(inst.paidAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A',
-                description: `ชำระเงินงวดที่ ${idx + 1} - ${userName}`,
-                amount: inst.amount,
-                type: 'revenue',
-                status: 'completed',
-                slipUrl: inst.slipUrl,
-                lawyerName
-              });
-            }
-          });
-        }
-      }
-
-      for (const d of invoiceSnapshot.docs) {
-        const data = d.data();
-        if (data.status === 'pending') continue;
-
-        allTransactions.push({
-          id: d.id,
-          date: data.paidAt ? format(ensureDate(data.paidAt), 'd MMM yyyy, HH:mm', { locale: th }) : (data.createdAt ? format(ensureDate(data.createdAt), 'd MMM yyyy, HH:mm', { locale: th }) : 'N/A'),
-          description: `ใบแจ้งหนี้ - ${userProfiles[data.client_id] || 'Unknown User'}`,
+          date: format(ensureDate(data.paidAt || data.createdAt), 'd MMM yyyy', { locale: th }),
+          description: `Invoice - ${d.id}`,
           amount: data.amount,
           type: 'revenue',
-          status: data.status === 'paid' ? 'completed' : 'pending',
-          slipUrl: data.evidence_url,
-          lawyerName: lawyerProfiles[data.lawyer_id] || ''
+          status: 'completed',
+          slipUrl: data.evidence_url
         });
-      }
-
-      setTransactions(allTransactions.sort((a, b) => b.id.localeCompare(a.id))); // Simple sort, or use dates if parsed
-
+      });
+      setTransactions(allTx);
 
     } catch (error: any) {
-      console.error('Error fetching transactions:', error);
+      console.error("Data fetch error", error);
       toast({
         variant: 'destructive',
-        title: 'เกิดข้อผิดพลาด',
-        description: `ไม่สามารถดึงข้อมูลธุรกรรมได้: ${error.message || String(error)}`,
+        title: 'Error',
+        description: error.message || "Failed to fetch data"
       });
     } finally {
       setIsLoading(false);
     }
-  }, [firestore, toast]);
-
-  const fetchWithdrawals = React.useCallback(async () => {
-    if (!firestore) return;
-    setIsLoading(true);
-    try {
-      const withdrawalsRef = collection(firestore, 'withdrawals');
-      const q = query(withdrawalsRef, where('status', '==', 'pending')); // Initially fetch pending, or maybe all? Let's fetch all for history.
-      // Actually, let's just fetch all and sort by date.
-      const snapshot = await getDocs(withdrawalsRef);
-
-      const requests: WithdrawalRequest[] = [];
-
-      // Helper to fetch lawyer name
-      const getLawyerName = async (lawyerId: string) => {
-        try {
-          const lawyerDoc = await getDoc(doc(firestore, 'users', lawyerId));
-          if (lawyerDoc.exists()) return lawyerDoc.data().name;
-          return 'Unknown Lawyer';
-        } catch (e) { return 'Unknown Lawyer'; }
-      };
-
-      for (const d of snapshot.docs) {
-        const data = d.data();
-        const lawyerName = await getLawyerName(data.lawyerId);
-        requests.push({
-          id: d.id,
-          lawyerId: data.lawyerId,
-          lawyerName,
-          amount: data.amount,
-          bankName: data.bankName,
-          accountNumber: data.accountNumber,
-          accountName: data.accountName,
-          status: data.status,
-          requestedAt: data.requestedAt?.toDate() || new Date(),
-        });
-      }
-
-      requests.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
-      setWithdrawalRequests(requests);
-
-    } catch (error: any) {
-      console.error('Error fetching withdrawals:', error);
-      toast({
-        variant: 'destructive',
-        title: 'เกิดข้อผิดพลาด',
-        description: `ไม่สามารถดึงข้อมูลคำร้องถอนเงินได้: ${error.message || String(error)}`,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [firestore, toast]);
+  }, [firestore, isAuthorized, toast]);
 
   React.useEffect(() => {
-    if (activeTab === 'verification') {
-      fetchPendingPayments();
-    } else if (activeTab === 'transactions') {
-      fetchTransactions();
-    } else if (activeTab === 'withdrawals') {
-      fetchWithdrawals();
-    }
-  }, [activeTab, fetchPendingPayments, fetchTransactions, fetchWithdrawals]);
+    if (isAuthorized) fetchData();
+  }, [isAuthorized, fetchData]);
 
-  const handleApprovePayment = async (item: SlipVerificationItem) => {
-    if (!firestore) return;
-
-    const isInstallment = item.id.includes('_inst_');
-    const baseId = isInstallment ? item.id.split('_inst_')[0] : item.id;
-    const instIndex = isInstallment ? parseInt(item.id.split('_inst_')[1]) : -1;
-
-    const docRef = doc(firestore, item.collectionName, baseId);
-    
-    let newStatus: string;
-    if (item.collectionName === 'invoices') {
-      newStatus = 'paid';
-    } else if (item.collectionName === 'appointments') {
-      newStatus = 'pending'; // Moves to 'pending' (appointment scheduled)
-    } else {
-      newStatus = 'active'; // Moves to 'active' (chat case active)
-    }
-
-    try {
-      if (item.collectionName === 'invoices') {
-        await updateDoc(docRef, {
-          status: 'paid',
-          paidAt: serverTimestamp(),
-          hasNewPayment: false
-        });
-      } else if (isInstallment && item.collectionName === 'chats') {
-        // Handle installment specifically
-        const { deleteField } = await import('firebase/firestore');
-        const chatSnap = await getDoc(docRef);
-        if (chatSnap.exists()) {
-           const chatData = chatSnap.data();
-           const installments = [...(chatData.installments || [])];
-           if (installments[instIndex]) {
-             installments[instIndex].status = 'paid';
-             installments[instIndex].paidAt = new Date().toISOString();
-           }
-           
-           const updatePayload: any = {
-             installments,
-             hasNewPayment: false,
-             [`pendingPaymentDetails_installment_${instIndex}`]: deleteField()
-           };
-           
-           // If it's the first installment, maybe activate the case
-           const paidCount = installments.filter((i: any) => i.status === 'paid').length;
-           if (paidCount === 1) {
-             updatePayload.status = 'active';
-           }
-           
-           await updateDoc(docRef, updatePayload);
-        }
-      } else {
-        const updatePayload: any = { status: newStatus, hasNewPayment: false };
-        
-        // If it's a chat (Case Opening/Additional Fee), 
-        // promote the paid amount to the top level and cleanup pending objects
-        if (item.collectionName === 'chats') {
-          const { deleteField } = await import('firebase/firestore');
-          updatePayload.amount = item.amount;
-          updatePayload.pendingFeeRequest = deleteField();
-          updatePayload.pendingPaymentDetails = deleteField();
-        }
-
-        await updateDoc(docRef, updatePayload);
-      }
-
-      toast({
-        title: 'อนุมัติสำเร็จ',
-        description: `รายการของ ${item.userName} ได้รับการอนุมัติแล้ว`,
-      });
-
-      // Notify Client
-      await addDoc(collection(firestore, 'notifications'), {
-        type: 'payment_approved',
-        title: 'การชำระเงินได้รับการอนุมัติ',
-        message: `การชำระเงินสำหรับบริการ ${item.type} ได้รับการอนุมัติแล้ว`,
-        createdAt: serverTimestamp(),
-        read: false,
-        recipient: item.userId,
-        link: '/dashboard',
-        relatedId: item.id
-      });
-
-      // Notify Lawyer (Money In)
-      if (item.lawyerId) {
-        await addDoc(collection(firestore, 'notifications'), {
-          type: 'money_in',
-          title: 'คุณได้รับยอดเงินใหม่',
-          message: `คุณได้รับยอดเงิน ฿${item.amount.toLocaleString()} จากบริการ ${item.type} ของคุณ ${item.userName}`,
-          createdAt: serverTimestamp(),
-          read: false,
-          recipient: item.lawyerId,
-          link: '/lawyer-dashboard/financials',
-          relatedId: item.id
-        });
-      }
-      // Fetch Lawyer Email
-      if (item.lawyerId) {
-        try {
-          const lawyerDoc = await getDoc(doc(firestore, 'lawyerProfiles', item.lawyerId));
-          if (lawyerDoc.exists()) {
-            const lawyerData = lawyerDoc.data();
-            const lawyerEmail = lawyerData.email;
-
-            if (lawyerEmail) {
-              // Send Email
-              import('@/app/actions/email').then(({ sendLawyerNewCaseEmail }) => {
-                // Construct Link (Admin context lacks locale sometimes, default to th or derive?)
-                // Actually, we can just point to /chat or /appointments
-                const link = item.type === 'Chat'
-                  ? `${window.location.origin}/chat/${item.id}?lawyerId=${item.lawyerId}`
-                  : `${window.location.origin}/lawyer-dashboard/appointments`; // Simplify for appointment
-
-                sendLawyerNewCaseEmail(
-                  lawyerEmail,
-                  lawyerData.name,
-                  item.userName || 'ลูกค้า',
-                  `อนุมัติแล้ว: ${item.type === 'Chat' ? 'Ticket สนทนา' : 'นัดหมายใหม่'}`,
-                  link
-                );
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Failed to send approval email", e);
-        }
-      }
-
-      // Send email to CLIENT confirming approval
-      try {
-        const clientDoc = await getDoc(doc(firestore, 'users', item.userId));
-        if (clientDoc.exists()) {
-          const clientData = clientDoc.data();
-          if (clientData.email) {
-            import('@/app/actions/email').then(({ sendClientPaymentApprovedEmail }) => {
-              const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
-              const dashboardLink = `https://${rootDomain}/dashboard`;
-              sendClientPaymentApprovedEmail(
-                clientData.email,
-                clientData.name || 'ลูกความ',
-                item.amount,
-                item.type === 'Chat' ? 'ปรึกษาผ่านแชท/เปิดคดี' : 'นัดหมายปรึกษา',
-                dashboardLink
-              );
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Failed to send client approval email', e);
-      }
-
-      // Refetch the list after approval
-      fetchPendingPayments();
-    } catch (error) {
-      console.error('Error approving payment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'อนุมัติไม่สำเร็จ',
-        description: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
-      });
-    }
-  };
-
-  const handleRejectPayment = async () => {
-    if (!firestore || !selectedRejectItem || !rejectReason) return;
-
-    const isInstallment = selectedRejectItem.id.includes('_inst_');
-    const baseId = isInstallment ? selectedRejectItem.id.split('_inst_')[0] : selectedRejectItem.id;
-    const instIndex = isInstallment ? parseInt(selectedRejectItem.id.split('_inst_')[1]) : -1;
-
-    const docRef = doc(firestore, selectedRejectItem.collectionName, baseId);
-
-    try {
-      if (selectedRejectItem.collectionName === 'invoices') {
-        await updateDoc(docRef, {
-          status: 'pending',
-          rejectReason: rejectReason,
-          hasNewPayment: false
-        });
-      } else if (isInstallment) {
-         const { deleteField } = await import('firebase/firestore');
-         await updateDoc(docRef, {
-            [`pendingPaymentDetails_installment_${instIndex}`]: deleteField(),
-            rejectReason: rejectReason,
-            hasNewPayment: false
-         });
-      } else {
-        await updateDoc(docRef, {
-          status: 'pending_payment',
-          rejectReason: rejectReason,
-          hasNewPayment: false
-        });
-      }
-
-      toast({
-        title: 'ปฏิเสธรายการแล้ว',
-        description: `แจ้งเหตุผลให้ ${selectedRejectItem.userName} เรียบร้อยแล้ว`,
-      });
-
-      // Notify Client
-      await addDoc(collection(firestore, 'notifications'), {
-        type: 'payment_rejected',
-        title: 'การชำระเงินถูกปฏิเสธ',
-        message: `สลิปของคุณสำหรับ ${selectedRejectItem.type} ถูกปฏิเสธ: ${rejectReason}`,
-        createdAt: serverTimestamp(),
-        read: false,
-        recipient: selectedRejectItem.userId,
-        link: selectedRejectItem.collectionName === 'chats' ? `/chat/${selectedRejectItem.id}` : '/dashboard',
-        relatedId: selectedRejectItem.id
-      });
-
-      setIsRejectDialogOpen(false);
-      setRejectReason('');
-      setSelectedRejectItem(null);
-
-      // Send email to CLIENT about rejection
-      try {
-        const clientDoc = await getDoc(doc(firestore, 'users', selectedRejectItem.userId));
-        if (clientDoc.exists()) {
-          const clientData = clientDoc.data();
-          if (clientData.email) {
-            import('@/app/actions/email').then(({ sendClientPaymentRejectedEmail }) => {
-              const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'lawslane.com';
-              const retryLink = selectedRejectItem.collectionName === 'chats'
-                ? `https://${rootDomain}/chat/${selectedRejectItem.id}`
-                : `https://${rootDomain}/dashboard`;
-              sendClientPaymentRejectedEmail(
-                clientData.email,
-                clientData.name || 'ลูกความ',
-                selectedRejectItem.amount,
-                rejectReason,
-                retryLink
-              );
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Failed to send client rejection email', e);
-      }
-
-      fetchPendingPayments();
-    } catch (error) {
-      console.error('Error rejecting payment:', error);
-      toast({
-        variant: 'destructive',
-        title: 'ปฏิเสธไม่สำเร็จ',
-        description: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
-      });
-    }
-  };
-
-  const handleUpdateWithdrawalStatus = async (id: string, newStatus: 'approved' | 'rejected') => {
-    if (!firestore) return;
-    try {
-      await updateDoc(doc(firestore, 'withdrawals', id), {
-        status: newStatus,
-        processedAt: new Date()
-      });
-
-      // Get withdrawal details to notify the lawyer
-      const withdrawal = withdrawalRequests.find(w => w.id === id);
-      if (withdrawal) {
-        await addDoc(collection(firestore, 'notifications'), {
-          type: 'withdrawal_update',
-          title: newStatus === 'approved' ? 'คำร้องถอนเงินอนุมัติแล้ว' : 'คำร้องถอนเงินถูกปฏิเสธ',
-          message: newStatus === 'approved'
-            ? `คำร้องถอนเงินจำนวน ฿${withdrawal.amount.toLocaleString()} ได้รับการอนุมัติและโอนเงินเรียบร้อยแล้ว`
-            : `คำร้องถอนเงินจำนวน ฿${withdrawal.amount.toLocaleString()} ถูกปฏิเสธ กรุณาติดต่อเจ้าหน้าที่`,
-          createdAt: serverTimestamp(),
-          read: false,
-          recipient: withdrawal.lawyerId,
-          link: '/lawyer-dashboard/financials',
-          relatedId: id
-        });
-      }
-
-      toast({
-        title: newStatus === 'approved' ? 'อนุมัติคำร้องแล้ว' : 'ปฏิเสธคำร้องแล้ว',
-        description: 'สถานะคำร้องถูกอัปเดตเรียบร้อยแล้ว',
-      });
-      fetchWithdrawals();
-    } catch (error) {
-      console.error('Error updating withdrawal status:', error);
-      toast({
-        variant: 'destructive',
-        title: 'เกิดข้อผิดพลาด',
-        description: 'ไม่สามารถอัปเดตสถานะได้',
-      });
-    }
-  };
-
-  const handleReleaseFund = async () => {
-    if (!firestore || !selectedReleaseTransactionId || !releaseTicketId) return;
-
-    // Determine collection (Appointment or Chat) based on ID or try both
-    // In our simplified transaction list, we don't store the source collection directly in the Transaction object easily reachable here
-    // But we can try to find it. Or we can just try to update both collections and see which works, or look at the ID format if distinct.
-    // For safety, let's try to fetch from 'appointments' first, if not exists, then 'chats'.
-
-    try {
-      let collectionName = 'appointments';
-      let docRef = doc(firestore, 'appointments', selectedReleaseTransactionId);
-      let docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        collectionName = 'chats';
-        docRef = doc(firestore, 'chats', selectedReleaseTransactionId);
-        docSnap = await getDoc(docRef);
-      }
-
-      if (!docSnap.exists()) {
-        toast({ variant: 'destructive', title: 'ไม่พบรายการ', description: 'ไม่พบเอกสารอ้างอิงของธุรกรรมนี้' });
-        return;
-      }
-
-      const updateData = {
-        status: collectionName === 'appointments' ? 'completed' : 'closed', // 'completed' for appointment, 'closed' for chat (funds released)
-        releasedByAdmin: true,
-        adminReleaseTicketId: releaseTicketId,
-        releasedAt: serverTimestamp()
-      };
-
-      await updateDoc(docRef, updateData);
-
-      toast({
-        title: 'ปล่อยเงินสำเร็จ',
-        description: `ปล่อยเงินเรียบร้อยแล้ว (Ref Ticket: ${releaseTicketId})`,
-      });
-
-      setIsReleaseDialogOpen(false);
-      setReleaseTicketId('');
-      setSelectedReleaseTransactionId(null);
-      fetchTransactions(); // Refresh list
-
-    } catch (error) {
-      console.error("Error releasing funds manually:", error);
-      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถทำรายการได้' });
-    }
-  };
-
-  const { totalServiceValue, platformRevenueThisMonth, platformTotalRevenue, monthlyData } = stats;
+  if (checkingAuth) return <div className="p-8 text-center">Checking permissions...</div>;
+  if (!isAuthorized) return (
+    <div className="p-8 text-center flex flex-col items-center gap-4">
+      <ShieldAlert className="w-12 h-12 text-destructive opacity-50" />
+      <h1 className="text-xl font-bold">Access Denied</h1>
+      <p>คุณไม่มีสิทธิ์เข้าถึงหน้านี้ หรือไม่ได้ล็อกอินด้วยบัญชี Admin</p>
+    </div>
+  );
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-8 lg:p-8">
-      <Card className="rounded-xl">
-        <CardHeader>
-          <CardTitle>ภาพรวมการเงิน</CardTitle>
-          <CardDescription>
-            สรุปธุรกรรม รายได้ และรายการที่ต้องดำเนินการทั้งหมด
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs
-            defaultValue="overview"
-            value={activeTab}
-            onValueChange={setActiveTab}
-          >
-            <TabsList className="mb-4">
-              {hasPermission('financials.overview') && (
-                <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
-              )}
-              {hasPermission('financials.verification') && (
-                <TabsTrigger value="verification" className="relative">
-                  ตรวจสอบสลิป
-                  {slipVerifications.length > 0 && activeTab !== 'verification' && (
-                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
-                      {slipVerifications.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-              )}
-              {hasPermission('financials.transactions') && (
-                <TabsTrigger value="transactions">รายการธุรกรรม</TabsTrigger>
-              )}
-              {hasPermission('financials.withdrawals') && (
-                <TabsTrigger value="withdrawals">คำร้องถอนเงิน</TabsTrigger>
-              )}
-            </TabsList>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Financials (Stable Mode)</h1>
+          <p className="text-muted-foreground">จัดการข้อมูลการเงินและความปลอดภัย</p>
+        </div>
+        <Button onClick={fetchData} disabled={isLoading}>
+          {isLoading ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
+        </Button>
+      </div>
 
-            {isVerifyingPermission ? (
-              <div className="py-20 text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                กำลังตรวจสอบสิทธิ์...
-              </div>
-            ) : !hasPermission(`financials.${activeTab === 'overview' ? 'overview' : activeTab === 'verification' ? 'verification' : activeTab === 'transactions' ? 'transactions' : 'withdrawals'}`) ? (
-              <div className="py-20 text-center text-muted-foreground">
-                <ShieldAlert className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">ไม่มีสิทธิ์เข้าถึง</h3>
-                <p>คุณไม่มีสิทธิ์เข้าถึงส่วนนี้ กรุณาติดต่อ Super Admin</p>
-              </div>
-            ) : (
-              <>
-                <TabsContent value="overview">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <Card className="rounded-xl">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          ยอดค่าบริการรวม
-                        </CardTitle>
-                        <DollarSign className="w-4 h-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          ฿
-                          {totalServiceValue.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}
-                        </div>
-                        <CardDescription>มูลค่าธุรกรรมทั้งหมดในระบบ</CardDescription>
-                      </CardContent>
-                    </Card>
-                    <Card className="rounded-xl">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          รายได้แพลตฟอร์ม (เดือนนี้)
-                        </CardTitle>
-                        <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold text-green-600">
-                          ฿
-                          {platformRevenueThisMonth.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}
-                        </div>
-                        <CardDescription>
-                          ส่วนแบ่งรายได้ในเดือนปัจจุบัน
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                    <Card className="rounded-xl">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          รายได้แพลตฟอร์ม (ทั้งหมด)
-                        </CardTitle>
-                        <HandCoins className="w-4 h-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          ฿
-                          {platformTotalRevenue.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                          })}
-                        </div>
-                        <CardDescription>
-                          ส่วนแบ่งรายได้ทั้งหมดของแพลตฟอร์ม
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">ยอดบริการรวม</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">฿{stats.totalServiceValue.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">รายได้เดือนนี้</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">฿{stats.platformRevenueThisMonth.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">รายได้ทั้งหมด</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">฿{stats.platformTotalRevenue.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-                  <Card className="rounded-xl">
-                    <CardHeader>
-                      <CardTitle>สถิติรายได้แพลตฟอร์มรายเดือน</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={monthlyData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                          <XAxis
-                            dataKey="month"
-                            stroke="#888888"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            stroke="#888888"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(value) =>
-                              `฿${new Intl.NumberFormat('en-US', {
-                                notation: 'compact',
-                                compactDisplay: 'short',
-                              }).format(value as number)}`
-                            }
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--background))',
-                              borderColor: 'hsl(var(--border))',
-                              borderRadius: 'var(--radius)',
-                            }}
-                            cursor={{ fill: 'hsl(var(--accent))' }}
-                            formatter={(value: number) => [
-                              value.toLocaleString('en-US', {
-                                minimumFractionDigits: 2,
-                              }),
-                              'รายได้',
-                            ]}
-                          />
-                          <Bar
-                            dataKey="total"
-                            fill="hsl(var(--primary))"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
+          <TabsTrigger value="verification">ตรวจสอบสลิป ({slipVerifications.length})</TabsTrigger>
+          <TabsTrigger value="transactions">ธุรกรรม</TabsTrigger>
+        </TabsList>
 
-                <TabsContent value="verification">
-                  <Card className="rounded-xl">
-                    <CardHeader>
-                      <CardTitle>รายการรอตรวจสอบสลิป</CardTitle>
-                      <CardDescription>
-                        ตรวจสอบและอนุมัติรายการที่ลูกค้าชำระเงินโดยการโอน
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-end mb-4">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          ref={fileInputRef}
-                          onChange={handleFileSelect}
-                        />
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                          <ScanLine className="mr-2 h-4 w-4" />
-                          ทดสอบตรวจสอบสลิป
-                        </Button>
-                      </div>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>วันที่แจ้ง</TableHead>
-                            <TableHead>ลูกค้า</TableHead>
-                            <TableHead>สำหรับ</TableHead>
-                            <TableHead>ทนายความ</TableHead>
-                            <TableHead>ยอดเงิน</TableHead>
-                            <TableHead className="text-right">
-                              การดำเนินการ
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {isLoading ? (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center">
-                                กำลังโหลด...
-                              </TableCell>
-                            </TableRow>
-                          ) : slipVerifications.length > 0 ? (
-                            slipVerifications.map((item) => (
-                              <TableRow key={item.id}>
-                                <TableCell>
-                                  {format(item.submittedAt, 'd MMM yyyy, HH:mm', {
-                                    locale: th,
-                                  })}
-                                </TableCell>
-                                <TableCell>{item.userName}</TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col gap-1">
-                                    <Badge variant="outline" className="w-fit">{item.type}</Badge>
-                                    {item.reason && <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{item.reason}</span>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>{item.lawyerName}</TableCell>
-                                <TableCell>
-                                  <div className="font-bold">฿{item.amount.toLocaleString()}</div>
-                                  <Badge variant="outline" className="mt-1 bg-yellow-50 text-yellow-700 border-yellow-200 text-[10px]">
-                                    รออนุมัติ
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right space-x-2">
-                                  {/* Debug Button */}
-                                  <Button variant="ghost" size="sm" onClick={() => handleDebug(item.collectionName, item.id)}>
-                                    <FileJson className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                  <Button variant="outline" size="sm" onClick={() => {
-                                    setSelectedSlip({
-                                      url: item.slipUrl || '',
-                                      amount: item.amount,
-                                      lawyerName: item.lawyerName
-                                    });
-                                    setIsVerifierOpen(true);
-                                  }} disabled={!item.slipUrl}>
-                                    <Eye className="mr-1 h-3 w-3" /> ตรวจสอบสลิป
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => {
-                                    setSelectedRejectItem(item);
-                                    setRejectReason('');
-                                    setIsRejectDialogOpen(true);
-                                  }}>
-                                    ปฏิเสธ
-                                  </Button>
-                                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprovePayment(item)}>
-                                    <CheckCircle className="mr-1 h-3 w-3" /> ยืนยัน
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center">
-                                ไม่มีรายการรอตรวจสอบ
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+        <TabsContent value="overview" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>แนวโน้มรายได้</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="total" fill="#0f172a" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                <SlipVerifier
-                  isOpen={isVerifierOpen}
-                  onClose={() => setIsVerifierOpen(false)}
-                  slipUrl={selectedSlip?.url || ''}
-                  expectedAmount={selectedSlip?.amount}
-                  expectedLawyerName={selectedSlip?.lawyerName}
-                />
+        <TabsContent value="verification" className="mt-4">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>วันที่</TableHead>
+                  <TableHead>ประเภท</TableHead>
+                  <TableHead>จำนวนเงิน</TableHead>
+                  <TableHead className="text-right">จัดการ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {slipVerifications.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">ไม่มีรายการรอตรวจสอบ</TableCell></TableRow>
+                ) : (
+                  slipVerifications.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell>{format(item.submittedAt, 'd MMM HH:mm', { locale: th })}</TableCell>
+                      <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
+                      <TableCell className="font-bold">฿{item.amount.toLocaleString()}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setSelectedSlip({ url: item.slipUrl || '', amount: item.amount, lawyerName: '...' });
+                          setIsVerifierOpen(true);
+                        }}><Eye className="w-4 h-4 mr-1" /> ดูสลิป</Button>
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700">อนุมัติ</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
 
-                {/* Rejection Dialog */}
-                <AlertDialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>ปฏิเสธการชำระเงิน</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        ระบุเหตุผลที่ปฏิเสธสลิปนี้ เพื่อให้ลูกค้าดำเนินการแก้ไข
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-2">
-                       <Textarea 
-                        placeholder="เช่น ยอดเงินไม่ถูกต้อง, สลิปไม่ชัดเจน, สลิปซ้ำ..."
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        className="min-h-[100px]"
-                       />
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setIsRejectDialogOpen(false)}>ยกเลิก</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={handleRejectPayment}
-                        disabled={!rejectReason.trim()}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        ยืนยันการปฏิเสธ
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+        <TabsContent value="transactions" className="mt-4">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>วันที่</TableHead>
+                  <TableHead>รายการ</TableHead>
+                  <TableHead className="text-right">จำนวน</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.length === 0 ? (
+                  <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">ไม่มีข้อมูลธุรกรรม</TableCell></TableRow>
+                ) : (
+                  transactions.map(t => (
+                    <TableRow key={t.id}>
+                      <TableCell>{t.date}</TableCell>
+                      <TableCell>{t.description}</TableCell>
+                      <TableCell className="text-right font-bold">฿{t.amount.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-                <TabsContent value="transactions">
-                  <Card className="rounded-xl">
-                    <CardHeader>
-                      <CardTitle>รายการธุรกรรมทั้งหมด</CardTitle>
-                      <CardDescription>
-                        ประวัติการชำระเงินและรายได้ทั้งหมดในระบบ
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>วันที่</TableHead>
-                            <TableHead>รายการ</TableHead>
-                            <TableHead>ประเภท</TableHead>
-                            <TableHead>สถานะ</TableHead>
-                            <TableHead className="text-right">จำนวนเงิน</TableHead>
-                            <TableHead className="text-right">การดำเนินการ</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {isLoading ? (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center">กำลังโหลด...</TableCell>
-                            </TableRow>
-                          ) : transactions.length > 0 ? (
-                            transactions.map((t) => (
-                              <TableRow key={t.id}>
-                                <TableCell>{t.date}</TableCell>
-                                <TableCell>{t.description}</TableCell>
-                                <TableCell>
-                                  {t.status === 'pending' ? (
-                                    <Badge variant="outline" className="text-yellow-700 bg-yellow-50 border-yellow-200">
-                                      เงินพัก (Escrow)
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant={t.type === 'revenue' ? 'default' : 'secondary'}>
-                                      {t.type === 'revenue' ? 'รายรับ' : 'ค่าธรรมเนียม'}
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600 border-green-600' : ''}>
-                                    {t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                  ฿{t.amount.toLocaleString()}
-                                </TableCell>
-                                <TableCell className="text-right space-x-2">
-                                  {/* Debug Button */}
-                                  <Button variant="ghost" size="sm" onClick={() => handleDebug(t.description.includes('นัดหมาย') ? 'appointments' : 'chats', t.id.split('_')[0])}>
-                                    <FileJson className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                  {t.slipUrl && (
-                                    <Button variant="outline" size="sm" onClick={() => {
-                                      setSelectedSlip({
-                                        url: t.slipUrl || '',
-                                        amount: t.amount,
-                                        lawyerName: t.lawyerName || 'Unknown'
-                                      });
-                                      setIsVerifierOpen(true);
-                                    }}>
-                                      <Eye className="mr-1 h-3 w-3" /> สลิป
-                                    </Button>
-                                  )}
-                                  {t.status === 'pending' && (
-                                    <Button variant="outline" size="sm" onClick={() => {
-                                      setIsReleaseDialogOpen(true);
-                                      setReleaseTicketId('');
-                                      setSelectedReleaseTransactionId(t.id);
-                                    }}>
-                                      ปล่อยเงิน
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center">ไม่มีรายการธุรกรรม</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Release Fund Dialog */}
-                <AlertDialog open={isReleaseDialogOpen} onOpenChange={setIsReleaseDialogOpen}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>ยืนยันการปล่อยเงิน (Admin Override)</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        คุณกำลังจะทำการปล่อยเงินจาก Escrow ให้กับทนายความด้วยตนเอง
-                        <br /><br />
-                        <span className="font-bold text-destructive">เงื่อนไข: กรุณากรอก "Ticket ID" ที่แจ้งปัญหาเข้ามาเพื่อใช้อ้างอิงในการทำรายการนี้</span>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-2">
-                      <div className="grid gap-2">
-                        <label htmlFor="ticket-id" className="text-sm font-medium">Reference Ticket ID:</label>
-                        <input
-                          id="ticket-id"
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          placeholder="Ex. TICKET-1234..."
-                          value={releaseTicketId}
-                          onChange={(e) => setReleaseTicketId(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => {
-                        setIsReleaseDialogOpen(false);
-                        setReleaseTicketId('');
-                        setSelectedReleaseTransactionId(null);
-                      }}>ยกเลิก</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleReleaseFund}
-                        disabled={!releaseTicketId.trim()}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        ยืนยันการปล่อยเงิน
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-
-                <TabsContent value="withdrawals">
-                  <Card className="rounded-xl">
-                    <CardHeader>
-                      <CardTitle>คำร้องขอถอนเงิน</CardTitle>
-                      <CardDescription>รายการที่ทนายความแจ้งขอถอนเงิน</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>วันที่แจ้ง</TableHead>
-                            <TableHead>ทนายความ</TableHead>
-                            <TableHead>ธนาคาร</TableHead>
-                            <TableHead>เลขที่บัญชี</TableHead>
-                            <TableHead>ยอดเงิน</TableHead>
-                            <TableHead>สถานะ</TableHead>
-                            <TableHead className="text-right">การดำเนินการ</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {isLoading ? (
-                            <TableRow>
-                              <TableCell colSpan={7} className="text-center">กำลังโหลด...</TableCell>
-                            </TableRow>
-                          ) : withdrawalRequests.length > 0 ? (
-                            withdrawalRequests.map((req) => (
-                              <TableRow key={req.id}>
-                                <TableCell>
-                                  {format(req.requestedAt, 'd MMM yyyy, HH:mm', { locale: th })}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="font-medium">{req.lawyerName}</div>
-                                  <div className="text-xs text-muted-foreground">ชื่อบัญชี: {req.accountName}</div>
-                                </TableCell>
-                                <TableCell>{req.bankName}</TableCell>
-                                <TableCell>{req.accountNumber}</TableCell>
-                                <TableCell className="font-bold">฿{req.amount.toLocaleString()}</TableCell>
-                                <TableCell>
-                                  <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
-                                    className={req.status === 'approved' ? 'bg-green-100 text-green-800' : ''}>
-                                    {req.status === 'approved' ? 'โอนแล้ว' : req.status === 'rejected' ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right space-x-2">
-                                  {req.status === 'pending' && (
-                                    <>
-                                      <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleUpdateWithdrawalStatus(req.id, 'rejected')}>
-                                        ปฏิเสธ
-                                      </Button>
-                                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleUpdateWithdrawalStatus(req.id, 'approved')}>
-                                        อนุมัติ (โอนแล้ว)
-                                      </Button>
-                                    </>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                                ไม่มีรายการคำร้องขอถอนเงิน
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </>
-            )}
-          </Tabs>
-        </CardContent>
-      </Card>
-
-
-      <AlertDialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <AlertDialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Debug Data (Raw Firestore)</AlertDialogTitle>
-            <AlertDialogDescription>
-              ข้อมูลดิบจาก Firestore สำหรับการตรวจสอบ
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="bg-slate-950 p-4 rounded-md overflow-x-auto">
-            <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
-              {JSON.stringify(debugData, null, 2)}
-            </pre>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ปิด</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {selectedSlip && (
+        <SlipVerifier
+          isOpen={isVerifierOpen}
+          onClose={() => setIsVerifierOpen(false)}
+          slipUrl={selectedSlip.url}
+          expectedAmount={selectedSlip.amount}
+          expectedLawyerName={selectedSlip.lawyerName}
+        />
+      )}
     </main>
+  );
+}
+
+export default function AdminFinancialsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading Page...</div>}>
+      <FinancialsContent />
+    </Suspense>
   );
 }
