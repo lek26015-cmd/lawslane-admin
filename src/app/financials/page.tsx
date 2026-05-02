@@ -241,21 +241,23 @@ function FinancialsContent() {
         }
       });
 
-      invoiceSnapshot.docs.forEach(d => {
+      for (const d of invoiceSnapshot.docs) {
         const data = d.data();
+        const userName = data.clientInfo?.name || userProfiles[data.client_id] || 'Unknown User';
+        const slipUrl = data.slipUrl || data.evidence_url || data.proofUrl || data.paymentProof || data.image;
         pending.push({
           id: d.id,
           type: 'Invoice',
-          userName: userProfiles[data.client_id] || 'Unknown User',
+          userName: userName,
           lawyerName: lawyerProfiles[data.lawyer_id] || 'Unknown Lawyer',
           amount: data.amount,
           submittedAt: ensureDate(data.createdAt || data.created_at),
           collectionName: 'invoices',
-          slipUrl: data.evidence_url,
-          userId: data.client_id,
+          slipUrl: slipUrl,
+          userId: data.client_id || '',
           lawyerId: data.lawyer_id
         });
-      });
+      }
 
       setSlipVerifications(pending.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()));
     } catch (e: any) {
@@ -277,7 +279,7 @@ function FinancialsContent() {
         getDocs(query(collection(firestore, 'invoices'), limit(100))),
       ]);
 
-      const allTx: Transaction[] = [];
+      const allTransactions: Transaction[] = [];
       const userIds = new Set<string>();
 
       [...appSnap.docs, ...chatSnap.docs, ...invSnap.docs].forEach(d => {
@@ -299,7 +301,7 @@ function FinancialsContent() {
       appSnap.docs.forEach(d => {
         const data = d.data();
         if (data.status !== 'pending_payment') {
-          allTx.push({
+          allTransactions.push({
             id: d.id,
             date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
             description: `นัดหมาย - ${userProfiles[data.userId] || 'Unknown'}`,
@@ -314,8 +316,8 @@ function FinancialsContent() {
         const data = d.data();
         const uId = data.userId || data.participants?.[0];
         const amount = data.amount || data.totalPaid || data.pendingPaymentDetails?.amount || 0;
-        if (amount >= 0) { // Allow 0 to see active chats
-          allTx.push({
+        if (amount >= 0) {
+          allTransactions.push({
             id: d.id,
             date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
             description: `แชท/คดี - ${userProfiles[uId] || 'Unknown'}`,
@@ -327,20 +329,22 @@ function FinancialsContent() {
         }
       });
 
-      invSnap.docs.forEach(d => {
+      for (const d of invSnap.docs) {
         const data = d.data();
-        allTx.push({
+        const userName = data.clientInfo?.name || userProfiles[data.client_id] || 'Unknown User';
+        const slipUrl = data.slipUrl || data.evidence_url || data.proofUrl || data.paymentProof || data.image;
+        allTransactions.push({
           id: d.id,
           date: format(ensureDate(data.paidAt || data.createdAt), 'd MMM yyyy', { locale: th }),
-          description: `ใบแจ้งหนี้ - ${userProfiles[data.client_id] || 'Unknown'}`,
+          description: `ใบแจ้งหนี้ - ${userName}`,
           amount: data.amount,
           type: 'revenue',
           status: data.status === 'paid' ? 'completed' : 'pending',
-          slipUrl: data.evidence_url
+          slipUrl: slipUrl
         });
-      });
+      }
 
-      setTransactions(allTx.sort((a, b) => b.id.localeCompare(a.id)));
+      setTransactions(allTransactions.sort((a, b) => b.id.localeCompare(a.id)));
     } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -408,7 +412,15 @@ function FinancialsContent() {
                     <TableCell>{item.userName}<br/><Badge variant="outline" className="text-[10px]">{item.type}</Badge></TableCell>
                     <TableCell className="font-bold">฿{item.amount.toLocaleString()}</TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button variant="outline" size="sm" onClick={() => { setSelectedSlip({ url: item.slipUrl || '', amount: item.amount, lawyerName: item.lawyerName }); setIsVerifierOpen(true); }}><Eye className="w-3 h-3 mr-1" /> ดูสลิป</Button>
+                      <Button variant="outline" size="sm" onClick={() => { 
+                          const url = item.slipUrl;
+                          if (!url) {
+                            toast({ variant: 'default', title: 'แจ้งเตือน', description: 'ไม่พบไฟล์หลักฐานในระบบ' });
+                            return;
+                          }
+                          setSelectedSlip({ url: url, amount: item.amount, lawyerName: item.lawyerName }); 
+                          setIsVerifierOpen(true); 
+                        }}><Eye className="w-3 h-3 mr-1" /> ดูสลิป</Button>
                       <Button size="sm" className="bg-green-600 hover:bg-green-700">อนุมัติ</Button>
                     </TableCell>
                   </TableRow>
