@@ -156,6 +156,21 @@ export function ChatBox({
             hasNewMessage: isLawyerView ? false : true,
             lawyerReadAt: isLawyerView ? serverTimestamp() : null
           }).catch(console.error);
+
+          const senderName = currentUser.displayName || 'ระบบ';
+          
+          // Create Notification for Admin
+          addDoc(collection(firestore, 'notifications'), {
+            type: 'admin_chat_message',
+            title: `เริ่มแชทใหม่: ${senderName} ส่งข้อความแรก`,
+            message: initialChatMessage.length > 50 ? initialChatMessage.substring(0, 50) + '...' : initialChatMessage,
+            createdAt: serverTimestamp(),
+            read: false,
+            recipient: 'admin',
+            link: `/chats/${chatId}`,
+            relatedId: chatId
+          }).catch(err => console.error("Error creating admin notification:", err));
+
         })
         .catch(serverError => {
           const permissionError = new FirestorePermissionError({
@@ -261,6 +276,18 @@ export function ChatBox({
       link: notificationLink,
       relatedId: chatId
     }).catch(err => console.error("Error creating notification:", err));
+
+    // Create Notification for Admin
+    addDoc(collection(firestore, 'notifications'), {
+      type: 'admin_chat_message',
+      title: `แชทใหม่: ${senderName} ส่งข้อความ`,
+      message: input.length > 50 ? input.substring(0, 50) + '...' : input,
+      createdAt: serverTimestamp(),
+      read: false,
+      recipient: 'admin',
+      link: `/chats/${chatId}`,
+      relatedId: chatId
+    }).catch(err => console.error("Error creating admin notification:", err));
   };
 
   // Mark as read by lawyer

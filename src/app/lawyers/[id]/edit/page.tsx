@@ -170,6 +170,16 @@ export default function AdminLawyerEditPage() {
         experience: lawyer.experience,
         experienceEn: lawyer.experienceEn || null,
         experienceZh: lawyer.experienceZh || null,
+        // New fields
+        phone: lawyer.phone || '',
+        email: lawyer.email || '',
+        lineId: lawyer.lineId || '',
+        address: lawyer.address || '',
+        bankName: lawyer.bankName || '',
+        bankAccountName: lawyer.bankAccountName || '',
+        bankAccountNumber: lawyer.bankAccountNumber || '',
+        licenseUrl: lawyer.licenseUrl || '',
+        idCardUrl: lawyer.idCardUrl || '',
       });
 
       toast({
@@ -297,6 +307,119 @@ export default function AdminLawyerEditPage() {
                       <Label htmlFor={`spec-${spec}`} className="text-sm font-normal">{spec}</Label>
                     </div>
                   ))}
+                </div>
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
+                <Input
+                  id="phone"
+                  type="text"
+                  value={lawyer.phone || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, phone: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="email">อีเมลติดต่อ</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={lawyer.email || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, email: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="lineId">Line ID</Label>
+                <Input
+                  id="lineId"
+                  type="text"
+                  value={lawyer.lineId || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, lineId: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="address">ที่อยู่</Label>
+                <Textarea
+                  id="address"
+                  value={lawyer.address || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, address: e.target.value })}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bank Account */}
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle>ข้อมูลบัญชีธนาคาร</CardTitle>
+            <CardDescription>สำหรับใช้ในการโอนเงินค่าบริการให้ทนายความ</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="grid gap-3">
+                <Label htmlFor="bankName">ชื่อธนาคาร</Label>
+                <Input
+                  id="bankName"
+                  value={lawyer.bankName || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, bankName: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="bankAccountName">ชื่อบัญชี</Label>
+                <Input
+                  id="bankAccountName"
+                  value={lawyer.bankAccountName || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, bankAccountName: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="bankAccountNumber">เลขที่บัญชี</Label>
+                <Input
+                  id="bankAccountNumber"
+                  value={lawyer.bankAccountNumber || ''}
+                  onChange={(e) => setLawyer({ ...lawyer, bankAccountNumber: e.target.value })}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Documents */}
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle>เอกสารประกอบการสมัคร</CardTitle>
+            <CardDescription>URLs ของเอกสารที่อัปโหลดเข้าระบบ</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              <div className="grid gap-3">
+                <Label htmlFor="licenseUrl">ใบอนุญาตว่าความ (URL)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="licenseUrl"
+                    value={lawyer.licenseUrl || ''}
+                    onChange={(e) => setLawyer({ ...lawyer, licenseUrl: e.target.value })}
+                  />
+                  {lawyer.licenseUrl && (
+                    <Button variant="outline" asChild size="sm">
+                      <a href={lawyer.licenseUrl} target="_blank" rel="noopener noreferrer">เปิดดู</a>
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="idCardUrl">สำเนาบัตรประชาชน (URL)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="idCardUrl"
+                    value={lawyer.idCardUrl || ''}
+                    onChange={(e) => setLawyer({ ...lawyer, idCardUrl: e.target.value })}
+                  />
+                  {lawyer.idCardUrl && (
+                    <Button variant="outline" asChild size="sm">
+                      <a href={lawyer.idCardUrl} target="_blank" rel="noopener noreferrer">เปิดดู</a>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

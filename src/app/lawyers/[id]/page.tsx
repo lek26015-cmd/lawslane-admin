@@ -501,7 +501,7 @@ export default function AdminLawyerDetailPage() {
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="p-6 text-sm">
+          <CardContent className="p-4 text-sm">
             <div className="grid gap-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
@@ -517,10 +517,63 @@ export default function AdminLawyerDetailPage() {
                   <p className="text-muted-foreground">ID: {lawyer.userId}</p>
                 </div>
               </div>
-              <Separator />
               <div className="font-semibold">ความเชี่ยวชาญ</div>
               <div className="flex flex-wrap gap-2">
                 {(lawyer.specialty || []).map(s => <Badge key={s} variant="outline">{s}</Badge>)}
+              </div>
+              <Separator />
+              <div className="font-semibold">ข้อมูลติดต่อ</div>
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">เบอร์โทรศัพท์</span>
+                  <p className="font-medium break-all">{lawyer.phone || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">อีเมล</span>
+                  <p className="font-medium break-all">{lawyer.email || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">Line ID</span>
+                  <p className="font-medium break-all">{lawyer.lineId || '-'}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="font-semibold">ข้อมูลส่วนตัวและที่อยู่</div>
+              <div className="grid gap-3 text-sm">
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">ที่อยู่</span>
+                  <p className="leading-relaxed break-words">{lawyer.address || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">จังหวัดที่ให้บริการ</span>
+                  <p className="font-medium break-words">{(lawyer.serviceProvinces || []).join(', ') || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">วันเกิด</span>
+                  <p className="font-medium">
+                    {lawyer.dob ? (lawyer.dob.toDate ? format(lawyer.dob.toDate(), 'd MMM yyyy', { locale: th }) : lawyer.dob) : '-'}
+                  </p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">เพศ</span>
+                  <p className="font-medium">{lawyer.gender || '-'}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="font-semibold">ข้อมูลบัญชีธนาคาร (สำหรับถอนเงิน)</div>
+              <div className="grid gap-3 text-sm">
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">ธนาคาร</span>
+                  <p className="font-medium">{lawyer.bankName || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">ชื่อบัญชี</span>
+                  <p className="font-medium break-all">{lawyer.bankAccountName || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">เลขที่บัญชี</span>
+                  <p className="font-medium font-mono break-all">{lawyer.bankAccountNumber || '-'}</p>
+                </div>
               </div>
               <Separator />
               <div className="font-semibold">หมายเหตุสำหรับแอดมิน</div>

@@ -37,6 +37,7 @@ export interface LawyerProfile {
   serviceProvinces: string[];
   bankName: string;
   bankAccountNumber: string;
+  bankAccountName?: string;
   lineId?: string;
   status: 'approved' | 'pending' | 'rejected' | 'suspended';
   rejectionReason?: string;
