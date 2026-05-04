@@ -591,9 +591,9 @@ function FinancialsContent() {
 
         <TabsContent value="transactions" className="mt-4">
           <Card><Table>
-            <TableHeader><TableRow><TableHead>วันที่</TableHead><TableHead>รายการ</TableHead><TableHead className="text-right">จำนวน</TableHead><TableHead className="text-right">หลักฐาน</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>วันที่</TableHead><TableHead>ลูกค้า / ทนาย</TableHead><TableHead>รายการ</TableHead><TableHead className="text-right">จำนวน</TableHead><TableHead className="text-right">หลักฐาน</TableHead></TableRow></TableHeader>
             <TableBody>
-              {transactions.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-8">ไม่มีข้อมูล</TableCell></TableRow> :
+              {transactions.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-8">ไม่มีข้อมูล</TableCell></TableRow> :
                 transactions.map(t => (
                   <TableRow key={t.id}>
                     <TableCell>{t.date}</TableCell>
