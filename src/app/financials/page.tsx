@@ -96,6 +96,7 @@ type Transaction = {
   slipUrl?: string;
   lawyerName?: string;
   clientName?: string;
+  rawData?: any;
 };
 
 type SlipVerificationItem = {
@@ -359,6 +360,7 @@ function FinancialsContent() {
             type: 'revenue',
             status: data.status === 'completed' || data.status === 'paid' ? 'completed' : 'pending',
             slipUrl: data.slipUrl || data.paymentProof || data.proofUrl,
+            rawData: data
           });
         }
       });
@@ -404,7 +406,8 @@ function FinancialsContent() {
             amount: amount,
             type: 'revenue',
             status: (data.status === 'paid' || data.status === 'active' || data.status === 'closed') ? 'completed' : 'pending',
-            slipUrl: slipUrl
+            slipUrl: slipUrl,
+            rawData: data
           });
         }
       });
@@ -436,7 +439,8 @@ function FinancialsContent() {
           amount: data.amount,
           type: 'revenue',
           status: data.status === 'paid' ? 'completed' : 'pending',
-          slipUrl: slipUrl
+          slipUrl: slipUrl,
+          rawData: data
         });
       }
 
