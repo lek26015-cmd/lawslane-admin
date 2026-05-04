@@ -60,6 +60,14 @@ import {
   limit,
   orderBy,
 } from 'firebase/firestore';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getFinancialStats, ensureDate } from '@/lib/data';
 import { getMainLink } from '@/lib/domain-utils';
@@ -87,6 +95,7 @@ type Transaction = {
   status: 'completed' | 'pending';
   slipUrl?: string;
   lawyerName?: string;
+  clientName?: string;
 };
 
 type SlipVerificationItem = {
@@ -101,6 +110,7 @@ type SlipVerificationItem = {
   slipUrl?: string;
   userId: string;
   lawyerId?: string;
+  rawData?: any;
 };
 
 function FinancialsContent() {
@@ -233,7 +243,8 @@ function FinancialsContent() {
             collectionName: 'appointments',
             slipUrl: data.slipUrl,
             userId: data.userId,
-            lawyerId: data.lawyerId
+            lawyerId: data.lawyerId,
+            rawData: data
           });
         }
       });
@@ -242,26 +253,38 @@ function FinancialsContent() {
         const data = d.data();
         const uId = data.userId || data.participants?.[0];
         const attachments = data.attachments;
+        
+        // 1. Check top-level/pendingPaymentDetails slip
         let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
         
-        // If no direct slipUrl, try to find the first image in attachments
+        // 2. Check installments for pending_verification
+        const pendingInst = Array.isArray(data.installments) 
+          ? data.installments.find((inst: any) => inst.status === 'pending_verification')
+          : null;
+        
+        if (pendingInst && !slipUrl) {
+          slipUrl = pendingInst.slipUrl;
+        }
+        
+        // 3. Fallback to attachments
         if (!slipUrl && Array.isArray(attachments) && attachments.length > 0) {
           const firstImage = attachments.find((a: any) => a.url && (a.url.includes('r2.dev') || a.url.includes('firebasestorage') || a.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
           if (firstImage) slipUrl = firstImage.url;
         }
 
-        if (slipUrl || data.status === 'pending_payment') {
+        if (slipUrl || data.status === 'pending_payment' || pendingInst) {
           pending.push({
             id: d.id,
             type: 'Chat',
             userName: userProfiles[uId] || 'Unknown User',
             lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
-            amount: data.pendingPaymentDetails?.amount || data.amount || 0,
-            submittedAt: ensureDate(data.pendingPaymentDetails?.submittedAt || data.createdAt),
+            amount: pendingInst?.amount || data.pendingPaymentDetails?.amount || data.amount || 0,
+            submittedAt: ensureDate(pendingInst?.submittedAt || data.pendingPaymentDetails?.submittedAt || data.createdAt),
             collectionName: 'chats',
             slipUrl: slipUrl,
             userId: uId,
-            lawyerId: data.lawyerId
+            lawyerId: data.lawyerId,
+            rawData: data
           });
         }
       });
@@ -329,10 +352,13 @@ function FinancialsContent() {
           allTransactions.push({
             id: d.id,
             date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
-            description: `นัดหมาย - ${userProfiles[data.userId] || 'Unknown'}`,
+            description: `นัดหมาย`,
+            clientName: userProfiles[data.userId] || 'Unknown Client',
+            lawyerName: data.lawyerName || 'Unknown Lawyer',
             amount: data.amount || 3500,
             type: 'revenue',
-            status: data.status === 'completed' ? 'completed' : 'pending',
+            status: data.status === 'completed' || data.status === 'paid' ? 'completed' : 'pending',
+            slipUrl: data.slipUrl || data.paymentProof || data.proofUrl,
           });
         }
       });
@@ -340,9 +366,28 @@ function FinancialsContent() {
       chatSnap.docs.forEach(d => {
         const data = d.data();
         const uId = data.userId || data.participants?.[0];
-        const attachments = data.attachments;
-        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
         
+        // Aggressive slip detection for chats
+        let slipUrl = data.slipUrl || data.pendingPaymentDetails?.slipUrl || data.proofUrl || data.paymentProof;
+        
+        // Check installments
+        if (!slipUrl && Array.isArray(data.installments)) {
+          const paidInst = data.installments.find((inst: any) => inst.slipUrl || inst.proofUrl);
+          if (paidInst) slipUrl = paidInst.slipUrl || paidInst.proofUrl;
+        }
+
+        // Check dynamic installment pending fields
+        if (!slipUrl) {
+          const pendingKeys = Object.keys(data).filter(k => k.startsWith('pendingPaymentDetails_installment_'));
+          for (const key of pendingKeys) {
+            if (data[key]?.slipUrl) {
+              slipUrl = data[key].slipUrl;
+              break;
+            }
+          }
+        }
+        
+        const attachments = data.attachments;
         if (!slipUrl && Array.isArray(attachments) && attachments.length > 0) {
           const firstImage = attachments.find((a: any) => a.url && (a.url.includes('r2.dev') || a.url.includes('firebasestorage') || a.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
           if (firstImage) slipUrl = firstImage.url;
@@ -352,8 +397,10 @@ function FinancialsContent() {
         if (amount >= 0) {
           allTransactions.push({
             id: d.id,
-            date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
-            description: `แชท/คดี - ${userProfiles[uId] || 'Unknown'}`,
+            date: format(ensureDate(data.createdAt || data.lastMessageAt), 'd MMM yyyy', { locale: th }),
+            description: `แชท/คดี`,
+            clientName: userProfiles[uId] || 'Unknown Client',
+            lawyerName: data.lawyerName || 'Unknown Lawyer',
             amount: amount,
             type: 'revenue',
             status: (data.status === 'paid' || data.status === 'active' || data.status === 'closed') ? 'completed' : 'pending',
@@ -364,12 +411,28 @@ function FinancialsContent() {
 
       for (const d of invSnap.docs) {
         const data = d.data();
-        const userName = data.clientInfo?.name || userProfiles[data.client_id] || 'Unknown User';
-        const slipUrl = data.slipUrl || data.evidence_url || data.proofUrl || data.paymentProof || data.image;
+        const userName = data.clientInfo?.name || userProfiles[data.client_id] || data.clientName || 'Unknown User';
+        let slipUrl = data.slipUrl || data.evidence_url || data.proofUrl || data.paymentProof || data.image || data.proof_url || data.slip_url;
+        
+        // If invoice is linked to a chat, try to find slip in the chat if missing here
+        if (!slipUrl && data.chatId) {
+          const chatDoc = chatSnap.docs.find(cd => cd.id === data.chatId);
+          if (chatDoc) {
+            const chatData = chatDoc.data();
+            slipUrl = chatData.slipUrl || chatData.pendingPaymentDetails?.slipUrl || chatData.proofUrl;
+            if (!slipUrl && Array.isArray(chatData.installments)) {
+              const paidInst = chatData.installments.find((inst: any) => inst.slipUrl);
+              if (paidInst) slipUrl = paidInst.slipUrl;
+            }
+          }
+        }
+
         allTransactions.push({
           id: d.id,
           date: format(ensureDate(data.paidAt || data.createdAt), 'd MMM yyyy', { locale: th }),
-          description: `ใบแจ้งหนี้ - ${userName}`,
+          description: `ใบแจ้งหนี้`,
+          clientName: userName,
+          lawyerName: 'ระบบ',
           amount: data.amount,
           type: 'revenue',
           status: data.status === 'paid' ? 'completed' : 'pending',
@@ -385,6 +448,39 @@ function FinancialsContent() {
       setIsLoading(false);
     }
   }, [firestore, isAuthorized, toast]);
+
+  const handleApproveSlip = async (item: SlipVerificationItem) => {
+    if (!firestore) return;
+    
+    const confirmApprove = window.confirm(`ยืนยันการอนุมัติสลิปยอด ฿${item.amount.toLocaleString()}?`);
+    if (!confirmApprove) return;
+
+    setIsLoading(true);
+    try {
+      const { approvePaymentSlipAction } = await import('@/app/actions/admin-actions');
+      const result = await approvePaymentSlipAction({
+        type: item.type.toLowerCase() as 'chat' | 'appointment',
+        id: item.id,
+        lawyerId: item.lawyerId || '',
+        amount: item.amount,
+        caseTitle: item.type === 'Chat' ? item.userName : undefined,
+        payerName: item.userName
+      });
+
+      if (result.success) {
+        toast({ title: 'สำเร็จ', description: 'อนุมัติการชำระเงินเรียบร้อยแล้ว' });
+        fetchPendingPayments();
+        fetchTransactions();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   React.useEffect(() => {
     if (isAuthorized) {
@@ -464,7 +560,14 @@ function FinancialsContent() {
                           setSelectedSlip({ url: url, amount: item.amount, lawyerName: item.lawyerName }); 
                           setIsVerifierOpen(true); 
                         }}><Eye className="w-3 h-3 mr-1" /> ดูสลิป</Button>
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700">อนุมัติ</Button>
+                      <Button 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => handleApproveSlip(item)}
+                        disabled={isLoading}
+                      >
+                        อนุมัติ
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -482,16 +585,39 @@ function FinancialsContent() {
                   <TableRow key={t.id}>
                     <TableCell>{t.date}</TableCell>
                     <TableCell>
-                      {t.description}<br/>
-                      <div className="flex gap-1 mt-1">
-                        <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600' : ''}>
-                          {t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}
-                        </Badge>
-                        {t.description.includes('แชท/คดี') && (
-                          <a href={getMainLink(`/chat/${t.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
-                            <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
-                          </a>
-                        )}
+                      <div className="font-bold text-blue-900">{t.clientName || 'ไม่ระบุ'}</div>
+                      <div className="text-[10px] text-muted-foreground">ทนาย: {t.lawyerName || 'ไม่ระบุ'}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          {t.description}
+                          {t.slipUrl && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">มีสลิป</Badge>}
+                        </div>
+                        <div className="flex gap-1">
+                          <Badge variant={t.status === 'completed' ? 'outline' : 'secondary'} className={t.status === 'completed' ? 'text-green-600' : ''}>
+                            {t.status === 'completed' ? 'สำเร็จ' : 'รอดำเนินการ'}
+                          </Badge>
+                          {(t.description.includes('แชท/คดี') || t.description.includes('ใบแจ้งหนี้')) && (
+                            <a href={getMainLink(`/chat/${t.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
+                              <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
+                            </a>
+                          )}
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100">ตรวจสอบข้อมูลดิบ</Badge>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>ข้อมูลดิบของรายการ ({t.type})</DialogTitle>
+                                <DialogDescription>ID: {t.id}</DialogDescription>
+                              </DialogHeader>
+                              <div class="rounded-md border bg-slate-50 p-4 font-mono text-[10px]">
+                                <pre>{JSON.stringify(t.rawData, null, 2)}</pre>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-bold">฿{t.amount.toLocaleString()}</TableCell>

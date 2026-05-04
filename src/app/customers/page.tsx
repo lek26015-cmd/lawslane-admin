@@ -215,9 +215,14 @@ export default function AdminCustomersPage() {
                                             </TableCell>
                                             <TableCell className="font-medium">
                                                 {customer.name || 'Unnamed User'}
-                                                <div className="text-xs text-muted-foreground md:hidden">
+                                                <div className="text-xs text-muted-foreground">
                                                     {customer.email}
                                                 </div>
+                                                {customer.phone && (
+                                                    <div className="text-xs text-blue-600 font-medium">
+                                                        {customer.phone}
+                                                    </div>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline">{customer.type || 'N/A'}</Badge>

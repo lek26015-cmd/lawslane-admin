@@ -11,7 +11,9 @@ import {
   MoreVertical,
   User,
   FileText,
-  Eye
+  Eye,
+  Upload,
+  AlertCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -109,9 +111,53 @@ export default function AdminLawyerDetailPage() {
     if (!firestore || !id) return;
 
     getLawyerById(firestore, id as string).then(async (foundLawyer) => {
-      setLawyer(foundLawyer || null);
-
+      let mergedLawyer = foundLawyer;
       if (foundLawyer) {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const userSnap = await getDoc(doc(firestore, 'users', id as string));
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            
+            // Populate the User Data Inspector div directly for speed
+            const inspector = document.getElementById('user-data-inspector');
+            if (inspector) {
+              const tableHtml = `
+                <div class="rounded-md border bg-white overflow-hidden max-h-[400px] overflow-y-auto">
+                  <table class="w-full text-[10px] font-mono">
+                    <thead class="bg-slate-50">
+                      <tr><th class="p-2 border text-left">Field</th><th class="p-2 border text-left">Value</th></tr>
+                    </thead>
+                    <tbody>
+                      ${Object.entries(userData).map(([k, v]) => `
+                        <tr>
+                          <td class="p-2 border font-bold">${k}</td>
+                          <td class="p-2 border break-all">${typeof v === 'string' && (v.startsWith('http') || v.includes('/')) ? `<a href="${v}" target="_blank" class="text-blue-600 underline">${v}</a>` : String(v)}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `;
+              inspector.innerHTML = tableHtml;
+              inspector.className = ""; // Remove centering
+            }
+
+            mergedLawyer = {
+              ...foundLawyer,
+              licenseUrl: foundLawyer.licenseUrl || userData.licenseUrl || userData.license_url || userData.lawyer_license || '',
+              idCardUrl: foundLawyer.idCardUrl || userData.idCardUrl || userData.id_card_url || userData.id_card || '',
+              imageUrl: foundLawyer.imageUrl || userData.imageUrl || userData.avatar || userData.photoURL || foundLawyer.imageUrl
+            };
+          }
+        } catch (e) {
+          console.error("Error merging user data:", e);
+        }
+      }
+
+      setLawyer(mergedLawyer || null);
+
+      if (mergedLawyer) {
         // Check for duplicates
         const lawyersRef = collection(firestore, 'lawyerProfiles');
         // Check by Name
@@ -235,11 +281,41 @@ export default function AdminLawyerDetailPage() {
     suspended: <Badge variant="destructive" className="gap-1"><ShieldX className="w-3 h-3" />ถูกระงับ</Badge>,
   }
 
-  // Use real documents if available, otherwise fallback to empty array
+  // Prepare documents for rendering with multiple field name fallbacks
   const documents = [
-    { name: 'ใบอนุญาตว่าความ', url: lawyer.licenseUrl },
-    { name: 'สำเนาบัตรประชาชน', url: lawyer.idCardUrl },
-  ].filter(d => d.url); // Only show if URL exists
+    { 
+      name: 'ใบอนุญาตว่าความ', 
+      url: lawyer.licenseUrl || (lawyer as any).license_url || (lawyer as any).lawyer_license || (lawyer as any).license,
+      id: 'license'
+    },
+    { 
+      name: 'สำเนาบัตรประชาชน', 
+      url: lawyer.idCardUrl || (lawyer as any).id_card_url || (lawyer as any).id_card || (lawyer as any).idcard,
+      id: 'idCard'
+    },
+  ];
+
+  // Search for any other fields that look like URLs or documents
+  const otherDocs = Object.entries(lawyer)
+    .filter(([key, value]) => {
+      if (typeof value !== 'string') return false;
+      const k = key.toLowerCase();
+      const v = value.toLowerCase();
+      // Skip fields already included
+      if (['licenseurl', 'idcardurl', 'imageurl'].includes(k)) return false;
+      // Look for URL patterns or document keywords
+      return (k.includes('url') || k.includes('doc') || k.includes('file') || k.includes('slip') || k.includes('proof')) 
+             && (v.startsWith('http') || v.startsWith('lawyer_documents/') || v.startsWith('payments/'));
+    })
+    .map(([key, value]) => ({
+      name: `เอกสารเพิ่มเติม (${key})`,
+      url: value as string,
+      id: key
+    }));
+
+  // Logic to determine signup type based on document presence
+  const isExpressSignup = !lawyer.idCardUrl && !lawyer.licenseUrl;
+
   const handleViewDocument = async (url: string | undefined) => {
     if (!url || url === '#' || url === '') {
       toast({
@@ -263,12 +339,40 @@ export default function AdminLawyerDetailPage() {
       const storageRef = ref(storage, url);
       const downloadUrl = await getDownloadURL(storageRef);
       window.open(downloadUrl, '_blank');
-    } catch (err) {
-      console.error("Error viewing document:", err);
+    } catch (e) {
+      console.error('Error viewing document:', e);
       toast({
         variant: "destructive",
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเปิดเอกสารได้",
+        description: "ไม่สามารถเปิดดูเอกสารได้ในขณะนี้",
+      });
+    }
+  };
+
+  const handleDownloadDocument = async (url: string) => {
+    if (!url) return;
+    try {
+      let downloadUrl = url;
+      if (!url.startsWith('http')) {
+        const { storage } = initializeFirebase();
+        const { ref, getDownloadURL } = await import('firebase/storage');
+        const storageRef = ref(storage, url);
+        downloadUrl = await getDownloadURL(storageRef);
+      }
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.target = '_blank';
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error('Error downloading document:', e);
+      toast({
+        variant: "destructive",
+        title: "ดาวน์โหลดไม่สำเร็จ",
+        description: "เกิดข้อผิดพลาดในการดึงไฟล์"
       });
     }
   };
@@ -457,33 +561,80 @@ export default function AdminLawyerDetailPage() {
             </Table>
           </CardContent>
         </Card>
-        <Card className="rounded-xl">
+
+        {/* User Data Inspector */}
+        <Card className="border-blue-200 bg-blue-50/30">
           <CardHeader>
-            <CardTitle>เอกสารประกอบการสมัคร</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-800">
+              <User className="h-4 w-4" />
+              User Record Inspector (Historical Data)
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3">
-              {documents.length > 0 ? (
-                documents.map((doc, index) => (
-                  <div key={index} className="flex items-center justify-between rounded-lg border bg-background p-3">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-medium">{doc.name}</span>
+            <p className="text-xs text-blue-700 mb-4">
+              หากข้อมูลในตารางสีเหลืองด้านบนไม่มีลิงก์เอกสาร ให้ตรวจสอบข้อมูลพื้นฐาน (User Record) ในตารางนี้แทน
+            </p>
+            <div id="user-data-inspector" className="text-center py-8 text-muted-foreground text-sm">
+              กำลังโหลดข้อมูลพื้นฐาน...
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>เอกสารประกอบการสมัคร</CardTitle>
+            <Badge variant={isExpressSignup ? "outline" : "secondary"} className={isExpressSignup ? "text-amber-600 border-amber-200 bg-amber-50" : "text-green-700 bg-green-50 border-green-100"}>
+              {isExpressSignup ? "สมัครแบบด่วน (Express)" : "สมัครแบบปกติ (Full)"}
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {[...documents, ...otherDocs].map((doc, index) => (
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border bg-background p-4 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${doc.url ? 'bg-primary/10' : 'bg-muted'}`}>
+                      <FileText className={`h-5 w-5 ${doc.url ? 'text-primary' : 'text-muted-foreground'}`} />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc.url)}>
-                        <Eye className="mr-2 h-4 w-4" />ดูเอกสาร
-                      </Button>
-                      <Button variant="outline" size="sm" asChild disabled={!doc.url}>
-                        <a href={doc.url} download target="_blank"><Download className="mr-2 h-4 w-4" />ดาวน์โหลด</a>
-                      </Button>
+                    <div className="grid gap-0.5">
+                      <span className="font-medium">{doc.name}</span>
+                      {!doc.url ? (
+                        <span className="text-xs text-amber-600 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> ยังไม่ระบุข้อมูล
+                        </span>
+                      ) : (
+                        <span className="text-xs text-green-600 flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" /> พร้อมตรวจสอบ
+                        </span>
+                      )}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground p-4">
-                  ไม่พบเอกสารแนบ
+                  <div className="flex items-center gap-2">
+                    {doc.url ? (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc.url)}>
+                          <Eye className="mr-2 h-4 w-4" />ดูเอกสาร
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.url)}>
+                          <Download className="mr-2 h-4 w-4" />ดาวน์โหลด
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/lawyers/${id}/edit`}>
+                          <Upload className="mr-2 h-4 w-4" /> อัปโหลดแทนทนาย
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
                 </div>
+              ))}
+              {isExpressSignup && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-amber-800">หมายเหตุการสมัครแบบด่วน</AlertTitle>
+                  <AlertDescription className="text-amber-700">
+                    ทนายความที่สมัครแบบ Express จะยังไม่ได้อัปโหลดเอกสารประกอบการสมัคร แอดมินสามารถขอเอกสารเพิ่มเติมและทำการอัปโหลดเข้าระบบได้ผ่านหน้าแก้ไขข้อมูล
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
           </CardContent>

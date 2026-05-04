@@ -56,6 +56,8 @@ export default function AdminLawyerEditPage() {
     experience: boolean;
   }>({ description: false, education: false, experience: false });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const licenseInputRef = React.useRef<HTMLInputElement>(null);
+  const idCardInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleTranslate = async (field: 'description' | 'education' | 'experience') => {
     if (!lawyer) return;
@@ -111,7 +113,7 @@ export default function AdminLawyerEditPage() {
     }
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'licenseUrl' | 'idCardUrl') => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -125,24 +127,30 @@ export default function AdminLawyerEditPage() {
       }
 
       try {
-        toast({ title: "กำลังอัปโหลดรูปภาพ...", description: "Uploading to Firebase Storage..." });
+        toast({ title: "กำลังอัปโหลด...", description: "Uploading to Firebase Storage..." });
 
         const formData = new FormData();
         formData.append('file', file);
-        const result = await uploadFileAction(formData, 'lawyers');
+        // Use separate folders for documents
+        const folder = field === 'imageUrl' ? 'lawyers' : `lawyer_documents/${id}`;
+        const result = await uploadFileAction(formData, folder);
 
         if (result.success) {
-          setLawyer(prev => prev ? { ...prev, imageUrl: result.path } : null);
-          toast({ title: "รูปภาพพร้อมแล้ว", description: "กดบันทึกเพื่อยืนยันการเปลี่ยนแปลง" });
+          setLawyer(prev => prev ? { ...prev, [field]: result.path } : null);
+          toast({ title: "อัปโหลดสำเร็จ", description: "กดบันทึกเพื่อยืนยันการเปลี่ยนแปลง" });
         } else {
           throw new Error('Upload failed');
         }
       } catch (error) {
         console.error("Upload failed:", error);
-        toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถอัปโหลดรูปภาพได้" });
+        toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถอัปโหลดไฟล์ได้" });
       }
     }
   };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFileUpload(e, 'imageUrl');
+  const handleLicenseChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFileUpload(e, 'licenseUrl');
+  const handleIdCardChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFileUpload(e, 'idCardUrl');
 
   React.useEffect(() => {
     if (!firestore || !id) return;
@@ -393,32 +401,60 @@ export default function AdminLawyerEditPage() {
           <CardContent>
             <div className="grid gap-4">
               <div className="grid gap-3">
-                <Label htmlFor="licenseUrl">ใบอนุญาตว่าความ (URL)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="licenseUrl"
-                    value={lawyer.licenseUrl || ''}
-                    onChange={(e) => setLawyer({ ...lawyer, licenseUrl: e.target.value })}
-                  />
-                  {lawyer.licenseUrl && (
-                    <Button variant="outline" asChild size="sm">
-                      <a href={lawyer.licenseUrl} target="_blank" rel="noopener noreferrer">เปิดดู</a>
+                <Label htmlFor="licenseUrl">ใบอนุญาตว่าความ</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="licenseUrl"
+                      placeholder="พาธไฟล์หรือ URL"
+                      value={lawyer.licenseUrl || ''}
+                      onChange={(e) => setLawyer({ ...lawyer, licenseUrl: e.target.value })}
+                    />
+                    <input
+                      type="file"
+                      ref={licenseInputRef}
+                      onChange={handleLicenseChange}
+                      className="hidden"
+                    />
+                    <Button variant="outline" onClick={() => licenseInputRef.current?.click()} disabled={isSaving}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      อัปโหลด
                     </Button>
+                  </div>
+                  {lawyer.licenseUrl && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted p-2 rounded-md truncate">
+                      <span className="truncate flex-1">{lawyer.licenseUrl}</span>
+                      <a href={lawyer.licenseUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">เปิดดู</a>
+                    </div>
                   )}
                 </div>
               </div>
               <div className="grid gap-3">
-                <Label htmlFor="idCardUrl">สำเนาบัตรประชาชน (URL)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="idCardUrl"
-                    value={lawyer.idCardUrl || ''}
-                    onChange={(e) => setLawyer({ ...lawyer, idCardUrl: e.target.value })}
-                  />
-                  {lawyer.idCardUrl && (
-                    <Button variant="outline" asChild size="sm">
-                      <a href={lawyer.idCardUrl} target="_blank" rel="noopener noreferrer">เปิดดู</a>
+                <Label htmlFor="idCardUrl">สำเนาบัตรประชาชน</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="idCardUrl"
+                      placeholder="พาธไฟล์หรือ URL"
+                      value={lawyer.idCardUrl || ''}
+                      onChange={(e) => setLawyer({ ...lawyer, idCardUrl: e.target.value })}
+                    />
+                    <input
+                      type="file"
+                      ref={idCardInputRef}
+                      onChange={handleIdCardChange}
+                      className="hidden"
+                    />
+                    <Button variant="outline" onClick={() => idCardInputRef.current?.click()} disabled={isSaving}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      อัปโหลด
                     </Button>
+                  </div>
+                  {lawyer.idCardUrl && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted p-2 rounded-md truncate">
+                      <span className="truncate flex-1">{lawyer.idCardUrl}</span>
+                      <a href={lawyer.idCardUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">เปิดดู</a>
+                    </div>
                   )}
                 </div>
               </div>

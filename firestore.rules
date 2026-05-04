@@ -222,6 +222,21 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
 
+    match /unified_surveys/{responseId} {
+        allow create: if true;
+        allow read, update, delete: if isAdmin();
+    }
+
+    match /b2b_survey_responses/{responseId} {
+        allow create: if true;
+        allow read, update, delete: if isAdmin();
+    }
+
+    match /sme_survey_responses/{responseId} {
+        allow create: if true;
+        allow read, update, delete: if isAdmin();
+    }
+
     // Default deny at the very end
     match /{document=**} {
       allow read, write: if false;

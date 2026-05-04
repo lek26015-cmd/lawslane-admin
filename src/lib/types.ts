@@ -8,6 +8,8 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string;
+  lineId?: string;
+  address?: string;
   role: 'customer' | 'lawyer' | 'admin' | 'education_student';
   type: 'บุคคลทั่วไป' | 'SME';
   registeredAt: any;

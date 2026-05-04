@@ -38,6 +38,8 @@ import { th } from 'date-fns/locale'
 import { getDashboardData } from '@/lib/data'
 import { getMainLink } from '@/lib/domain-utils';
 import { useToast } from '@/hooks/use-toast'
+import { Separator } from '@/components/ui/separator'
+import { SecureImage } from '@/components/secure-image'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -307,20 +309,40 @@ export default function AdminCustomerDetailPage() {
               <div className="font-semibold">รายละเอียด</div>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={customer.avatar} />
+                  <SecureImage src={customer.avatar} alt={customer.name || 'User'} className="h-full w-full" />
                   <AvatarFallback>{customer.name ? customer.name.slice(0, 2) : 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-1">
-                  <p className="font-medium">{customer.name}</p>
+                  <p className="font-medium text-lg">{customer.name}</p>
                   <p className="text-muted-foreground">{customer.email}</p>
-                  <p className="text-xs text-muted-foreground">Role: {customer.role || 'user'}</p>
-                  {(customer as any).licenseNumber && (
-                    <p className="text-xs font-semibold text-blue-600 mt-1">
-                      เลขใบอนุญาต: {(customer as any).licenseNumber}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">ID: {customer.uid}</p>
                 </div>
               </div>
+              <Separator />
+              <div className="font-semibold">ข้อมูลติดต่อ</div>
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">เบอร์โทรศัพท์</span>
+                  <p className="font-medium">{customer.phone || '-'}</p>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">Line ID</span>
+                  <p className="font-medium">{customer.lineId || '-'}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="font-semibold">ประเภทและที่อยู่</div>
+              <div className="grid gap-3">
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">ประเภทลูกค้า</span>
+                  <Badge variant="outline" className="w-fit">{customer.type || 'บุคคลทั่วไป'}</Badge>
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-muted-foreground text-xs">ที่อยู่</span>
+                  <p className="leading-relaxed break-words">{customer.address || '-'}</p>
+                </div>
+              </div>
+              <Separator />
               <div className="font-semibold">หมายเหตุสำหรับแอดมิน</div>
               <Textarea placeholder="เพิ่มหมายเหตุเกี่ยวกับลูกค้าคนนี้..." />
             </div>

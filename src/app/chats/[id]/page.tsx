@@ -181,12 +181,37 @@ export default function AdminChatViewer() {
                               : 'bg-white border border-slate-200 rounded-bl-sm'
                           }`}
                         >
-                          {msg.metadata?.type === 'file_upload' || msg.text.startsWith('[อัปโหลดไฟล์]') ? (
-                            <div className="flex items-center gap-2 py-1">
-                              <FileIcon className="w-4 h-4" />
-                              <span className="font-medium underline cursor-pointer">
-                                {msg.text.replace('[อัปโหลดไฟล์]', '').trim()}
-                              </span>
+                          {msg.metadata?.type === 'file_upload' || msg.metadata?.fileUrl || msg.text.startsWith('[อัปโหลดไฟล์]') ? (
+                            <div className="flex flex-col gap-2 py-1">
+                              {msg.metadata?.fileUrl && msg.metadata?.type?.includes('image') ? (
+                                <div className="relative group">
+                                  <img 
+                                    src={msg.metadata.fileUrl} 
+                                    alt="Uploaded image" 
+                                    className="max-w-full rounded-lg border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                    onClick={() => window.open(msg.metadata.fileUrl, '_blank')}
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg pointer-events-none">
+                                    <Eye className="text-white w-6 h-6 drop-shadow-md" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <a 
+                                  href={msg.metadata?.fileUrl || '#'} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
+                                    isLawyerMessage 
+                                      ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white' 
+                                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  <FileIcon className="w-4 h-4" />
+                                  <span className="font-medium text-xs truncate">
+                                    {msg.text.replace('[อัปโหลดไฟล์]', '').trim() || 'ดูเอกสารแนบ'}
+                                  </span>
+                                </a>
+                              )}
                             </div>
                           ) : (
                             <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>

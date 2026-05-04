@@ -111,7 +111,10 @@ export default function AdminCustomerEditPage() {
       name: customer.name,
       type: customer.type,
       status: customer.status,
-      avatar: customer.avatar, // Save the avatar (base64)
+      avatar: customer.avatar,
+      phone: customer.phone || '',
+      lineId: customer.lineId || '',
+      address: customer.address || '',
     };
 
     updateDoc(userRef, updatedData).then(() => {
@@ -226,6 +229,33 @@ export default function AdminCustomerEditPage() {
                   className="w-full"
                   value={customer.email}
                   disabled
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
+                <Input
+                  id="phone"
+                  type="text"
+                  value={customer.phone || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="lineId">Line ID</Label>
+                <Input
+                  id="lineId"
+                  type="text"
+                  value={customer.lineId || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="address">ที่อยู่</Label>
+                <Input
+                  id="address"
+                  type="text"
+                  value={customer.address || ''}
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
