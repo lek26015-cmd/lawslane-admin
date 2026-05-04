@@ -234,7 +234,7 @@ function FinancialsContent() {
 
       appointmentSnapshot.docs.forEach(d => {
         const data = d.data();
-        if (data.slipUrl || data.hasNewPayment) {
+        if (data.slipUrl) {
           pending.push({
             id: d.id,
             type: 'Appointment',
@@ -274,7 +274,7 @@ function FinancialsContent() {
           if (firstImage) slipUrl = firstImage.url;
         }
 
-        if (slipUrl || data.status === 'pending_payment' || pendingInst) {
+        if (slipUrl) {
           pending.push({
             id: d.id,
             type: 'Chat',
