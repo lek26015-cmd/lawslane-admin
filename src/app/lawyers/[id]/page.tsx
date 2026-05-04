@@ -69,7 +69,7 @@ import { doc, updateDoc, collection, query, where, getDocs, arrayUnion, arrayRem
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 export default function AdminLawyerDetailPage() {
   const params = useParams()
