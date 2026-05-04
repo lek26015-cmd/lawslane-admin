@@ -97,6 +97,7 @@ type Transaction = {
   lawyerName?: string;
   clientName?: string;
   rawData?: any;
+  receiptUrl?: string;
 };
 
 type SlipVerificationItem = {
@@ -349,14 +350,15 @@ function FinancialsContent() {
 
       appSnap.docs.forEach(d => {
         const data = d.data();
-        if (data.status !== 'pending_payment') {
+        const amount = data.amount || 3500;
+        if (data.status !== 'pending_payment' && amount > 0) {
           allTransactions.push({
             id: d.id,
             date: format(ensureDate(data.createdAt), 'd MMM yyyy', { locale: th }),
             description: `นัดหมาย`,
             clientName: userProfiles[data.userId] || 'Unknown Client',
             lawyerName: data.lawyerName || 'Unknown Lawyer',
-            amount: data.amount || 3500,
+            amount: amount,
             type: 'revenue',
             status: data.status === 'completed' || data.status === 'paid' ? 'completed' : 'pending',
             slipUrl: data.slipUrl || data.paymentProof || data.proofUrl,
@@ -396,7 +398,8 @@ function FinancialsContent() {
         }
 
         const amount = data.amount || data.totalPaid || data.pendingPaymentDetails?.amount || 0;
-        if (amount >= 0) {
+        if (amount > 0) {
+          const receiptUrl = data.receiptUrl || data.invoiceUrl || data.pdfUrl || data.documentUrl;
           allTransactions.push({
             id: d.id,
             date: format(ensureDate(data.createdAt || data.lastMessageAt), 'd MMM yyyy', { locale: th }),
@@ -407,7 +410,8 @@ function FinancialsContent() {
             type: 'revenue',
             status: (data.status === 'paid' || data.status === 'active' || data.status === 'closed') ? 'completed' : 'pending',
             slipUrl: slipUrl,
-            rawData: data
+            rawData: data,
+            receiptUrl: receiptUrl
           });
         }
       });
@@ -430,18 +434,23 @@ function FinancialsContent() {
           }
         }
 
-        allTransactions.push({
-          id: d.id,
-          date: format(ensureDate(data.paidAt || data.createdAt), 'd MMM yyyy', { locale: th }),
-          description: `ใบแจ้งหนี้`,
-          clientName: userName,
-          lawyerName: 'ระบบ',
-          amount: data.amount,
-          type: 'revenue',
-          status: data.status === 'paid' ? 'completed' : 'pending',
-          slipUrl: slipUrl,
-          rawData: data
-        });
+        const amount = data.amount || 0;
+        if (amount > 0) {
+          const receiptUrl = data.receiptUrl || data.invoiceUrl || data.pdfUrl || data.documentUrl;
+          allTransactions.push({
+            id: d.id,
+            date: format(ensureDate(data.paidAt || data.createdAt), 'd MMM yyyy', { locale: th }),
+            description: `ใบแจ้งหนี้`,
+            clientName: userName,
+            lawyerName: 'ระบบ',
+            amount: amount,
+            type: 'revenue',
+            status: data.status === 'paid' ? 'completed' : 'pending',
+            slipUrl: slipUrl,
+            rawData: data,
+            receiptUrl: receiptUrl
+          });
+        }
       }
 
       setTransactions(allTransactions.sort((a, b) => b.id.localeCompare(a.id)));
@@ -605,6 +614,11 @@ function FinancialsContent() {
                           {(t.description.includes('แชท/คดี') || t.description.includes('ใบแจ้งหนี้')) && (
                             <a href={getMainLink(`/chat/${t.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
                               <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
+                            </a>
+                          )}
+                          {t.receiptUrl && (
+                            <a href={t.receiptUrl} target="_blank" rel="noopener noreferrer">
+                              <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200 bg-blue-100 text-blue-700">ดูเอกสาร</Badge>
                             </a>
                           )}
                           <Dialog>
