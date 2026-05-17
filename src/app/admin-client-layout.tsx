@@ -40,7 +40,8 @@ import {
     Package,
     Percent,
     ShoppingBag,
-    MessageSquare
+    MessageSquare,
+    ExternalLink
 } from 'lucide-react';
 import React, { useState, useEffect, useContext } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -229,6 +230,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
         icon: React.ReactNode;
         label: string;
         permission?: string; // if set, only shown when user hasPermission(permission)
+        externalLink?: string; // optional external link shown next to item
     };
 
     type NavSection = {
@@ -265,9 +267,14 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                 { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา" },
                 { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน" },
                 { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME" },
-                { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ (Unified)" },
-                { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)" },
-                { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)" },
+            ]
+        },
+        {
+            title: "แบบสำรวจ",
+            items: [
+                { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ SME", externalLink: "https://lawslane.com/th/survey" },
+                { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)", externalLink: "https://lawslane.com/th/survey-lawyer" },
+                { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)", externalLink: "https://lawslane.com/th/survey-public" },
             ]
         },
         {
@@ -391,16 +398,28 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="space-y-1 overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
                                         {section.items.filter(item => hasPermission(item.permission)).map((item) => (
-                                            <Link
-                                                key={item.label}
-                                                href={item.href}
-                                                className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sky-300 transition-all hover:bg-slate-800 hover:text-white",
-                                                    isActive(item.href) && "bg-slate-800 text-white"
+                                            <div key={item.label} className="flex items-center gap-1">
+                                                <Link
+                                                    href={item.href}
+                                                    className={cn("flex-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sky-300 transition-all hover:bg-slate-800 hover:text-white",
+                                                        isActive(item.href) && "bg-slate-800 text-white"
+                                                    )}
+                                                >
+                                                    {item.icon}
+                                                    {item.label}
+                                                </Link>
+                                                {item.externalLink && (
+                                                    <a
+                                                        href={item.externalLink}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 rounded-md text-slate-500 hover:text-sky-300 hover:bg-slate-800 transition-colors"
+                                                        title="เปิดฟอร์มสำรวจ"
+                                                    >
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                    </a>
                                                 )}
-                                            >
-                                                {item.icon}
-                                                {item.label}
-                                            </Link>
+                                            </div>
                                         ))}
                                     </CollapsibleContent>
                                 </Collapsible>
@@ -524,17 +543,29 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="space-y-1 pl-2 pt-1">
                                             {section.items.filter(item => hasPermission(item.permission)).map((item) => (
-                                                <Link
-                                                    key={item.label}
-                                                    href={item.href}
-                                                    onClick={() => setIsMobileMenuOpen(false)}
-                                                    className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sky-300 transition-all hover:bg-slate-800 hover:text-white text-sm",
-                                                        isActive(item.href) && "bg-slate-800 text-white"
+                                                <div key={item.label} className="flex items-center gap-1">
+                                                    <Link
+                                                        href={item.href}
+                                                        onClick={() => setIsMobileMenuOpen(false)}
+                                                        className={cn("flex-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sky-300 transition-all hover:bg-slate-800 hover:text-white text-sm",
+                                                            isActive(item.href) && "bg-slate-800 text-white"
+                                                        )}
+                                                    >
+                                                        {item.icon}
+                                                        {item.label}
+                                                    </Link>
+                                                    {item.externalLink && (
+                                                        <a
+                                                            href={item.externalLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-1.5 rounded-md text-slate-500 hover:text-sky-300 hover:bg-slate-800 transition-colors"
+                                                            title="เปิดฟอร์มสำรวจ"
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                        </a>
                                                     )}
-                                                >
-                                                    {item.icon}
-                                                    {item.label}
-                                                </Link>
+                                                </div>
                                             ))}
                                         </CollapsibleContent>
                                     </Collapsible>
