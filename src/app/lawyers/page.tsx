@@ -238,65 +238,61 @@ export default function AdminLawyersPage() {
                                             <TableCell className="hidden md:table-cell">{statusBadges[lawyer.status]}</TableCell>
                                             <TableCell className="hidden md:table-cell">{lawyer.joinedAt as string}</TableCell>
                                             <TableCell>
-                                                <AlertDialog>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                                <span className="sr-only">สลับเมนู</span>
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={`/lawyers/${lawyer.id}`}>ดูโปรไฟล์</Link>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                            <span className="sr-only">สลับเมนู</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/lawyers/${lawyer.id}`}>ดูโปรไฟล์</Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/lawyers/${lawyer.id}/edit`}>แก้ไขข้อมูล</Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        {lawyer.status !== 'approved' && (
+                                                            <DropdownMenuItem onSelect={() => setAction({ type: 'approved', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
+                                                                <UserCheck className="mr-2 h-4 w-4" /> อนุมัติ
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={`/lawyers/${lawyer.id}/edit`}>แก้ไขข้อมูล</Link>
+                                                        )}
+                                                        {lawyer.status !== 'pending' && (
+                                                            <DropdownMenuItem onSelect={() => setAction({ type: 'pending', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
+                                                                <Clock className="mr-2 h-4 w-4" /> รอตรวจสอบ
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            {lawyer.status !== 'approved' && (
-                                                                <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAction({ type: 'approved', lawyerId: lawyer.id, lawyerName: lawyer.name }); }}>
-                                                                        <UserCheck className="mr-2 h-4 w-4" /> อนุมัติ
-                                                                    </DropdownMenuItem>
-                                                                </AlertDialogTrigger>
-                                                            )}
-                                                            {lawyer.status !== 'pending' && (
-                                                                <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAction({ type: 'pending', lawyerId: lawyer.id, lawyerName: lawyer.name }); }}>
-                                                                        <Clock className="mr-2 h-4 w-4" /> รอตรวจสอบ
-                                                                    </DropdownMenuItem>
-                                                                </AlertDialogTrigger>
-                                                            )}
-                                                            {lawyer.status !== 'rejected' && (
-                                                                <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setAction({ type: 'rejected', lawyerId: lawyer.id, lawyerName: lawyer.name }); }}>
-                                                                        <UserX className="mr-2 h-4 w-4" /> ปฏิเสธ
-                                                                    </DropdownMenuItem>
-                                                                </AlertDialogTrigger>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>ยืนยันการเปลี่ยนสถานะ?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                คุณแน่ใจหรือไม่ที่จะเปลี่ยนสถานะของ {action?.lawyerName} เป็น "{action?.type}"?
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel onClick={() => setAction(null)}>ยกเลิก</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleStatusChange}>ยืนยัน</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                                                        )}
+                                                        {lawyer.status !== 'rejected' && (
+                                                            <DropdownMenuItem className="text-destructive" onSelect={() => setAction({ type: 'rejected', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
+                                                                <UserX className="mr-2 h-4 w-4" /> ปฏิเสธ
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </TabsContent>
+
+                        {/* Controlled AlertDialog — ย้ายออกมานอก loop เพื่อไม่ให้ชนกับ DropdownMenu */}
+                        <AlertDialog open={!!action} onOpenChange={(open) => { if (!open) setAction(null); }}>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>ยืนยันการเปลี่ยนสถานะ?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        คุณแน่ใจหรือไม่ที่จะเปลี่ยนสถานะของ {action?.lawyerName} เป็น &quot;{action?.type}&quot;?
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setAction(null)}>ยกเลิก</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleStatusChange}>ยืนยัน</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </Tabs>
                 </CardContent>
                 <CardFooter>
