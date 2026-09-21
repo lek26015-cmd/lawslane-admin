@@ -10,14 +10,12 @@ import {
     ListFilter,
     MoreHorizontal,
     PlusCircle,
-    ChevronsLeft,
-    ChevronsRight,
-    ChevronLeft,
-    ChevronRight,
+    Search,
+    Users2,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Card,
     CardContent,
@@ -45,72 +43,126 @@ import {
 } from '@/components/ui/table';
 import {
     Tabs,
-    TabsContent,
     TabsList,
     TabsTrigger,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SecureImage } from '@/components/secure-image';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useFirebase } from '@/firebase';
-import { getAllUsers } from '@/lib/data';
+import {
+    collection,
+    documentId,
+    limit as fsLimit,
+    orderBy,
+    query,
+    startAfter,
+    where,
+} from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
+import { ensureDate } from '@/lib/data';
+import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { DataTablePagination } from '@/components/admin/DataTablePagination';
+import { TableSkeleton } from '@/components/admin/TableSkeleton';
 
+const PAGE_SIZE = 25;
 
 export default function AdminCustomersPage() {
     const router = useRouter();
     const { firestore } = useFirebase();
-    const { toast } = useToast();
-    const [allCustomers, setAllCustomers] = React.useState<UserProfile[]>([]);
-    const [filteredCustomers, setFilteredCustomers] = React.useState<UserProfile[]>([]);
     const [activeTab, setActiveTab] = React.useState('all');
-    const [typeFilters, setTypeFilters] = React.useState({
-        individual: true,
-        sme: true,
+    const [typeFilters, setTypeFilters] = React.useState({ individual: true, sme: true });
+    const [searchInput, setSearchInput] = React.useState('');
+    const debouncedSearch = useDebouncedValue(searchInput.trim().toLowerCase(), 300);
+
+    const activeTypes = React.useMemo(() => {
+        const types: string[] = [];
+        if (typeFilters.individual) types.push('บุคคลทั่วไป');
+        if (typeFilters.sme) types.push('SME');
+        return types;
+    }, [typeFilters]);
+
+    const source: AdminListSource<UserProfile> = React.useMemo(
+        () => ({
+            kind: 'firestore-client',
+            buildQuery: (cursor, pageSize) => {
+                if (!firestore) return null;
+                const usersRef = collection(firestore, 'users');
+
+                // มีคำค้นหา → ค้นด้วย nameLower (prefix) เพียงอย่างเดียว ตัด filter สถานะ/ประเภท
+                // ออกจาก query (ต้องการ composite index คนละชุด) แล้วกรองในเครื่องแทน — ดู
+                // scripts/backfill-lowercase-fields.ts: เอกสารเก่าที่ยังไม่ backfill จะไม่ถูก
+                // ค้นเจอจนกว่าจะรันสคริปต์นั้น
+                if (debouncedSearch) {
+                    return query(
+                        usersRef,
+                        where('nameLower', '>=', debouncedSearch),
+                        where('nameLower', '<=', debouncedSearch + ''),
+                        orderBy('nameLower'),
+                        orderBy(documentId()),
+                        ...(cursor ? [startAfter(cursor)] : []),
+                        fsLimit(pageSize)
+                    );
+                }
+
+                // ไม่เลือก type filter เลย = ไม่มีอะไรตรงเงื่อนไข (ตรงกับพฤติกรรมเดิม)
+                if (activeTypes.length === 0) return null;
+
+                const constraints = [
+                    ...(activeTab !== 'all' ? [where('status', '==', activeTab)] : []),
+                    ...(activeTypes.length < 2 ? [where('type', '==', activeTypes[0])] : []),
+                    orderBy('registeredAt', 'desc'),
+                    orderBy(documentId()),
+                    ...(cursor ? [startAfter(cursor)] : []),
+                    fsLimit(pageSize),
+                ];
+                return query(usersRef, ...constraints);
+            },
+            mapDoc: (docSnap) => {
+                const data = docSnap.data();
+                return {
+                    uid: docSnap.id,
+                    ...data,
+                    type: data.type || 'บุคคลทั่วไป',
+                    status: data.status || 'active',
+                    registeredAt: (data.registeredAt || data.createdAt)
+                        ? ensureDate(data.registeredAt || data.createdAt).toLocaleDateString('th-TH')
+                        : 'N/A',
+                } as UserProfile;
+            },
+        }),
+        [firestore, activeTab, activeTypes, debouncedSearch]
+    );
+
+    const { data, loading, hasNext, hasPrevious, page, next, previous } = useAdminList({
+        source,
+        pageSize: PAGE_SIZE,
+        resetKey: `${activeTab}|${activeTypes.join(',')}|${debouncedSearch}`,
     });
 
-    React.useEffect(() => {
-        if (!firestore) return;
-        getAllUsers(firestore)
-            .then(setAllCustomers)
-            .catch(error => {
-                console.error("Error fetching customers:", error);
-                toast({
-                    variant: "destructive",
-                    title: "เกิดข้อผิดพลาด",
-                    description: "ไม่สามารถดึงข้อมูลลูกค้าได้ (อาจไม่มีสิทธิ์)"
-                });
-            });
-    }, [firestore]);
-
-
-    React.useEffect(() => {
-        let customers = allCustomers;
-
-        if (activeTab !== 'all') {
-            // @ts-ignore
-            customers = customers.filter(c => c.status === activeTab);
-        }
-
-        customers = customers.filter(c => {
-            if (c.type === 'บุคคลทั่วไป' && typeFilters.individual) return true;
-            if (c.type === 'SME' && typeFilters.sme) return true;
-            return false;
+    // เมื่อค้นหาอยู่ query ตัด filter สถานะ/ประเภทออกไปแล้ว (ดูเหตุผลใน buildQuery) —
+    // กรองสองอย่างนี้เพิ่มในเครื่องจากหน้าที่ได้มา ถ้ามีการเลือก filter ไว้ไม่ครบ
+    const visibleCustomers = React.useMemo(() => {
+        if (!debouncedSearch) return data;
+        return data.filter((c) => {
+            if (activeTab !== 'all' && c.status !== activeTab) return false;
+            if (!activeTypes.includes(c.type)) return false;
+            return true;
         });
-
-        setFilteredCustomers(customers);
-    }, [activeTab, typeFilters, allCustomers]);
+    }, [data, debouncedSearch, activeTab, activeTypes]);
 
     const handleExport = () => {
         const headers = ["ID", "Name", "Email", "Type", "RegisteredAt", "Status"];
         const csvRows = [
             headers.join(','),
-            ...filteredCustomers.map(c =>
+            ...visibleCustomers.map(c =>
                 [c.uid, `"${c.name || 'Unknown'}"`, c.email, c.type, c.registeredAt, c.status].join(',')
             )
         ];
 
         const csvString = csvRows.join('\n');
-        const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([`﻿${csvString}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.setAttribute('download', 'customers-export.csv');
@@ -130,13 +182,22 @@ export default function AdminCustomersPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="all" onValueChange={setActiveTab}>
-                        <div className="flex items-center">
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <div className="flex flex-wrap items-center gap-2">
                             <TabsList>
                                 <TabsTrigger value="all">ทั้งหมด</TabsTrigger>
                                 <TabsTrigger value="active">Active</TabsTrigger>
                                 <TabsTrigger value="suspended">Suspended</TabsTrigger>
                             </TabsList>
+                            <div className="relative w-full max-w-[220px]">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="ค้นหาชื่อลูกค้า..."
+                                    className="pl-8 h-8"
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                />
+                            </div>
                             <div className="ml-auto flex items-center gap-2">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -181,110 +242,138 @@ export default function AdminCustomersPage() {
                             </div>
                         </div>
                         <div className="mt-4">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="hidden w-[100px] sm:table-cell">
-                                            <span className="sr-only">รูป</span>
-                                        </TableHead>
-                                        <TableHead>ลูกค้า</TableHead>
-                                        <TableHead>ประเภท</TableHead>
-                                        <TableHead className="hidden md:table-cell">
-                                            วันที่ลงทะเบียน
-                                        </TableHead>
-                                        <TableHead className="hidden md:table-cell">
-                                            สถานะ
-                                        </TableHead>
-                                        <TableHead>
-                                            <span className="sr-only">การดำเนินการ</span>
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredCustomers.map(customer => (
-                                        <TableRow
-                                            key={customer.uid}
-                                            className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => router.push(`/customers/${customer.uid}`)}
-                                        >
-                                            <TableCell className="hidden sm:table-cell">
-                                                <Avatar className="h-9 w-9">
-                                                    <SecureImage src={customer.avatar} alt={customer.name || 'User'} className="h-full w-full" />
-                                                    <AvatarFallback>{(customer.name || 'U').slice(0, 2).toUpperCase()}</AvatarFallback>
-                                                </Avatar>
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                {customer.name || 'Unnamed User'}
-                                                <div className="text-xs text-muted-foreground">
-                                                    {customer.email}
-                                                </div>
-                                                {customer.phone && (
-                                                    <div className="text-xs text-blue-600 font-medium">
-                                                        {customer.phone}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline">{customer.type || 'N/A'}</Badge>
-                                            </TableCell>
-                                            <TableCell className="hidden md:table-cell">
-                                                {customer.registeredAt as string}
-                                            </TableCell>
-                                            <TableCell className="hidden md:table-cell">
-                                                <Badge
-                                                    variant={
-                                                        customer.status === 'active' ? 'secondary' :
-                                                            customer.status === 'pending' ? 'outline' :
-                                                                'destructive'
-                                                    }
-                                                    className={customer.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
-                                                >
-                                                    {
-                                                        customer.status === 'active' ? 'Active' :
-                                                            customer.status === 'pending' ? 'Pending' :
-                                                                'Suspended'
-                                                    }
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            aria-haspopup="true"
-                                                            size="icon"
-                                                            variant="ghost"
-                                                        >
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                            <span className="sr-only">สลับเมนู</span>
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link href={`/customers/${customer.uid}`}>ดูโปรไฟล์</Link>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link href={`/customers/${customer.uid}/edit`}>แก้ไขข้อมูล</Link>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem className="text-destructive">
-                                                            ระงับบัญชี
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
+                            {loading ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="hidden w-[100px] sm:table-cell"><span className="sr-only">รูป</span></TableHead>
+                                            <TableHead>ลูกค้า</TableHead>
+                                            <TableHead>ประเภท</TableHead>
+                                            <TableHead className="hidden md:table-cell">วันที่ลงทะเบียน</TableHead>
+                                            <TableHead className="hidden md:table-cell">สถานะ</TableHead>
+                                            <TableHead><span className="sr-only">การดำเนินการ</span></TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableSkeleton rows={8} columns={6} />
+                                </Table>
+                            ) : visibleCustomers.length === 0 ? (
+                                <EmptyState
+                                    icon={Users2}
+                                    title={debouncedSearch ? `ไม่พบลูกค้าสำหรับ "${searchInput}"` : 'ยังไม่มีลูกค้าในระบบ'}
+                                    description={debouncedSearch ? 'ลองล้างคำค้นหาหรือปรับตัวกรอง' : 'ลูกค้าที่ลงทะเบียนใหม่จะแสดงที่นี่'}
+                                />
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="hidden w-[100px] sm:table-cell">
+                                                <span className="sr-only">รูป</span>
+                                            </TableHead>
+                                            <TableHead>ลูกค้า</TableHead>
+                                            <TableHead>ประเภท</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                วันที่ลงทะเบียน
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                สถานะ
+                                            </TableHead>
+                                            <TableHead>
+                                                <span className="sr-only">การดำเนินการ</span>
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {visibleCustomers.map(customer => (
+                                            <TableRow
+                                                key={customer.uid}
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => router.push(`/customers/${customer.uid}`)}
+                                            >
+                                                <TableCell className="hidden sm:table-cell">
+                                                    <Avatar className="h-9 w-9">
+                                                        <SecureImage src={customer.avatar} alt={customer.name || 'User'} className="h-full w-full" />
+                                                        <AvatarFallback>{(customer.name || 'U').slice(0, 2).toUpperCase()}</AvatarFallback>
+                                                    </Avatar>
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {customer.name || 'Unnamed User'}
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {customer.email}
+                                                    </div>
+                                                    {customer.phone && (
+                                                        <div className="text-xs text-blue-600 font-medium">
+                                                            {customer.phone}
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{customer.type || 'N/A'}</Badge>
+                                                </TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    {customer.registeredAt as string}
+                                                </TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    <Badge
+                                                        variant={
+                                                            customer.status === 'active' ? 'secondary' :
+                                                                customer.status === 'pending' ? 'outline' :
+                                                                    'destructive'
+                                                        }
+                                                        className={customer.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
+                                                    >
+                                                        {
+                                                            customer.status === 'active' ? 'Active' :
+                                                                customer.status === 'pending' ? 'Pending' :
+                                                                    'Suspended'
+                                                        }
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button
+                                                                aria-haspopup="true"
+                                                                size="icon"
+                                                                variant="ghost"
+                                                            >
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                <span className="sr-only">สลับเมนู</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/customers/${customer.uid}`}>ดูโปรไฟล์</Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/customers/${customer.uid}/edit`}>แก้ไขข้อมูล</Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive">
+                                                                ระงับบัญชี
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
                         </div>
 
                     </Tabs>
                 </CardContent>
                 <CardFooter>
-                    <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
-                        <div>แสดง <strong>{filteredCustomers.length}</strong> จาก <strong>{allCustomers.length}</strong> รายการ</div>
-                    </div>
+                    <DataTablePagination
+                        page={page}
+                        shown={visibleCustomers.length}
+                        hasNext={hasNext}
+                        hasPrevious={hasPrevious}
+                        loading={loading}
+                        onNext={next}
+                        onPrevious={previous}
+                    />
                 </CardFooter>
             </Card>
         </main >

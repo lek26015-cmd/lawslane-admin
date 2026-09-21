@@ -4,8 +4,9 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { LEGACY_SUPER_ADMIN_UIDS } from '../src/lib/super-admin';
 
-const TARGET_UID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+const TARGET_UID = LEGACY_SUPER_ADMIN_UIDS[0];
 
 async function setAdmin() {
     console.log(`Promoting user ${TARGET_UID} to admin...`);

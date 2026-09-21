@@ -9,12 +9,15 @@ import {
     ListFilter,
     MoreHorizontal,
     PlusCircle,
+    Search,
     UserCheck,
     UserX,
-    Clock
+    Clock,
+    UserCog,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Card,
     CardContent,
@@ -42,14 +45,14 @@ import {
 } from '@/components/ui/table';
 import {
     Tabs,
-    TabsContent,
     TabsList,
     TabsTrigger,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SecureImage } from '@/components/secure-image';
-import { getAllLawyers } from '@/lib/data';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { LawyerProfile } from '@/lib/types';
+import { ensureDate } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import {
     AlertDialog,
@@ -60,61 +63,120 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import {
+    collection,
+    doc,
+    documentId,
+    limit as fsLimit,
+    orderBy,
+    query,
+    startAfter,
+    updateDoc,
+    where,
+} from 'firebase/firestore';
+import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { DataTablePagination } from '@/components/admin/DataTablePagination';
+import { TableSkeleton } from '@/components/admin/TableSkeleton';
 
+const PAGE_SIZE = 25;
+const SPECIALTIES = ['คดีฉ้อโกง SMEs', 'คดีแพ่งและพาณิชย์', 'การผิดสัญญา', 'ทรัพย์สินทางปัญญา', 'กฎหมายแรงงาน'];
 
 export default function AdminLawyersPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { firestore } = useFirebase();
-    const [allLawyers, setAllLawyers] = React.useState<LawyerProfile[]>([]);
-    const [filteredLawyers, setFilteredLawyers] = React.useState<LawyerProfile[]>([]);
     const [activeTab, setActiveTab] = React.useState('all');
     const [action, setAction] = React.useState<{ type: LawyerProfile['status']; lawyerId: string, lawyerName: string } | null>(null);
-
-    const specialties = ['คดีฉ้อโกง SMEs', 'คดีแพ่งและพาณิชย์', 'การผิดสัญญา', 'ทรัพย์สินทางปัญญา', 'กฎหมายแรงงาน'];
+    const [searchInput, setSearchInput] = React.useState('');
+    const debouncedSearch = useDebouncedValue(searchInput.trim().toLowerCase(), 300);
 
     const [specialtyFilters, setSpecialtyFilters] = React.useState<Record<string, boolean>>(
-        specialties.reduce((acc, s) => ({ ...acc, [s]: true }), {})
+        SPECIALTIES.reduce((acc, s) => ({ ...acc, [s]: true }), {})
+    );
+    const activeSpecialties = React.useMemo(
+        () => SPECIALTIES.filter((s) => specialtyFilters[s]),
+        [specialtyFilters]
     );
 
-    React.useEffect(() => {
-        if (!firestore) return;
-        getAllLawyers(firestore).then(setAllLawyers);
-    }, [firestore]);
+    const source: AdminListSource<LawyerProfile> = React.useMemo(
+        () => ({
+            kind: 'firestore-client',
+            buildQuery: (cursor, pageSize) => {
+                if (!firestore) return null;
+                const lawyersRef = collection(firestore, 'lawyerProfiles');
 
-    React.useEffect(() => {
-        // Ensure we only work with valid lawyer objects
-        let lawyers = (allLawyers || []).filter(l => l && l.id);
+                if (debouncedSearch) {
+                    // เหมือนหน้า customers: มีคำค้นหา = ค้น nameLower อย่างเดียว ตัด filter
+                    // สถานะ/ความเชี่ยวชาญออก แล้วกรองในเครื่องจากหน้าที่ได้มาแทน
+                    return query(
+                        lawyersRef,
+                        where('nameLower', '>=', debouncedSearch),
+                        where('nameLower', '<=', debouncedSearch + ''),
+                        orderBy('nameLower'),
+                        orderBy(documentId()),
+                        ...(cursor ? [startAfter(cursor)] : []),
+                        fsLimit(pageSize)
+                    );
+                }
 
-        if (activeTab !== 'all') {
-            lawyers = lawyers.filter(l => l.status === activeTab);
-        }
+                // ไม่เลือก specialty เลย = ไม่มีอะไรตรงเงื่อนไข (ตรงกับพฤติกรรมเดิม)
+                if (activeSpecialties.length === 0) return null;
 
-        const activeSpecialties = Object.keys(specialtyFilters).filter(s => specialtyFilters[s]);
-        if (activeSpecialties.length > 0 && activeSpecialties.length < specialties.length) {
-            lawyers = lawyers.filter(l =>
-                (l.specialty || []).some(s => activeSpecialties.includes(s))
-            );
-        }
+                const constraints = [
+                    ...(activeTab !== 'all' ? [where('status', '==', activeTab)] : []),
+                    // array-contains-any รองรับสูงสุด 30 ค่า — SPECIALTIES มีแค่ 5 จึงไม่ชน
+                    ...(activeSpecialties.length < SPECIALTIES.length
+                        ? [where('specialty', 'array-contains-any', activeSpecialties)]
+                        : []),
+                    orderBy('joinedAt', 'desc'),
+                    orderBy(documentId()),
+                    ...(cursor ? [startAfter(cursor)] : []),
+                    fsLimit(pageSize),
+                ];
+                return query(lawyersRef, ...constraints);
+            },
+            mapDoc: (docSnap) => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    ...data,
+                    joinedAt: data.joinedAt ? ensureDate(data.joinedAt).toLocaleDateString('th-TH') : 'N/A',
+                } as LawyerProfile;
+            },
+        }),
+        [firestore, activeTab, activeSpecialties, debouncedSearch]
+    );
 
-        setFilteredLawyers(lawyers);
-    }, [activeTab, specialtyFilters, allLawyers]);
+    const { data, loading, hasNext, hasPrevious, page, next, previous, refresh } = useAdminList({
+        source,
+        pageSize: PAGE_SIZE,
+        resetKey: `${activeTab}|${activeSpecialties.join(',')}|${debouncedSearch}`,
+    });
+
+    const visibleLawyers = React.useMemo(() => {
+        const withValidId = data.filter((l) => l && l.id);
+        if (!debouncedSearch) return withValidId;
+        return withValidId.filter((l) => {
+            if (activeTab !== 'all' && l.status !== activeTab) return false;
+            if (activeSpecialties.length > 0 && !(l.specialty || []).some((s) => activeSpecialties.includes(s))) return false;
+            return true;
+        });
+    }, [data, debouncedSearch, activeTab, activeSpecialties]);
 
     const handleExport = () => {
         const headers = ["ID", "Name", "Specialties", "JoinedAt", "Status"];
         const csvRows = [
             headers.join(','),
-            ...filteredLawyers.map(l =>
+            ...visibleLawyers.map(l =>
                 [l.id, `"${l.name}"`, `"${(l.specialty || []).join(', ')}"`, l.joinedAt, l.status].join(',')
             )
         ];
 
         const csvString = csvRows.join('\n');
-        const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([`﻿${csvString}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.setAttribute('download', 'lawyers-export.csv');
@@ -133,8 +195,8 @@ export default function AdminLawyersPage() {
                 title: `เปลี่ยนสถานะสำเร็จ`,
                 description: `สถานะของ ${action.lawyerName} ถูกเปลี่ยนเป็น "${newStatus}" แล้ว`,
             });
-            setAllLawyers(prev => prev.map(l => l.id === lawyerId ? { ...l, status: newStatus } : l));
             setAction(null);
+            refresh();
         }).catch(err => {
             console.error(err);
             toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถอัปเดตสถานะได้' });
@@ -157,14 +219,23 @@ export default function AdminLawyersPage() {
                     <CardDescription>ตรวจสอบ, อนุมัติ, และจัดการโปรไฟล์ทนายความในระบบ</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-                        <div className="flex items-center">
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <div className="flex flex-wrap items-center gap-2">
                             <TabsList>
                                 <TabsTrigger value="all">ทั้งหมด</TabsTrigger>
                                 <TabsTrigger value="pending">รอตรวจสอบ</TabsTrigger>
                                 <TabsTrigger value="approved">อนุมัติแล้ว</TabsTrigger>
                                 <TabsTrigger value="rejected">ถูกปฏิเสธ</TabsTrigger>
                             </TabsList>
+                            <div className="relative w-full max-w-[220px]">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="ค้นหาชื่อทนาย..."
+                                    className="pl-8 h-8"
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                />
+                            </div>
                             <div className="ml-auto flex items-center gap-2">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -176,7 +247,7 @@ export default function AdminLawyersPage() {
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>กรองตามความเชี่ยวชาญ</DropdownMenuLabel>
                                         <DropdownMenuSeparator />
-                                        {specialties.map(s => (
+                                        {SPECIALTIES.map(s => (
                                             <DropdownMenuCheckboxItem
                                                 key={s}
                                                 checked={specialtyFilters[s]}
@@ -200,83 +271,104 @@ export default function AdminLawyersPage() {
 
                             </div>
                         </div>
-                        <TabsContent value={activeTab}>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>ทนายความ</TableHead>
-                                        <TableHead className="hidden lg:table-cell">ความเชี่ยวชาญ</TableHead>
-                                        <TableHead className="hidden md:table-cell">สถานะ</TableHead>
-                                        <TableHead className="hidden md:table-cell">วันที่เข้าร่วม</TableHead>
-                                        <TableHead><span className="sr-only">การดำเนินการ</span></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredLawyers.filter(Boolean).map(lawyer => (
-                                        <TableRow
-                                            key={lawyer.id}
-                                            className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => router.push(`/lawyers/${lawyer.id}`)}
-                                        >
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-9 w-9">
-                                                        <SecureImage src={lawyer.imageUrl} alt={lawyer.name} className="h-full w-full" />
-                                                        <AvatarFallback>{lawyer.name.slice(0, 2)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        {lawyer.name}
-                                                        <div className="text-xs text-muted-foreground">{lawyer.id}</div>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="hidden lg:table-cell">
-                                                <div className="flex flex-col gap-1">
-                                                    {lawyer?.specialty?.map(s => <Badge key={s} variant="outline" className="w-fit">{s}</Badge>) || null}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="hidden md:table-cell">{statusBadges[lawyer.status]}</TableCell>
-                                            <TableCell className="hidden md:table-cell">{lawyer.joinedAt as string}</TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                            <span className="sr-only">สลับเมนู</span>
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link href={`/lawyers/${lawyer.id}`}>ดูโปรไฟล์</Link>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link href={`/lawyers/${lawyer.id}/edit`}>แก้ไขข้อมูล</Link>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        {lawyer.status !== 'approved' && (
-                                                            <DropdownMenuItem onSelect={() => setAction({ type: 'approved', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
-                                                                <UserCheck className="mr-2 h-4 w-4" /> อนุมัติ
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {lawyer.status !== 'pending' && (
-                                                            <DropdownMenuItem onSelect={() => setAction({ type: 'pending', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
-                                                                <Clock className="mr-2 h-4 w-4" /> รอตรวจสอบ
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {lawyer.status !== 'rejected' && (
-                                                            <DropdownMenuItem className="text-destructive" onSelect={() => setAction({ type: 'rejected', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
-                                                                <UserX className="mr-2 h-4 w-4" /> ปฏิเสธ
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
+                        <div className="mt-4">
+                            {loading ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>ทนายความ</TableHead>
+                                            <TableHead className="hidden lg:table-cell">ความเชี่ยวชาญ</TableHead>
+                                            <TableHead className="hidden md:table-cell">สถานะ</TableHead>
+                                            <TableHead className="hidden md:table-cell">วันที่เข้าร่วม</TableHead>
+                                            <TableHead><span className="sr-only">การดำเนินการ</span></TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TabsContent>
+                                    </TableHeader>
+                                    <TableSkeleton rows={8} columns={5} />
+                                </Table>
+                            ) : visibleLawyers.length === 0 ? (
+                                <EmptyState
+                                    icon={UserCog}
+                                    title={debouncedSearch ? `ไม่พบทนายความสำหรับ "${searchInput}"` : 'ยังไม่มีทนายความในระบบ'}
+                                    description={debouncedSearch ? 'ลองล้างคำค้นหาหรือปรับตัวกรอง' : 'ทนายความที่สมัครใหม่จะแสดงที่นี่'}
+                                />
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>ทนายความ</TableHead>
+                                            <TableHead className="hidden lg:table-cell">ความเชี่ยวชาญ</TableHead>
+                                            <TableHead className="hidden md:table-cell">สถานะ</TableHead>
+                                            <TableHead className="hidden md:table-cell">วันที่เข้าร่วม</TableHead>
+                                            <TableHead><span className="sr-only">การดำเนินการ</span></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {visibleLawyers.map(lawyer => (
+                                            <TableRow
+                                                key={lawyer.id}
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => router.push(`/lawyers/${lawyer.id}`)}
+                                            >
+                                                <TableCell className="font-medium">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-9 w-9">
+                                                            <SecureImage src={lawyer.imageUrl} alt={lawyer.name} className="h-full w-full" />
+                                                            <AvatarFallback>{lawyer.name.slice(0, 2)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            {lawyer.name}
+                                                            <div className="text-xs text-muted-foreground">{lawyer.id}</div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="hidden lg:table-cell">
+                                                    <div className="flex flex-col gap-1">
+                                                        {lawyer?.specialty?.map(s => <Badge key={s} variant="outline" className="w-fit">{s}</Badge>) || null}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="hidden md:table-cell">{statusBadges[lawyer.status]}</TableCell>
+                                                <TableCell className="hidden md:table-cell">{lawyer.joinedAt as string}</TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                <span className="sr-only">สลับเมนู</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>การดำเนินการ</DropdownMenuLabel>
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/lawyers/${lawyer.id}`}>ดูโปรไฟล์</Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/lawyers/${lawyer.id}/edit`}>แก้ไขข้อมูล</Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            {lawyer.status !== 'approved' && (
+                                                                <DropdownMenuItem onSelect={() => setAction({ type: 'approved', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
+                                                                    <UserCheck className="mr-2 h-4 w-4" /> อนุมัติ
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            {lawyer.status !== 'pending' && (
+                                                                <DropdownMenuItem onSelect={() => setAction({ type: 'pending', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
+                                                                    <Clock className="mr-2 h-4 w-4" /> รอตรวจสอบ
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            {lawyer.status !== 'rejected' && (
+                                                                <DropdownMenuItem className="text-destructive" onSelect={() => setAction({ type: 'rejected', lawyerId: lawyer.id, lawyerName: lawyer.name })}>
+                                                                    <UserX className="mr-2 h-4 w-4" /> ปฏิเสธ
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </div>
 
                         {/* Controlled AlertDialog — ย้ายออกมานอก loop เพื่อไม่ให้ชนกับ DropdownMenu */}
                         <AlertDialog open={!!action} onOpenChange={(open) => { if (!open) setAction(null); }}>
@@ -296,9 +388,15 @@ export default function AdminLawyersPage() {
                     </Tabs>
                 </CardContent>
                 <CardFooter>
-                    <div className="text-xs text-muted-foreground">
-                        แสดง <strong>{filteredLawyers.length}</strong> จาก <strong>{allLawyers.length}</strong> รายการ
-                    </div>
+                    <DataTablePagination
+                        page={page}
+                        shown={visibleLawyers.length}
+                        hasNext={hasNext}
+                        hasPrevious={hasPrevious}
+                        loading={loading}
+                        onNext={next}
+                        onPrevious={previous}
+                    />
                 </CardFooter>
             </Card>
         </main>

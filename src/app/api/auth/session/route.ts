@@ -41,7 +41,8 @@ export async function POST(request: Request) {
             cookieOptions.domain = cookieDomain;
         }
 
-        const sessionHint = JSON.stringify({ uid: (await admin.auth().verifySessionCookie(sessionCookie)).uid });
+        const decodedToken = await admin.auth().verifySessionCookie(sessionCookie);
+        const sessionHint = JSON.stringify({ uid: decodedToken.uid });
 
         cookieStore.set('session', sessionCookie, cookieOptions);
 
@@ -49,6 +50,38 @@ export async function POST(request: Request) {
         cookieStore.set('session_hint', sessionHint, {
             ...cookieOptions,
             httpOnly: false, // Accessible to JS
+        });
+
+        // Also set role_hint (same format/detection as Lawslane/'s session route) so
+        // Lawslane's own middleware RBAC still gets the right role for a user who
+        // logs in here first instead of on lawslane.com directly. Previously only
+        // Lawslane ever wrote this cookie, so a lawyer/admin signing in via
+        // admin.lawslane.com would get treated as a plain customer there.
+        // See LAWSLANE-PLAN-01 3.0.
+        let role = 'customer';
+        try {
+            const db = admin.firestore();
+            if (decodedToken.admin === true) {
+                role = 'admin';
+            } else if (decodedToken.lawyer === true) {
+                role = 'lawyer';
+            } else {
+                const lawyerDoc = await db.collection('lawyerProfiles').doc(decodedToken.uid).get();
+                if (lawyerDoc.exists) {
+                    role = 'lawyer';
+                } else {
+                    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+                    if (userDoc.exists) {
+                        role = userDoc.data()?.role || 'customer';
+                    }
+                }
+            }
+        } catch (dbErr) {
+            console.error('Error fetching user role for role_hint:', dbErr);
+        }
+        cookieStore.set('role_hint', role, {
+            ...cookieOptions,
+            httpOnly: false,
         });
 
         return NextResponse.json({ success: true });
@@ -107,6 +140,11 @@ export async function DELETE() {
 
         cookieStore.delete({
             name: 'session_hint',
+            ...cookieOptions,
+        });
+
+        cookieStore.delete({
+            name: 'role_hint',
             ...cookieOptions,
         });
 

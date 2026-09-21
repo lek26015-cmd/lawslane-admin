@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import { initAdmin } from '@/lib/firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { notifyAdmins } from '@/app/actions/admin-notifications';
+import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 
 export async function POST(request: Request) {
+    // ต้องเป็นแอดมินที่ล็อกอินอยู่จริง — middleware ของแอปนี้เช็คแค่ว่ามี cookie
+    // ชื่อ session ไหม (ปลอมได้) และ matcher ก็ไม่ครอบ /api จึงต้องกันที่ route เอง
+    try {
+        await requireAdmin();
+    } catch (e) {
+        return authErrorResponse(e);
+    }
+
     try {
         const body = await request.json();
         const { data } = body;
@@ -15,11 +24,21 @@ export async function POST(request: Request) {
             );
         }
 
+        // คีย์ SlipOK ต้องมาจาก env เท่านั้น — เดิม hardcode ไว้ในซอร์สของ repo ที่เป็น public
+        const slipOkKey = process.env.SLIPOK_API_KEY;
+        if (!slipOkKey) {
+            console.error('SLIPOK_API_KEY is not configured');
+            return NextResponse.json(
+                { success: false, message: 'Slip verification is not configured' },
+                { status: 503 }
+            );
+        }
+
         const response = await fetch('https://api.slipok.com/api/check/slip', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-authorization': 'SLIPOKAKIAD90', // Using the key provided by user
+                'x-authorization': slipOkKey,
             },
             body: JSON.stringify({ data: data }),
         });

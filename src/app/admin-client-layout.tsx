@@ -8,40 +8,14 @@ import {
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-    Gavel,
-    LayoutDashboard,
-    Landmark,
-    Settings,
-    ShieldCheck,
-    Ticket,
-    Users2,
-    Megaphone,
-    FileText,
     ArrowLeftCircle,
-    LogOut,
     ChevronDown,
-    Menu,
-    Mail,
-    LayoutTemplate,
-    Database,
-    FileSignature,
-    Building2,
-    Briefcase,
-    FileEdit,
-    Scale,
-    BrainCircuit,
-    Library,
-    UserCheck,
     ChevronRight,
-    GraduationCap,
-    Book,
-    FileQuestion,
-    ClipboardList,
-    Package,
-    Percent,
-    ShoppingBag,
-    MessageSquare,
-    ExternalLink
+    ExternalLink,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    Settings,
 } from 'lucide-react';
 import React, { useState, useEffect, useContext } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -62,6 +36,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { NotificationBell } from '@/components/admin/notification-bell';
+import { navSections, findSectionForPath } from '@/config/nav';
+import { isDesignatedSuperAdmin } from '@/lib/super-admin';
 
 
 export function AdminClientLayout({ children }: { children: React.ReactNode }) {
@@ -82,8 +58,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     // Mobile Menu State
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // State for collapsible sections, default "ภาพรวม" open
-    const [openSection, setOpenSection] = useState<string | null>("ภาพรวม");
+    // กางเมนูของหน้าที่เปิดอยู่เป็นค่าเริ่มต้น
+    // (เดิม default เป็น "ภาพรวม" ซึ่งไม่ใช่ชื่อ section ใดแล้ว เมนูจึงปิดหมดทุกครั้ง)
+    const [openSection, setOpenSection] = useState<string | null>(() => findSectionForPath(pathname));
 
     const toggleSection = (title: string) => {
         setOpenSection(prev => prev === title ? null : title);
@@ -106,13 +83,11 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
 
                 getDoc(userDocRef).then(userDoc => {
                     if (!userDoc.exists()) {
-                        const designatedSuperAdminUID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
-                        const designatedSuperAdminEmail = 'lek.26015@gmail.com';
-
                         const allowedDomain = '@lawslane.com';
                         const userEmail = user.email || '';
+                        const isDesignatedSuper = isDesignatedSuperAdmin({ uid: user.uid, email: userEmail });
 
-                        if (!userEmail.endsWith(allowedDomain) && userEmail !== designatedSuperAdminEmail) {
+                        if (!userEmail.endsWith(allowedDomain) && !isDesignatedSuper) {
                             setIsAdmin(false);
                             setCurrentUser(null);
                             setUserRole(null);
@@ -121,7 +96,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                             return;
                         }
 
-                        if (user.uid === designatedSuperAdminUID || userEmail === designatedSuperAdminEmail) {
+                        if (isDesignatedSuper) {
                             const newAdminData = {
                                 uid: user.uid,
                                 name: user.displayName || 'Admin',
@@ -154,11 +129,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                         }
                     } else if (userDoc.exists()) {
                         const userData = userDoc.data();
-                        const designatedSuperAdminUID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
-                        const designatedSuperAdminEmail = 'lek.26015@gmail.com';
                         const userEmail = user.email || '';
 
-                        const isSuperAdminUser = (user.uid === designatedSuperAdminUID) || (userEmail === designatedSuperAdminEmail);
+                        const isSuperAdminUser = isDesignatedSuperAdmin({ uid: user.uid, email: userEmail });
 
                         if (isSuperAdminUser && userData.role !== 'admin') {
                             const newAdminData = {
@@ -192,9 +165,16 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                         }
                     }
                 }).catch(error => {
+                    // เดิม fail-open (setIsAdmin(true)) — ถ้าอ่าน Firestore ไม่สำเร็จ (เช่น
+                    // ช่วง Firestore ล่ม/permission ผิดพลาดชั่วคราว) กลับปล่อยให้เข้าหน้า admin
+                    // ได้ทั้งที่ยังไม่ยืนยันตัวตน แก้เป็น fail-closed ให้สอดคล้องกับด่านอื่น
                     console.error("Error fetching user doc in AdminLayout:", error);
-                    setIsAdmin(true);
-                    setUserRole('Guest (Error)');
+                    setIsAdmin(false);
+                    setCurrentUser(null);
+                    setUserRole(null);
+                    if (pathname !== '/login') {
+                        router.push('/login');
+                    }
                 });
             } else {
                 setIsAdmin(false);
@@ -225,96 +205,12 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
         }
     };
 
-    type NavItem = {
-        href: string;
-        icon: React.ReactNode;
-        label: string;
-        permission?: string; // if set, only shown when user hasPermission(permission)
-        externalLink?: string; // optional external link shown next to item
-    };
-
-    type NavSection = {
-        title: string;
-        items: NavItem[];
-    };
-
     // null adminPermissions = Super Admin / unrestricted
     const hasPermission = (permission?: string): boolean => {
         if (!permission) return true;           // no restriction on this item
         if (adminPermissions === null) return true;  // Super Admin sees all
         return adminPermissions.includes(permission);
     };
-
-    const navSections: NavSection[] = [
-        {
-            title: "จัดการผู้ใช้งาน",
-            items: [
-                { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า" },
-                { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ" },
-                { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย" },
-            ]
-        },
-        {
-            title: "ห้องสนทนา",
-            items: [
-                { href: "/chats", icon: <MessageSquare className="h-4 w-4" />, label: "แชททั้งหมด" },
-            ]
-        },
-
-        {
-            title: "คำขอใช้บริการ",
-            items: [
-                { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา" },
-                { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน" },
-                { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME" },
-            ]
-        },
-        {
-            title: "แบบสำรวจ",
-            items: [
-                { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ SME", externalLink: "https://lawslane.com/th/survey" },
-                { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)", externalLink: "https://lawslane.com/th/survey-lawyer" },
-                { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)", externalLink: "https://lawslane.com/th/survey-public" },
-            ]
-        },
-        {
-            title: "เนื้อหาและการตลาด",
-            items: [
-                { href: "/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages" },
-                { href: "/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา" },
-                { href: "/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา" },
-                { href: "/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย" },
-                { href: "/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย" },
-                { href: "/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI" },
-            ]
-        },
-        {
-            title: "การเงิน",
-            items: [
-                { href: "/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", permission: "financials.overview" },
-                { href: "/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", permission: "financials.verification" },
-                { href: "/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", permission: "financials.transactions" },
-                { href: "/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", permission: "financials.withdrawals" },
-                { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", permission: "coupons" },
-                { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", permission: "gp_coupons" },
-            ]
-        },
-        {
-            title: "ระบบและสนับสนุน",
-            items: [
-                { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
-                { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
-            ]
-        },
-        {
-            title: "ร้านค้าและบริการข้อมูล",
-            items: [
-                { href: "/books", icon: <Package className="h-4 w-4" />, label: "คลังหนังสือ" },
-                { href: "/orders", icon: <ShoppingBag className="h-4 w-4" />, label: "รายการสั่งซื้อ" },
-                { href: "/rag", icon: <Database className="h-4 w-4" />, label: "มอนิเตอร์ RAG" },
-            ]
-        }
-    ];
 
     const searchParams = useSearchParams();
     const isActive = (href: string) => {

@@ -2,11 +2,20 @@ import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { setSystemPaused } from '@/lib/ingestion-store';
 import path from 'path';
+import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 
 /**
  * Control API moved to lawslane-admin to manage the platform's RAG ingestors
  */
 export async function POST(request: Request) {
+    // ต้องเป็นแอดมินที่ล็อกอินอยู่จริง — middleware ของแอปนี้เช็คแค่ว่ามี cookie
+    // ชื่อ session ไหม (ปลอมได้) และ matcher ก็ไม่ครอบ /api จึงต้องกันที่ route เอง
+    try {
+        await requireAdmin();
+    } catch (e) {
+        return authErrorResponse(e);
+    }
+
     try {
         const body = await request.json();
         const { action } = body;

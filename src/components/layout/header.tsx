@@ -27,6 +27,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import profileLawyerImg from '@/pic/profile-lawyer.jpg';
 import { NotificationBell } from '@/components/admin/notification-bell';
 import { getMainLink, getBusinessLink } from '@/lib/domain-utils';
+import { isDesignatedSuperAdminUid } from '@/lib/super-admin';
 
 
 export default function Header({ setUserRole, domainType = 'main' }: { setUserRole: (role: string | null) => void; domainType?: 'main' | 'lawyer' | 'admin' | 'business' }) {
@@ -43,7 +44,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
   const { auth, firestore } = useFirebase();
   const { user, isUserLoading: isLoading } = useAuthUser();
 
-  const isSuperUser = user && (user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2' || user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3');
+  const isSuperUser = !!user && isDesignatedSuperAdminUid(user.uid);
   const [role, setRole] = useState<string | null>(null);
   const isAdmin = role === 'admin' || isSuperUser;
   const isLawyer = role === 'lawyer' || isSuperUser;
@@ -60,7 +61,7 @@ export default function Header({ setUserRole, domainType = 'main' }: { setUserRo
         const lawyerSnap = await getDoc(lawyerDocRef);
 
         // Hotfix for specific user
-        if (lawyerSnap.exists() || user.uid === 'N5ehLbkYXbQQLX5KEuwJbeL3cXO2' || user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3') {
+        if (lawyerSnap.exists() || isDesignatedSuperAdminUid(user.uid)) {
           console.log("User is a lawyer:", user.uid);
           setRole('lawyer');
           setUserRole('lawyer');

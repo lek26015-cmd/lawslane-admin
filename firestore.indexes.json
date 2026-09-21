@@ -1,19 +1,8 @@
-{
-    "indexes": [
-        {
-            "collectionGroup": "student_exam_results",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "userId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "createdAt",
-                    "order": "DESCENDING"
-                }
-            ]
-        }
-    ],
-    "fieldOverrides": []
-}
+DO NOT DEPLOY THIS FILE.
+firestore.indexes.json is owned by Lawslane/ — this repo shares the same
+Firebase project (studio-3946808940-28553). Edit and deploy indexes from
+Lawslane/firestore.indexes.json instead. See LAWSLANE-ECOSYSTEM.md and
+LAWSLANE-PLAN-01 (0.2) for context.
+
+This file is intentionally NOT valid JSON, so `firebase deploy` will fail
+loudly here instead of silently touching indexes on the shared project.

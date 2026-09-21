@@ -11,8 +11,7 @@ import {
   getBooksAction, 
   createBookAction, 
   updateBookAction, 
-  deleteBookAction,
-  seedBooksAction 
+  deleteBookAction
 } from '@/app/actions/book-actions';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -21,7 +20,6 @@ import {
   Pencil, 
   Trash2, 
   BookOpen, 
-  RefreshCcw, 
   Search,
   Package,
   DollarSign,
@@ -104,18 +102,6 @@ export default function AdminBooksPage() {
     }
   };
 
-  const handleSeed = async () => {
-    setIsLoading(true);
-    const res = await seedBooksAction();
-    if (res.success) {
-      toast({ title: "Seeded", description: "Mock data added" });
-      fetchBooks();
-    } else {
-      toast({ title: "Notice", description: res.message || "Seeding failed" });
-    }
-    setIsLoading(false);
-  };
-
   const filteredBooks = books.filter(b => 
     b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     b.author.toLowerCase().includes(searchQuery.toLowerCase())
@@ -132,9 +118,6 @@ export default function AdminBooksPage() {
           <p className="text-slate-500">Manage Lawslane bookstore inventory and pricing</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSeed} disabled={isLoading}>
-            <RefreshCcw className="w-4 h-4 mr-2" /> Sync Mocks
-          </Button>
           <Button onClick={() => {
             setEditingBook(null);
             setFormData({ title: '', author: '', description: '', price: 0, stock: 0, category: 'business', imageUrl: '/images/lawslane-cover-book.png' });

@@ -4,8 +4,9 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { LEGACY_SUPER_ADMIN_UIDS } from '../src/lib/super-admin';
 
-const KEEP_UID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+const KEEP_UID = LEGACY_SUPER_ADMIN_UIDS[0];
 
 async function deleteOtherUsers() {
     console.log(`Deleting all users EXCEPT ${KEEP_UID}...`);

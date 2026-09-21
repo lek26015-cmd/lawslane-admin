@@ -40,8 +40,10 @@ import { useToast } from '@/hooks/use-toast';
 import { getAdmins } from '@/lib/data';
 import { useFirebase, useUser } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+import { isDesignatedSuperAdmin } from '@/lib/super-admin';
+import { revokeAdminAccess } from '@/app/actions/admin-permissions';
 
 export default function AdminAdministratorsPage() {
   const { toast } = useToast();
@@ -50,29 +52,11 @@ export default function AdminAdministratorsPage() {
   const [admins, setAdmins] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [revokingUid, setRevokingUid] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!firestore || !user) return;
-
-    // Fetch current user role
-    const fetchCurrentUserRole = async () => {
-      try {
-        const userDoc = await getDoc(doc(firestore, "users", user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          // Check for 'Super Admin' role or superAdmin boolean flag
-          // Hardcode check for specific email/UID to bootstrap super admin
-          const isSuperAdmin = userData.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || userDoc.id === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || userData.email === 'lek26015@gmail.com' || userData.email === 'lek.26015@gmail.com' || userData.role === 'Super Admin' || userData.superAdmin === true;
-          const role = isSuperAdmin ? 'Super Admin' : userData.role;
-          setCurrentUserRole(role);
-        }
-      } catch (error) {
-        console.error("Error fetching current user role:", error);
-      }
-    };
-
-    fetchCurrentUserRole();
-
+  const fetchAdmins = useCallback(() => {
+    if (!firestore) return;
+    setIsLoading(true);
     getAdmins(firestore)
       .then(setAdmins)
       .catch(error => {
@@ -84,14 +68,57 @@ export default function AdminAdministratorsPage() {
         });
       })
       .finally(() => setIsLoading(false));
-  }, [firestore, user]);
+  }, [firestore, toast]);
 
-  const handleDelete = (adminName: string) => {
-    toast({
-      title: "ลบผู้ดูแลระบบสำเร็จ",
-      description: `"${adminName}" ได้ถูกลบออกจากระบบแล้ว (จำลอง)`,
-      variant: "destructive"
-    })
+  useEffect(() => {
+    if (!firestore || !user) return;
+
+    // Fetch current user role
+    const fetchCurrentUserRole = async () => {
+      try {
+        const userDoc = await getDoc(doc(firestore, "users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const isSuperAdmin = isDesignatedSuperAdmin({ uid: user.uid, email: userData.email }) || userData.role === 'Super Admin' || userData.superAdmin === true;
+          const role = isSuperAdmin ? 'Super Admin' : userData.role;
+          setCurrentUserRole(role);
+        }
+      } catch (error) {
+        console.error("Error fetching current user role:", error);
+      }
+    };
+
+    fetchCurrentUserRole();
+    fetchAdmins();
+  }, [firestore, user, fetchAdmins]);
+
+  const handleRevoke = async (admin: UserProfile) => {
+    setRevokingUid(admin.uid);
+    try {
+      const result = await revokeAdminAccess(admin.uid);
+      if (!result.success) {
+        toast({
+          variant: "destructive",
+          title: "ถอนสิทธิ์ไม่สำเร็จ",
+          description: result.message,
+        });
+        return;
+      }
+      toast({
+        title: "ถอนสิทธิ์ผู้ดูแลระบบสำเร็จ",
+        description: `"${admin.name}" ไม่มีสิทธิ์เข้าถึงระบบแอดมินแล้ว และถูกบังคับล็อกเอาต์`,
+      });
+      fetchAdmins();
+    } catch (error) {
+      console.error("Error revoking admin access:", error);
+      toast({
+        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถถอนสิทธิ์ผู้ดูแลระบบได้",
+      });
+    } finally {
+      setRevokingUid(null);
+    }
   }
 
   const isSuperAdmin = currentUserRole === 'Super Admin';
@@ -124,7 +151,7 @@ export default function AdminAdministratorsPage() {
                 <div>
                   <CardTitle>จัดการผู้ดูแลระบบ</CardTitle>
                   <CardDescription>
-                    เพิ่ม, ลบ, หรือแก้ไขสิทธิ์ของผู้ดูแลระบบ
+                    เพิ่ม, ถอนสิทธิ์, หรือแก้ไขสิทธิ์ของผู้ดูแลระบบ
                   </CardDescription>
                 </div>
                 {isSuperAdmin && (
@@ -158,7 +185,10 @@ export default function AdminAdministratorsPage() {
                       <TableCell colSpan={3} className="text-center py-4">ไม่พบผู้ดูแลระบบ</TableCell>
                     </TableRow>
                   ) : (
-                    admins.map(admin => (
+                    admins.map(admin => {
+                      const isAdminDesignatedSuper = isDesignatedSuperAdmin({ uid: admin.uid, email: admin.email });
+                      const isSelf = admin.uid === user?.uid;
+                      return (
                       <TableRow key={admin.uid}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -174,7 +204,7 @@ export default function AdminAdministratorsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">
-                            {admin.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || admin.id === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || admin.email === 'lek26015@gmail.com' || admin.email === 'lek.26015@gmail.com' || (admin.role as any) === 'Super Admin' || admin.superAdmin ? 'Super Admin' : admin.role}
+                            {isAdminDesignatedSuper || (admin.role as any) === 'Super Admin' || admin.superAdmin ? 'Super Admin' : admin.role}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -192,28 +222,34 @@ export default function AdminAdministratorsPage() {
                                   <DropdownMenuItem asChild>
                                     <Link href={`/settings/administrators/${admin.uid}/edit`}>แก้ไขสิทธิ์</Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                      ลบออกจากระบบ
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
+                                  {!isAdminDesignatedSuper && !isSelf && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                          ถอนสิทธิ์ผู้ดูแลระบบ
+                                        </DropdownMenuItem>
+                                      </AlertDialogTrigger>
+                                    </>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>คุณแน่ใจหรือไม่?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    การกระทำนี้ไม่สามารถย้อนกลับได้ คุณกำลังจะลบผู้ดูแลระบบ "{admin.name}" ออกจากระบบอย่างถาวร
+                                    คุณกำลังจะถอนสิทธิ์ผู้ดูแลระบบของ "{admin.name}" — บัญชีนี้จะไม่สามารถเข้าถึง
+                                    ระบบแอดมินได้อีก และจะถูกบังคับล็อกเอาต์ทันที (ไม่ใช่การลบบัญชีผู้ใช้)
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
                                   <AlertDialogAction
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                                    onClick={() => handleDelete(admin.name)}
+                                    disabled={revokingUid === admin.uid}
+                                    onClick={() => handleRevoke(admin)}
                                   >
-                                    ยืนยันการลบ
+                                    {revokingUid === admin.uid ? "กำลังถอนสิทธิ์..." : "ยืนยันถอนสิทธิ์"}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -221,7 +257,8 @@ export default function AdminAdministratorsPage() {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))
+                    );
+                    })
                   )}
                 </TableBody>
               </Table>

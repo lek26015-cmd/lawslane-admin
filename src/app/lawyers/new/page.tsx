@@ -70,6 +70,7 @@ export default function AdminLawyerCreatePage() {
 
       const docRef = await addDoc(collection(firestore, 'lawyerProfiles'), {
         name,
+        nameLower: name.toLowerCase(),
         email,
         licenseNumber,
         status,

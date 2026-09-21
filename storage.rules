@@ -1,73 +1,16 @@
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    function isAdmin() {
-      return request.auth != null && (
-        request.auth.token.email == 'lek.26015@gmail.com' ||
-        request.auth.token.email.matches('.*@lawslane\\.com$') ||
-        request.auth.uid == 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' ||
-        request.auth.uid == '6rX3WqjNo9M7lX6iUe5V9r7Dk9z1' ||
-        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && 
-         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
-      );
-    }
-
-    // Public read for profile images, articles, and public assets
-    match /lawyerProfiles/{lawyerId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isAdmin() || (request.auth != null && request.auth.uid == lawyerId);
-    }
-
-    match /articles/{allPaths=**} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /ads/{allPaths=**} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /public/{allPaths=**} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Chat attachments — only participants can write
-    match /chats/{chatId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Contract files — authenticated users
-    match /contracts/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // User uploads (profile pics etc.)
-    match /users/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // B2B Company Vault — any authenticated user can access their company docs
-    // (companyId ownership is enforced at the Firestore rules / service layer)
-    match /companies/{companyId}/vault/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-
-    // Lawyer verification documents - only owner and admins can read
-    match /lawyer_documents/{userId}/{allPaths=**} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
-      allow write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
-    }
-
-    // Default: deny everything else
-    match /{allPaths=**} {
-      allow read, write: if false;
-    }
-  }
-}
+// DO NOT DEPLOY THIS FILE.
+//
+// Storage security rules are owned by Lawslane/ — this repo shares the same
+// Firebase project (studio-3946808940-28553), so only one ruleset is ever
+// actually deployed. Edit and deploy from Lawslane/storage.rules instead.
+// See LAWSLANE-ECOSYSTEM.md and LAWSLANE-PLAN-01 (0.2) for context.
+//
+// This file is intentionally NOT valid rules syntax, so `firebase deploy`
+// will fail loudly here instead of silently overwriting the real rules in
+// production with a stale or weaker copy.
+//
+// NOTE: firestore.rules got this tripwire earlier but storage.rules did not,
+// which left `firebase deploy --only storage` as an unguarded path that
+// silently downgraded production storage rules (opening every contract file
+// and company vault to any signed-in user, and dropping upload validation).
+STOP: storage rules owned by Lawslane/. Do not deploy from this repo.

@@ -19,35 +19,27 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useFirebase, useUser } from '@/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
+import { ALL_PERMISSIONS, PERMISSIONS } from '@/lib/permissions';
+import { isDesignatedSuperAdmin } from '@/lib/super-admin';
+import { updateAdminPermissions } from '@/app/actions/admin-permissions';
 
-const permissionsConfig = [
-  { id: 'customers', label: 'ลูกค้า', actions: ['view', 'create', 'edit', 'delete', 'download'] },
-  { id: 'lawyers', label: 'ทนายความ', actions: ['view', 'create', 'edit', 'delete', 'download'] },
-  { id: 'tickets', label: 'Ticket ช่วยเหลือ', actions: ['view', 'reply'] },
-  { id: 'ads', label: 'จัดการโฆษณา', actions: ['view', 'create', 'edit', 'delete'] },
-  { id: 'content', label: 'จัดการเนื้อหา', actions: ['view', 'create', 'edit', 'delete'] },
-];
-
-const granularPermissionsConfig = [
-  { id: 'financials.overview', label: 'ภาพรวมการเงิน' },
-  { id: 'financials.verification', label: 'ตรวจสอบสลิป' },
-  { id: 'financials.transactions', label: 'รายการธุรกรรม' },
-  { id: 'financials.withdrawals', label: 'คำร้องถอนเงิน' },
-  { id: 'coupons', label: 'คูปองส่วนลด' },
-  { id: 'gp_coupons', label: 'คูปอง GP ทนาย' },
-];
-
-const actionLabels: { [key: string]: string } = {
-  view: 'ดู',
-  create: 'สร้าง',
-  edit: 'แก้ไข',
-  delete: 'ลบ',
-  download: 'ดาวน์โหลด',
-  reply: 'ตอบกลับ',
-};
+// รายการสิทธิ์มาจาก src/lib/permissions.ts ที่เดียว — ตัวเดียวกับที่ auth-guard
+// ใช้บังคับฝั่ง server และ nav.tsx ใช้ซ่อนเมนู เดิมประกาศซ้ำในไฟล์นี้กับหน้า new/edit
+const granularPermissionsConfig = ALL_PERMISSIONS.map((id) => ({ id, label: PERMISSIONS[id] }));
 
 export default function AdminEditAdministratorPage() {
   const router = useRouter();
@@ -62,13 +54,6 @@ export default function AdminEditAdministratorPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
 
-  // Mock permissions state for the selected admin
-  // In a real app, this would also be fetched from Firestore if stored separately
-  const [permissions, setPermissions] = React.useState<Record<string, string[]>>({
-    customers: ['view', 'edit'],
-    lawyers: ['view'],
-    tickets: ['view', 'reply']
-  });
   const [adminPermissions, setAdminPermissions] = React.useState<string[]>([]);
 
   React.useEffect(() => {
@@ -81,7 +66,7 @@ export default function AdminEditAdministratorPage() {
         const currentUserDoc = await getDoc(doc(firestore, "users", user.uid));
         if (currentUserDoc.exists()) {
           const currentUserData = currentUserDoc.data();
-          const isSuperAdmin = user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || currentUserDoc.id === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3' || currentUserData.email === 'lek26015@gmail.com' || currentUserData.email === 'lek.26015@gmail.com' || currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
+          const isSuperAdmin = isDesignatedSuperAdmin({ uid: user.uid, email: currentUserData.email }) || currentUserData.role === 'Super Admin' || currentUserData.superAdmin === true;
 
           if (!isSuperAdmin) {
             toast({
@@ -108,10 +93,6 @@ export default function AdminEditAdministratorPage() {
             // Ensure we have the uid
             setAdmin({ ...userData, uid: userDoc.id });
 
-            // Load permissions if they exist
-            if (userData.permissions) {
-              setPermissions(userData.permissions);
-            }
             if (userData.adminPermissions) {
               setAdminPermissions(userData.adminPermissions);
             }
@@ -140,17 +121,6 @@ export default function AdminEditAdministratorPage() {
     checkRoleAndFetchAdmin();
   }, [firestore, id, router, toast, user]);
 
-  const handlePermissionChange = (menuId: string, action: string, checked: boolean) => {
-    setPermissions(prev => {
-      const currentActions = prev[menuId] || [];
-      if (checked) {
-        return { ...prev, [menuId]: [...currentActions, action] };
-      } else {
-        return { ...prev, [menuId]: currentActions.filter(a => a !== action) };
-      }
-    });
-  }
-
   const handleGranularPermissionChange = (id: string, checked: boolean) => {
     setAdminPermissions(prev => {
       if (checked) return [...prev, id];
@@ -159,21 +129,27 @@ export default function AdminEditAdministratorPage() {
   }
 
   const handleSaveChanges = async () => {
-    if (!admin || !firestore) return;
+    if (!admin) return;
 
     setIsSaving(true);
     try {
-      const userDocRef = doc(firestore, "users", admin.uid);
-      await updateDoc(userDocRef, {
-        permissions,
+      const result = await updateAdminPermissions(admin.uid, {
         adminPermissions,
-        superAdmin: admin.superAdmin,
-        role: admin.superAdmin ? 'Super Admin' : 'admin'
+        superAdmin: !!admin.superAdmin,
       });
+
+      if (!result.success) {
+        toast({
+          variant: "destructive",
+          title: "บันทึกไม่สำเร็จ",
+          description: result.message,
+        });
+        return;
+      }
 
       toast({
         title: 'แก้ไขสิทธิ์สำเร็จ',
-        description: `สิทธิ์การเข้าถึงของ "${admin.name || admin.email}" ได้รับการอัปเดตแล้ว`,
+        description: `สิทธิ์การเข้าถึงของ "${admin.name || admin.email}" ได้รับการอัปเดตแล้ว — ผู้ใช้จะถูกบังคับล็อกเอาต์เพื่อให้สิทธิ์ใหม่มีผล`,
       });
       router.push('/settings/administrators');
     } catch (error) {
@@ -215,9 +191,26 @@ export default function AdminEditAdministratorPage() {
                 ยกเลิก
               </Button>
             </Link>
-            <Button size="sm" onClick={handleSaveChanges} disabled={isSaving}>
-              {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" disabled={isSaving}>
+                  {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>ยืนยันการเปลี่ยนสิทธิ์</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    การบันทึกจะทำให้สิทธิ์ของ "{admin.name || admin.email}" เปลี่ยนทันที และ
+                    บังคับให้ผู้ใช้คนนี้ถูกล็อกเอาต์เพื่อให้ต้องล็อกอินใหม่ด้วยสิทธิ์ชุดใหม่
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSaveChanges}>ยืนยันบันทึก</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
         <div className="grid gap-6">
@@ -261,7 +254,7 @@ export default function AdminEditAdministratorPage() {
 
           <Card className="rounded-xl">
             <CardHeader>
-              <CardTitle>กำหนดสิทธิ์การเข้าถึงเมนู (หน้าเว็บ)</CardTitle>
+              <CardTitle>สิทธิ์การเข้าถึง</CardTitle>
               <CardDescription>
                 เลือกหน้าที่แอดมินคนนี้สามารถมองเห็นและเข้าใช้งานได้
               </CardDescription>
@@ -283,41 +276,6 @@ export default function AdminEditAdministratorPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="rounded-xl">
-            <CardHeader>
-              <CardTitle>สิทธิ์การดำเนินการ (Actions)</CardTitle>
-              <CardDescription>
-                กำหนดการกระทำที่สามารถทำได้ในแต่ละหมวด
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {permissionsConfig.map((menu, index) => (
-                  <React.Fragment key={menu.id}>
-                    <div className="grid grid-cols-[1fr_2fr] gap-4 items-start">
-                      <Label className="font-semibold text-base pt-3">{menu.label}</Label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-secondary/50">
-                        {menu.actions.map(action => (
-                          <div key={action} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`${menu.id}-${action}`}
-                              checked={permissions[menu.id]?.includes(action)}
-                              onCheckedChange={(checked) => handlePermissionChange(menu.id, action, !!checked)}
-                            />
-                            <Label htmlFor={`${menu.id}-${action}`} className="font-normal text-sm lowercase">
-                              {actionLabels[action]}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {index < permissionsConfig.length - 1 && <Separator />}
-                  </React.Fragment>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
         <div className="flex items-center justify-end gap-2 md:hidden">
           <Link href="/settings/administrators">
@@ -325,9 +283,26 @@ export default function AdminEditAdministratorPage() {
               ยกเลิก
             </Button>
           </Link>
-          <Button size="sm" onClick={handleSaveChanges} disabled={isSaving}>
-            {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" disabled={isSaving}>
+                {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>ยืนยันการเปลี่ยนสิทธิ์</AlertDialogTitle>
+                <AlertDialogDescription>
+                  การบันทึกจะทำให้สิทธิ์ของ "{admin.name || admin.email}" เปลี่ยนทันที และ
+                  บังคับให้ผู้ใช้คนนี้ถูกล็อกเอาต์เพื่อให้ต้องล็อกอินใหม่ด้วยสิทธิ์ชุดใหม่
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSaveChanges}>ยืนยันบันทึก</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </main>

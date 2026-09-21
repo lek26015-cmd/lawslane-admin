@@ -165,6 +165,8 @@ export default function AdminLawyerEditPage() {
       const lawyerRef = doc(firestore, 'lawyerProfiles', id as string);
       await updateDoc(lawyerRef, {
         name: lawyer.name,
+        // ใช้ค้นหาแบบ prefix ในหน้า /lawyers — ดู scripts/backfill-lowercase-fields.ts
+        nameLower: (lawyer.name || '').toLowerCase(),
         status: lawyer.status,
         specialty: lawyer.specialty,
         imageUrl: lawyer.imageUrl,

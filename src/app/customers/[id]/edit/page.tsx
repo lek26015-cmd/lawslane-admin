@@ -109,6 +109,8 @@ export default function AdminCustomerEditPage() {
     // Only updating fields that are editable in this form
     const updatedData = {
       name: customer.name,
+      // ใช้ค้นหาแบบ prefix ในหน้า /customers — ดู scripts/backfill-lowercase-fields.ts
+      nameLower: (customer.name || '').toLowerCase(),
       type: customer.type,
       status: customer.status,
       avatar: customer.avatar,

@@ -2,7 +2,6 @@
 
 import { initAdmin } from '@/lib/firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
 
 export async function requestAdminPasswordReset(email: string) {
@@ -17,7 +16,6 @@ export async function requestAdminPasswordReset(email: string) {
         }
 
         const auth = getAuth();
-        const db = getFirestore();
 
         // 1. Verify user exists in Auth
         let userRecord;
@@ -25,19 +23,18 @@ export async function requestAdminPasswordReset(email: string) {
             userRecord = await auth.getUserByEmail(email);
         } catch (error: any) {
             if (error.code === 'auth/user-not-found') {
-                return { success: false, error: 'User not found' };
+                // ตอบเหมือนกรณีสำเร็จ เพื่อไม่ให้ใช้ endpoint นี้ไล่เดาว่าอีเมลไหนมีบัญชีอยู่
+                return { success: true };
             }
             throw error;
         }
 
-        // 2. Fetch user profile to get notification preferences
-        const userDoc = await db.collection('users').doc(userRecord.uid).get();
-        const userData = userDoc.data();
-
-        // Determine target email
-        let targetEmail = email;
-        if (userData?.notificationPreferences?.email) {
-            targetEmail = userData.notificationPreferences.email;
+        // 2. ปลายทางของลิงก์รีเซ็ตต้องเป็นอีเมลของบัญชีใน Firebase Auth เท่านั้น
+        //    เดิมใช้ users/{uid}.notificationPreferences.email ซึ่งเป็นฟิลด์ใน Firestore
+        //    ที่เจ้าของบัญชีเขียนเองได้ — ลิงก์รีเซ็ตรหัสผ่านไม่ควรวิ่งตามค่าที่แก้ได้
+        const targetEmail = userRecord.email;
+        if (!targetEmail) {
+            return { success: true };
         }
 
         // 3. Generate Password Reset Link
@@ -62,14 +59,14 @@ export async function requestAdminPasswordReset(email: string) {
         <p><a href="${link}">รีเซ็ตรหัสผ่าน</a></p>
         <p>หากคุณไม่ได้เป็นผู้ร้องขอ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>
         <hr />
-        <p style="font-size: 12px; color: #666;">อีเมลนี้ถูกส่งไปยัง ${targetEmail} ตามการตั้งค่าการแจ้งเตือนของคุณ</p>
+        <p style="font-size: 12px; color: #666;">อีเมลนี้ถูกส่งไปยังอีเมลที่ผูกกับบัญชีนี้</p>
       `,
         });
 
-        return { success: true, sentTo: targetEmail };
+        return { success: true };
 
     } catch (error: any) {
         console.error('Error requesting password reset:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: 'ไม่สามารถส่งอีเมลรีเซ็ตรหัสผ่านได้ กรุณาลองใหม่ภายหลัง' };
     }
 }

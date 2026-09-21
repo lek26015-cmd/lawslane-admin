@@ -128,6 +128,7 @@ export default function AdminCustomerCreatePage() {
 
       const newUser = {
         name,
+        nameLower: name.toLowerCase(),
         email,
         type,
         status,

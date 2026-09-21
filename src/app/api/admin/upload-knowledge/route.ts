@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parsePdfFromBuffer } from '@/lib/pdf-loader';
 import crypto from 'crypto';
+import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 
 const WORKER_URL = 'https://lawslane-rag-api.lawslane-app.workers.dev';
 
@@ -17,6 +18,13 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
 }
 
 export async function POST(req: NextRequest) {
+    // ต้องเป็นแอดมินที่ล็อกอินอยู่จริง — middleware ของแอปนี้เช็คแค่ว่ามี cookie
+    // ชื่อ session ไหม (ปลอมได้) และ matcher ก็ไม่ครอบ /api จึงต้องกันที่ route เอง
+    try {
+        await requireAdmin();
+    } catch (e) {
+        return authErrorResponse(e);
+    }
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;

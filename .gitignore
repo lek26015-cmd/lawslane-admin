@@ -39,3 +39,10 @@ next-env.d.ts
 apphosting.yaml
 docs/backend.json
 # wrangler.toml
+
+# python bytecode
+__pycache__/
+*.pyc
+
+# node_modules ของ worker ย่อย (เคยถูก track ไว้โดยไม่ตั้งใจ)
+workers/**/node_modules/

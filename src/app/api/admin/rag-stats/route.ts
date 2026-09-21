@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 
 // Server-side cache to prevent rate limiting Workers during concurrent dashboard access
 let cachedData: any = { vectorCount: 188053, dimensions: 1024, lastChecked: new Date().toISOString() };
@@ -6,6 +7,13 @@ let lastCacheTime = Date.now();
 const CACHE_DURATION = 30000; // 30 seconds
 
 export async function GET() {
+    // ต้องเป็นแอดมินที่ล็อกอินอยู่จริง — middleware ของแอปนี้เช็คแค่ว่ามี cookie
+    // ชื่อ session ไหม (ปลอมได้) และ matcher ก็ไม่ครอบ /api จึงต้องกันที่ route เอง
+    try {
+        await requireAdmin();
+    } catch (e) {
+        return authErrorResponse(e);
+    }
     try {
         const now = Date.now();
         if (cachedData && (now - lastCacheTime < CACHE_DURATION)) {

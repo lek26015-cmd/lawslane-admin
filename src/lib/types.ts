@@ -386,30 +386,32 @@ export interface Book {
   publishedAt: any;
 }
 
-export interface ShippingAddress {
+// ที่อยู่จัดส่งตามที่ education เก็บจริง (checkout/page.tsx) — แค่ name/phone/address
+// ไม่มี district/province/zipCode แยก และเป็น null สำหรับสินค้าดิจิทัล (ebook/คอร์ส) ที่ไม่ต้องจัดส่ง
+export interface StoreOrderShippingInfo {
   name: string;
   phone: string;
   address: string;
-  district: string;
-  province: string;
-  zipCode: string;
 }
 
-export interface BookOrder {
+// ออเดอร์จาก store ของ lawlanes-education (collection `orders` — ใช้ร่วมกันทั้งหนังสือ/คอร์ส/ข้อสอบ)
+// เดิมหน้านี้อ่าน collection `bookOrders` ที่ไม่มีใครเขียนอีกต่อไป (education เขียนลง `orders` เสมอ)
+export interface StoreOrder {
   id: string;
   userId: string;
   items: {
-    bookId: string;
+    id: string;
+    type: 'BOOK' | 'COURSE' | 'EXAM';
     title: string;
     quantity: number;
     price: number;
-    imageUrl: string;
+    coverUrl: string;
   }[];
   totalAmount: number;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
-  paymentMethod: 'bank-transfer' | 'promptpay' | 'credit_card';
-  paymentSlipUrl?: string;
-  shippingAddress: ShippingAddress;
+  status: 'PENDING' | 'PAID' | 'REJECTED' | 'SHIPPING' | 'COMPLETED' | 'DELIVERED';
+  paymentMethod: string;
+  slipUrl?: string;
+  shippingInfo: StoreOrderShippingInfo | null;
   trackingNumber?: string;
   createdAt: any;
   updatedAt?: any;

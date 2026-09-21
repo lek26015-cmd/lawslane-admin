@@ -2,11 +2,12 @@
 import fs from 'fs';
 import path from 'path';
 import * as dotenv from 'dotenv';
+import { LEGACY_SUPER_ADMIN_UIDS } from '../src/lib/super-admin';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const KEEP_UID = 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+const KEEP_UID = LEGACY_SUPER_ADMIN_UIDS[0];
 const CONFIG_PATH = '/Users/tawanberkfah/.config/configstore/firebase-tools.json';
 const CLIENT_ID = '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com';
 // Public client secret for Firebase CLI (often not needed or is public)

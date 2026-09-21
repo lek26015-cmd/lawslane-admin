@@ -46,7 +46,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { useFirebase } from '@/firebase';
+import { useFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import {
   collection,
   query,
@@ -71,6 +71,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { getFinancialStats, ensureDate } from '@/lib/data';
 import { getMainLink } from '@/lib/domain-utils';
+import { isDesignatedSuperAdmin } from '@/lib/super-admin';
 import { useSearchParams } from 'next/navigation';
 import { SlipVerifier } from '@/components/admin/slip-verifier';
 import { Textarea } from '@/components/ui/textarea';
@@ -100,6 +101,18 @@ type Transaction = {
   receiptUrl?: string;
 };
 
+type WithdrawalRequest = {
+  id: string;
+  lawyerId: string;
+  lawyerName: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: Date;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+};
+
 type SlipVerificationItem = {
   id: string;
   type: 'Appointment' | 'Chat' | 'Invoice';
@@ -123,7 +136,8 @@ function FinancialsContent() {
   const [activeTab, setActiveTab] = React.useState('overview');
   const [slipVerifications, setSlipVerifications] = React.useState<SlipVerificationItem[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-  const [withdrawalRequests, setWithdrawalRequests] = React.useState<any[]>([]);
+  const [withdrawalRequests, setWithdrawalRequests] = React.useState<WithdrawalRequest[]>([]);
+  const [processingWithdrawalId, setProcessingWithdrawalId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [stats, setStats] = React.useState({
     totalServiceValue: 0,
@@ -159,7 +173,7 @@ function FinancialsContent() {
             const userDoc = await getDoc(doc(firestore!, 'users', user.uid));
             if (userDoc.exists()) {
               const userData = userDoc.data();
-              const isSuper = !!userData.superAdmin || userData.superAdmin === 'true' || user.email === 'lek.26015@gmail.com' || user.uid === 'wS9w7ysNYUajNsBYZ6C7n2Afe9H3';
+              const isSuper = !!userData.superAdmin || userData.superAdmin === 'true' || isDesignatedSuperAdmin({ uid: user.uid, email: user.email });
               setIsSuperAdmin(isSuper);
               setIsAuthorized(true);
             }
@@ -462,6 +476,85 @@ function FinancialsContent() {
     }
   }, [firestore, isAuthorized, toast]);
 
+  // เดิมหน้านี้ประกาศ state ของแท็บถอนเงินไว้เฉยๆ แต่ไม่เคย fetch/render จริง (แท็บตาย)
+  // ทนายสร้างคำร้องได้จากหน้า lawyer-dashboard/financials (เขียนลง `withdrawals`) แต่ไม่มีทางอนุมัติ
+  // ผ่านหน้าเว็บเลย ต้องเข้า Firestore console มือ — เพิ่มการ fetch/อนุมัติ/ปฏิเสธจริงตรงนี้
+  const fetchWithdrawals = React.useCallback(async () => {
+    if (!firestore || !isAuthorized) return;
+    setIsLoading(true);
+
+    try {
+      const snap = await getDocs(query(
+        collection(firestore, 'withdrawals'),
+        orderBy('requestedAt', 'desc'),
+        limit(200)
+      ));
+
+      const lawyerIds = new Set<string>();
+      snap.docs.forEach(d => { if (d.data().lawyerId) lawyerIds.add(d.data().lawyerId); });
+
+      const lawyerNames: Record<string, string> = {};
+      if (lawyerIds.size > 0) {
+        const ids = Array.from(lawyerIds);
+        for (let i = 0; i < ids.length; i += 30) {
+          const chunk = ids.slice(i, i + 30);
+          const snaps = await getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)));
+          snaps.forEach(snapDoc => { lawyerNames[snapDoc.id] = snapDoc.data().name || 'Unknown Lawyer'; });
+        }
+      }
+
+      const requests: WithdrawalRequest[] = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          lawyerId: data.lawyerId || '',
+          lawyerName: lawyerNames[data.lawyerId] || 'Unknown Lawyer',
+          amount: data.amount || 0,
+          status: data.status || 'pending',
+          requestedAt: ensureDate(data.requestedAt),
+          bankName: data.bankName,
+          accountNumber: data.accountNumber,
+          accountName: data.accountName,
+        };
+      });
+
+      setWithdrawalRequests(requests);
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [firestore, isAuthorized, toast]);
+
+  const handleProcessWithdrawal = async (item: WithdrawalRequest, newStatus: 'approved' | 'rejected') => {
+    if (!firestore) return;
+    const actionLabel = newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ';
+    const confirmProcess = window.confirm(`ยืนยันการ${actionLabel}คำร้องถอนเงิน ฿${item.amount.toLocaleString()} ของ ${item.lawyerName}?`);
+    if (!confirmProcess) return;
+
+    setProcessingWithdrawalId(item.id);
+    try {
+      await updateDoc(doc(firestore, 'withdrawals', item.id), {
+        status: newStatus,
+        processedAt: serverTimestamp(),
+      });
+      toast({ title: 'สำเร็จ', description: `${actionLabel}คำร้องถอนเงินเรียบร้อยแล้ว` });
+      fetchWithdrawals();
+    } catch (e: any) {
+      console.error(e);
+      const permissionError = new FirestorePermissionError({
+        path: `withdrawals/${item.id}`,
+        operation: 'update',
+        requestResourceData: { status: newStatus },
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
+    } finally {
+      setProcessingWithdrawalId(null);
+    }
+  };
+
   const handleApproveSlip = async (item: SlipVerificationItem) => {
     if (!firestore) return;
     
@@ -500,8 +593,9 @@ function FinancialsContent() {
       getFinancialStats(firestore!).then(setStats);
       if (activeTab === 'verification') fetchPendingPayments();
       else if (activeTab === 'transactions') fetchTransactions();
+      else if (activeTab === 'withdrawals') fetchWithdrawals();
     }
-  }, [isAuthorized, activeTab, fetchPendingPayments, fetchTransactions, firestore]);
+  }, [isAuthorized, activeTab, fetchPendingPayments, fetchTransactions, fetchWithdrawals, firestore]);
 
   if (checkingAuth) return <div className="p-8 text-center">Checking permissions...</div>;
   if (!isAuthorized) return (
@@ -519,7 +613,11 @@ function FinancialsContent() {
           <h1 className="text-2xl font-bold tracking-tight">Financials (Complete View)</h1>
           <p className="text-muted-foreground">จัดการธุรกรรมและรายได้ทั้งหมดของแพลตฟอร์ม</p>
         </div>
-        <Button onClick={() => activeTab === 'verification' ? fetchPendingPayments() : fetchTransactions()} disabled={isLoading}>
+        <Button onClick={() => {
+          if (activeTab === 'verification') fetchPendingPayments();
+          else if (activeTab === 'withdrawals') fetchWithdrawals();
+          else fetchTransactions();
+        }} disabled={isLoading}>
           {isLoading ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
         </Button>
       </div>
@@ -531,10 +629,11 @@ function FinancialsContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 md:w-[400px]">
+        <TabsList className="grid w-full grid-cols-4 md:w-[520px]">
           <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
           <TabsTrigger value="verification">ตรวจสลิป ({slipVerifications.length})</TabsTrigger>
           <TabsTrigger value="transactions">ธุรกรรม</TabsTrigger>
+          <TabsTrigger value="withdrawals">คำร้องถอนเงิน ({withdrawalRequests.filter(w => w.status === 'pending').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -630,7 +729,7 @@ function FinancialsContent() {
                                 <DialogTitle>ข้อมูลดิบของรายการ ({t.type})</DialogTitle>
                                 <DialogDescription>ID: {t.id}</DialogDescription>
                               </DialogHeader>
-                              <div class="rounded-md border bg-slate-50 p-4 font-mono text-[10px]">
+                              <div className="rounded-md border bg-slate-50 p-4 font-mono text-[10px]">
                                 <pre>{JSON.stringify(t.rawData, null, 2)}</pre>
                               </div>
                             </DialogContent>
@@ -641,6 +740,55 @@ function FinancialsContent() {
                     <TableCell className="text-right font-bold">฿{t.amount.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       {t.slipUrl && <Button variant="ghost" size="sm" onClick={() => { setSelectedSlip({ url: t.slipUrl!, amount: t.amount, lawyerName: '...' }); setIsVerifierOpen(true); }}><Eye className="w-4 h-4" /></Button>}
+                    </TableCell>
+                  </TableRow>
+                ))
+              }
+            </TableBody>
+          </Table></Card>
+        </TabsContent>
+
+        <TabsContent value="withdrawals" className="mt-4">
+          <Card><Table>
+            <TableHeader><TableRow><TableHead>วันที่ขอ</TableHead><TableHead>ทนาย</TableHead><TableHead>บัญชีรับเงิน</TableHead><TableHead className="text-right">ยอด</TableHead><TableHead>สถานะ</TableHead><TableHead className="text-right">จัดการ</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {withdrawalRequests.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">ไม่มีคำร้องถอนเงิน</TableCell></TableRow> :
+                withdrawalRequests.map(w => (
+                  <TableRow key={w.id}>
+                    <TableCell>{format(w.requestedAt, 'd MMM yyyy HH:mm', { locale: th })}</TableCell>
+                    <TableCell className="font-bold">{w.lawyerName}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">{w.bankName || '-'}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono">{w.accountNumber || '-'} {w.accountName ? `(${w.accountName})` : ''}</div>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">฿{w.amount.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {w.status === 'pending' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">รอดำเนินการ</Badge>}
+                      {w.status === 'approved' && <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">อนุมัติแล้ว</Badge>}
+                      {w.status === 'rejected' && <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">ปฏิเสธแล้ว</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      {w.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            disabled={processingWithdrawalId === w.id}
+                            onClick={() => handleProcessWithdrawal(w, 'approved')}
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" /> อนุมัติ
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            disabled={processingWithdrawalId === w.id}
+                            onClick={() => handleProcessWithdrawal(w, 'rejected')}
+                          >
+                            ปฏิเสธ
+                          </Button>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

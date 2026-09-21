@@ -1,77 +1,105 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { BookOrder } from '@/lib/types';
-import { getBookOrdersAction, updateOrderStatusAction } from '@/app/actions/book-actions';
+import { StoreOrder } from '@/lib/types';
+import { getStoreOrdersAction, updateOrderStatusAction } from '@/app/actions/book-actions';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Loader2, 
-  ShoppingBag, 
-  Eye, 
-  CheckCircle2, 
-  Truck, 
+import {
+  ShoppingBag,
+  Eye,
+  CheckCircle2,
+  Truck,
   XCircle,
   ExternalLink,
   Calendar,
   CreditCard,
   User,
-  MapPin
+  Search,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { DataTablePagination } from '@/components/admin/DataTablePagination';
+import { TableSkeleton } from '@/components/admin/TableSkeleton';
+
+const PAGE_SIZE = 25;
+const STATUS_TABS: { value: string; label: string }[] = [
+  { value: 'all', label: 'ทั้งหมด' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'PAID', label: 'Paid' },
+  { value: 'SHIPPING', label: 'Shipping' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'REJECTED', label: 'Rejected' },
+];
 
 export default function BookOrdersPage() {
-  const [orders, setOrders] = useState<BookOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<BookOrder | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebouncedValue(searchInput.trim(), 300);
+  const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const { toast } = useToast();
 
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const data = await getBookOrdersAction();
-      setOrders(data);
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to fetch orders", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+  const source: AdminListSource<StoreOrder> = React.useMemo(
+    () => ({
+      kind: 'server-action',
+      fetchPage: async (cursor, pageSize) => {
+        const result = await getStoreOrdersAction({
+          cursor: (cursor as string | null) ?? null,
+          pageSize,
+          status: activeTab !== 'all' ? (activeTab as StoreOrder['status']) : undefined,
+          searchTerm: debouncedSearch || undefined,
+        });
+        return { items: result.items, nextCursor: result.nextCursor };
+      },
+    }),
+    [activeTab, debouncedSearch]
+  );
+
+  const { data: orders, loading, error, hasNext, hasPrevious, page, next, previous, refresh } = useAdminList({
+    source,
+    pageSize: PAGE_SIZE,
+    resetKey: `${activeTab}|${debouncedSearch}`,
+  });
+
+  React.useEffect(() => {
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to fetch orders', variant: 'destructive' });
     }
-  };
+  }, [error, toast]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const handleUpdateStatus = async (orderId: string, status: BookOrder['status'], tNum?: string) => {
+  const handleUpdateStatus = async (orderId: string, status: StoreOrder['status'], tNum?: string) => {
     setIsUpdating(true);
     try {
       const res = await updateOrderStatusAction(orderId, status, tNum);
       if (res.success) {
         toast({ title: "Updated", description: `Order status changed to ${status}` });
         setSelectedOrder(null);
-        fetchOrders();
+        refresh();
       }
     } catch (error) {
       toast({ title: "Error", description: "Feedback update failed", variant: "destructive" });
@@ -80,13 +108,14 @@ export default function BookOrdersPage() {
     }
   };
 
-  const getStatusBadge = (status: BookOrder['status']) => {
+  const getStatusBadge = (status: StoreOrder['status']) => {
     switch (status) {
-      case 'pending': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase font-black text-[10px] tracking-wider">Pending</Badge>;
-      case 'paid': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase font-black text-[10px] tracking-wider">Paid / Confirmed</Badge>;
-      case 'shipped': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 uppercase font-black text-[10px] tracking-wider">Shipped</Badge>;
-      case 'delivered': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 uppercase font-black text-[10px] tracking-wider">Delivered</Badge>;
-      case 'cancelled': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 uppercase font-black text-[10px] tracking-wider">Cancelled</Badge>;
+      case 'PENDING': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase font-black text-[10px] tracking-wider">Pending</Badge>;
+      case 'PAID': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase font-black text-[10px] tracking-wider">Paid / Confirmed</Badge>;
+      case 'SHIPPING': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 uppercase font-black text-[10px] tracking-wider">Shipped</Badge>;
+      case 'COMPLETED': return <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200 uppercase font-black text-[10px] tracking-wider">Completed</Badge>;
+      case 'DELIVERED': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 uppercase font-black text-[10px] tracking-wider">Delivered</Badge>;
+      case 'REJECTED': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 uppercase font-black text-[10px] tracking-wider">Rejected</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -96,22 +125,52 @@ export default function BookOrdersPage() {
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <ShoppingBag className="w-8 h-8 text-blue-600" />
-          Bookstore Orders
+          Store Orders
         </h1>
-        <p className="text-slate-500">Verify payments and manage fulfillment for book sales</p>
+        <p className="text-slate-500">Verify payments and manage fulfillment for book/course/exam purchases from Lawslane Wittaya</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="flex-wrap h-auto">
+            {STATUS_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="relative w-full max-w-[240px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="ค้นหาด้วย User ID (ตรงทั้งหมด)..."
+            className="pl-8 h-9"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
       </div>
 
       <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-20 text-center">
-              <Loader2 className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4" />
-              <p className="text-slate-500">Fetching order history...</p>
-            </div>
+          {loading ? (
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Order ID / Date</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Customer</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Total</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Status</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableSkeleton rows={8} columns={5} />
+            </Table>
           ) : orders.length === 0 ? (
-            <div className="p-20 text-center">
-              <ShoppingBag className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-              <p className="text-slate-500 font-medium">No orders found yet</p>
+            <div className="p-20">
+              <EmptyState
+                icon={ShoppingBag}
+                title={debouncedSearch ? `ไม่พบออเดอร์สำหรับ userId "${debouncedSearch}"` : 'No orders found yet'}
+                description={debouncedSearch ? 'ลองล้างคำค้นหาแล้วค้นหาใหม่' : 'ออเดอร์ใหม่จากลูกค้าจะแสดงที่นี่'}
+              />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -136,8 +195,17 @@ export default function BookOrdersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-4">
-                        <div className="font-bold text-sm text-slate-800">{order.shippingAddress.name}</div>
-                        <div className="text-xs text-slate-500">{order.shippingAddress.phone}</div>
+                        {order.shippingInfo ? (
+                          <>
+                            <div className="font-bold text-sm text-slate-800">{order.shippingInfo.name}</div>
+                            <div className="text-xs text-slate-500">{order.shippingInfo.phone}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-mono text-xs text-slate-500">{order.userId.substring(0, 12)}...</div>
+                            <div className="text-[10px] text-slate-400 italic">สินค้าดิจิทัล ไม่ต้องจัดส่ง</div>
+                          </>
+                        )}
                       </TableCell>
                       <TableCell className="px-6 py-4 font-bold text-blue-600">
                         ฿{order.totalAmount.toLocaleString()}
@@ -146,9 +214,9 @@ export default function BookOrdersPage() {
                         {getStatusBadge(order.status)}
                       </TableCell>
                       <TableCell className="px-6 py-4 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="rounded-xl gap-2 hover:bg-blue-50 hover:text-blue-600"
                           onClick={() => {
                             setSelectedOrder(order);
@@ -165,6 +233,17 @@ export default function BookOrdersPage() {
             </div>
           )}
         </CardContent>
+        <div className="px-6 py-4 border-t border-slate-100">
+          <DataTablePagination
+            page={page}
+            shown={orders.length}
+            hasNext={hasNext}
+            hasPrevious={hasPrevious}
+            loading={loading}
+            onNext={next}
+            onPrevious={previous}
+          />
+        </div>
       </Card>
 
       {/* Order Details & Verification Modal */}
@@ -192,11 +271,17 @@ export default function BookOrdersPage() {
                       <User className="w-3 h-3" /> Customer & Shipping
                     </h3>
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
-                      <p className="font-bold text-sm">{selectedOrder.shippingAddress.name}</p>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.district}, {selectedOrder.shippingAddress.province}, {selectedOrder.shippingAddress.zipCode}
-                      </p>
-                      <p className="text-xs font-bold text-blue-600">{selectedOrder.shippingAddress.phone}</p>
+                      {selectedOrder.shippingInfo ? (
+                        <>
+                          <p className="font-bold text-sm">{selectedOrder.shippingInfo.name}</p>
+                          <p className="text-xs text-slate-600 leading-relaxed">
+                            {selectedOrder.shippingInfo.address}
+                          </p>
+                          <p className="text-xs font-bold text-blue-600">{selectedOrder.shippingInfo.phone}</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic">สินค้าดิจิทัล (ebook/คอร์ส) ไม่ต้องจัดส่ง — userId: {selectedOrder.userId}</p>
+                      )}
                     </div>
                   </div>
 
@@ -207,9 +292,9 @@ export default function BookOrdersPage() {
                     <div className="space-y-3">
                       {selectedOrder.items.map((item, idx) => (
                         <div key={idx} className="flex gap-3 items-center">
-                          <img src={item.imageUrl} className="w-10 h-12 object-cover rounded-lg border border-slate-100" />
+                          <img src={item.coverUrl} className="w-10 h-12 object-cover rounded-lg border border-slate-100" />
                           <div className="flex-1">
-                            <p className="text-xs font-bold text-slate-800 line-clamp-1">{item.title}</p>
+                            <p className="text-xs font-bold text-slate-800 line-clamp-1">{item.title} <span className="text-slate-400 font-normal">({item.type})</span></p>
                             <p className="text-[10px] text-slate-500">Qty: {item.quantity} x ฿{item.price.toLocaleString()}</p>
                           </div>
                         </div>
@@ -231,12 +316,12 @@ export default function BookOrdersPage() {
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
                       <CreditCard className="w-3 h-3" /> Payment Verification
                     </h3>
-                    {selectedOrder.paymentSlipUrl ? (
+                    {selectedOrder.slipUrl ? (
                       <div className="relative group cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden aspect-[3/4] bg-white">
-                        <img src={selectedOrder.paymentSlipUrl} className="w-full h-full object-contain" />
+                        <img src={selectedOrder.slipUrl} className="w-full h-full object-contain" />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                            <Button variant="outline" className="bg-white border-none text-black rounded-full" asChild>
-                             <a href={selectedOrder.paymentSlipUrl} target="_blank" rel="noopener noreferrer">
+                             <a href={selectedOrder.slipUrl} target="_blank" rel="noopener noreferrer">
                                <ExternalLink className="w-4 h-4 mr-2" /> View Original
                              </a>
                            </Button>
@@ -254,31 +339,60 @@ export default function BookOrdersPage() {
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                       <Truck className="w-3 h-3" /> Fulfillment
                     </h3>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase">Tracking Number</Label>
-                        <Input 
-                            placeholder="Enter carrier tracking code..." 
-                            value={trackingNumber}
-                            onChange={(e) => setTrackingNumber(e.target.value)}
-                            className="bg-white rounded-xl border-slate-200"
-                        />
-                    </div>
+                    {selectedOrder.shippingInfo && (
+                      <div className="space-y-2">
+                          <Label className="text-[10px] font-black text-slate-400 uppercase">Tracking Number</Label>
+                          <Input
+                              placeholder="Enter carrier tracking code..."
+                              value={trackingNumber}
+                              onChange={(e) => setTrackingNumber(e.target.value)}
+                              className="bg-white rounded-xl border-slate-200"
+                          />
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2 pt-2">
-                      <Button 
-                        disabled={isUpdating || selectedOrder.status === 'paid' || selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered'} 
+                      <Button
+                        disabled={isUpdating || selectedOrder.status !== 'PENDING'}
                         className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'paid')}
+                        onClick={() => handleUpdateStatus(selectedOrder.id, 'PAID')}
                       >
                         <CheckCircle2 className="w-4 h-4" /> Confirm Payment
                       </Button>
-                      <Button 
-                        disabled={isUpdating || selectedOrder.status !== 'paid'} 
-                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
-                        onClick={() => handleUpdateStatus(selectedOrder.id, 'shipped', trackingNumber)}
+                      <Button
+                        variant="outline"
+                        disabled={isUpdating || selectedOrder.status !== 'PENDING'}
+                        className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-xs font-bold"
+                        onClick={() => handleUpdateStatus(selectedOrder.id, 'REJECTED')}
                       >
-                        <Truck className="w-4 h-4" /> Mark Shipped
+                        <XCircle className="w-4 h-4" /> Reject
                       </Button>
+                      {selectedOrder.shippingInfo ? (
+                        <>
+                          <Button
+                            disabled={isUpdating || selectedOrder.status !== 'PAID'}
+                            className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
+                            onClick={() => handleUpdateStatus(selectedOrder.id, 'SHIPPING', trackingNumber)}
+                          >
+                            <Truck className="w-4 h-4" /> Mark Shipped
+                          </Button>
+                          <Button
+                            disabled={isUpdating || selectedOrder.status !== 'SHIPPING'}
+                            className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
+                            onClick={() => handleUpdateStatus(selectedOrder.id, 'DELIVERED')}
+                          >
+                            <CheckCircle2 className="w-4 h-4" /> Mark Delivered
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          disabled={isUpdating || selectedOrder.status !== 'PAID'}
+                          className="col-span-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
+                          onClick={() => handleUpdateStatus(selectedOrder.id, 'COMPLETED')}
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> Mark Completed
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

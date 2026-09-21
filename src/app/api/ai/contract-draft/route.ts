@@ -2,6 +2,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 
 // Define the schema using Zod
 const ContractDraftSchema = z.object({
@@ -25,6 +26,13 @@ const RequestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+    // ต้องเป็นแอดมินที่ล็อกอินอยู่จริง — middleware ของแอปนี้เช็คแค่ว่ามี cookie
+    // ชื่อ session ไหม (ปลอมได้) และ matcher ก็ไม่ครอบ /api จึงต้องกันที่ route เอง
+    try {
+        await requireAdmin();
+    } catch (e) {
+        return authErrorResponse(e);
+    }
     try {
         const body = await req.json();
         const { images, image, locale = 'th' } = RequestSchema.parse(body);
