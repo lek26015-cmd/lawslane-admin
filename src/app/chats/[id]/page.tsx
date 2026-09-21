@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, ArrowLeft, FileIcon } from 'lucide-react';
+import { Loader2, ArrowLeft, FileIcon, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 

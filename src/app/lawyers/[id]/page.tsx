@@ -86,6 +86,7 @@ export default function AdminLawyerDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [duplicateLawyers, setDuplicateLawyers] = React.useState<LawyerProfile[]>([]);
+  const [userRecord, setUserRecord] = React.useState<Record<string, any> | null>(null);
 
   // GP Coupon state
   const [gpCoupons, setGpCoupons] = React.useState<GpCoupon[]>([]); // all active coupons
@@ -119,29 +120,7 @@ export default function AdminLawyerDetailPage() {
           if (userSnap.exists()) {
             const userData = userSnap.data();
             
-            // Populate the User Data Inspector div directly for speed
-            const inspector = document.getElementById('user-data-inspector');
-            if (inspector) {
-              const tableHtml = `
-                <div class="rounded-md border bg-white overflow-hidden max-h-[400px] overflow-y-auto">
-                  <table class="w-full text-[10px] font-mono">
-                    <thead class="bg-slate-50">
-                      <tr><th class="p-2 border text-left">Field</th><th class="p-2 border text-left">Value</th></tr>
-                    </thead>
-                    <tbody>
-                      ${Object.entries(userData).map(([k, v]) => `
-                        <tr>
-                          <td class="p-2 border font-bold">${k}</td>
-                          <td class="p-2 border break-all">${typeof v === 'string' && (v.startsWith('http') || v.includes('/')) ? `<a href="${v}" target="_blank" class="text-blue-600 underline">${v}</a>` : String(v)}</td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              `;
-              inspector.innerHTML = tableHtml;
-              inspector.className = ""; // Remove centering
-            }
+            setUserRecord(userData);
 
             mergedLawyer = {
               ...foundLawyer,
@@ -161,23 +140,23 @@ export default function AdminLawyerDetailPage() {
         // Check for duplicates
         const lawyersRef = collection(firestore, 'lawyerProfiles');
         // Check by Name
-        const nameQuery = query(lawyersRef, where('name', '==', foundLawyer.name));
+        const nameQuery = query(lawyersRef, where('name', '==', mergedLawyer.name));
         const nameSnapshot = await getDocs(nameQuery);
 
         // Check by License Number
-        const licenseQuery = query(lawyersRef, where('licenseNumber', '==', foundLawyer.licenseNumber));
+        const licenseQuery = query(lawyersRef, where('licenseNumber', '==', mergedLawyer.licenseNumber));
         const licenseSnapshot = await getDocs(licenseQuery);
 
         const duplicates = new Map<string, LawyerProfile>();
 
         nameSnapshot.docs.forEach(doc => {
-          if (doc.id !== foundLawyer.id) {
+          if (doc.id !== mergedLawyer.id) {
             duplicates.set(doc.id, { id: doc.id, ...doc.data() } as LawyerProfile);
           }
         });
 
         licenseSnapshot.docs.forEach(doc => {
-          if (doc.id !== foundLawyer.id) {
+          if (doc.id !== mergedLawyer.id) {
             duplicates.set(doc.id, { id: doc.id, ...doc.data() } as LawyerProfile);
           }
         });
@@ -574,9 +553,40 @@ export default function AdminLawyerDetailPage() {
             <p className="text-xs text-blue-700 mb-4">
               หากข้อมูลในตารางสีเหลืองด้านบนไม่มีลิงก์เอกสาร ให้ตรวจสอบข้อมูลพื้นฐาน (User Record) ในตารางนี้แทน
             </p>
-            <div id="user-data-inspector" className="text-center py-8 text-muted-foreground text-sm">
-              กำลังโหลดข้อมูลพื้นฐาน...
-            </div>
+            {!userRecord ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                กำลังโหลดข้อมูลพื้นฐาน...
+              </div>
+            ) : (
+              <div className="rounded-md border bg-white overflow-hidden max-h-[400px] overflow-y-auto">
+                <table className="w-full text-[10px] font-mono">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="p-2 border text-left">Field</th>
+                      <th className="p-2 border text-left">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(userRecord).map(([k, v]) => {
+                      const value = typeof v === 'string' ? v : String(v);
+                      const isLink = typeof v === 'string' && v.startsWith('http');
+                      return (
+                        <tr key={k}>
+                          <td className="p-2 border font-bold">{k}</td>
+                          <td className="p-2 border break-all">
+                            {isLink ? (
+                              <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                {value}
+                              </a>
+                            ) : value}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card className="rounded-xl">

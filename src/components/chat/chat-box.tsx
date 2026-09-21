@@ -56,6 +56,8 @@ export function ChatBox({
   chatId,
   isDisabled = false,
   isLawyerView = false,
+  onFileUpload,
+  isUploading = false,
 }: ChatBoxProps) {
   const [messages, setMessages] = useState<MessageWithTranslation[]>([]);
   const [input, setInput] = useState('');

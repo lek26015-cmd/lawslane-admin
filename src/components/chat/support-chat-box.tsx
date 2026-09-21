@@ -37,7 +37,7 @@ interface SupportMessage {
   isTranslating?: boolean;
 }
 
-export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false }: SupportChatBoxProps) {
+export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false, onFileUpload, isUploading = false }: SupportChatBoxProps) {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
