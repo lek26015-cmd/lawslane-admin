@@ -57,12 +57,18 @@ export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
         return "";
     }
 
+    // OCR ช้ากว่า chat มาก แต่ต้องมีเพดาน ไม่งั้น serverless function ค้างจนถูก kill
+    // โดยไม่มี log อะไรเลย
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
     try {
         console.log(`Calling Typhoon OCR with buffer size: ${fileBuffer.length} bytes`);
         const base64File = fileBuffer.toString('base64');
 
         const response = await fetch(TYPHOON_OCR_URL, {
             method: 'POST',
+            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
@@ -83,10 +89,13 @@ export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
                         ]
                     }
                 ],
-                max_tokens: 2048,
+                // เอกสารหลายหน้ากินเกิน 2048 tokens ได้ง่าย ของเดิมจึงตัดข้อความทิ้งกลางคัน
+                max_tokens: 8192,
                 temperature: 0.1,
             })
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -100,7 +109,13 @@ export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
         return content;
 
     } catch (error) {
-        console.error("Typhoon OCR Exception:", error);
+        if ((error as Error)?.name === 'AbortError') {
+            console.error("Typhoon OCR Timeout: เกิน 60 วินาที");
+        } else {
+            console.error("Typhoon OCR Exception:", error);
+        }
         return "";
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
