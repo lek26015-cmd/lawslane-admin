@@ -22,6 +22,7 @@ import {
     Ticket,
     UserCheck,
     Users2,
+    GraduationCap
 } from 'lucide-react';
 
 export type NavItem = {
@@ -103,6 +104,13 @@ export const navSections: NavSection[] = [
         items: [
             { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ", permission: "support" },
             { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล", permission: "support" },
+        ]
+    },
+    {
+        // ยกมาจาก lawlanes-education ตอนรวมหลังบ้าน (Module 4 เป็นต้นไป)
+        title: "การศึกษา",
+        items: [
+            { href: "/education/courses", icon: <GraduationCap className="h-4 w-4" />, label: "คอร์สเรียน", permission: "education.courses" },
         ]
     },
     {
