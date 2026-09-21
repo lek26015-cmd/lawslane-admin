@@ -38,6 +38,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { NotificationBell } from '@/components/admin/notification-bell';
 import { navSections, findSectionForPath } from '@/config/nav';
 import { isDesignatedSuperAdmin } from '@/lib/super-admin';
+import { hasPermission as checkPermission } from '@/lib/permissions';
 
 
 export function AdminClientLayout({ children }: { children: React.ReactNode }) {
@@ -79,6 +80,17 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // แหล่งความจริงของสิทธิ์คือ custom claim เท่านั้น — firestore.rules ปัจจุบัน
+                // ให้ผู้ใช้เขียน users/{uid} ของตัวเองได้ทุกฟิลด์ ใครก็ตั้ง role: 'admin'
+                // ให้ตัวเองแล้วเข้าหน้าหลังบ้านได้ ถ้าเชื่อค่าจาก Firestore
+                // (ให้ตรงกับ tokenGrantsAdmin/grantedPermissions ใน src/lib/auth-guard.ts)
+                let claims: Record<string, any> = {};
+                try {
+                    claims = (await user.getIdTokenResult()).claims as Record<string, any>;
+                } catch (e) {
+                    console.error('AdminClientLayout: อ่าน custom claim ไม่สำเร็จ', e);
+                }
+
                 const userDocRef = doc(firestore, "users", user.uid);
 
                 getDoc(userDocRef).then(userDoc => {
@@ -131,7 +143,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                         const userData = userDoc.data();
                         const userEmail = user.email || '';
 
-                        const isSuperAdminUser = isDesignatedSuperAdmin({ uid: user.uid, email: userEmail });
+                        const isSuperAdminUser = isDesignatedSuperAdmin({ uid: user.uid, email: userEmail })
+                            || claims.su === true || claims.superAdmin === true;
+                        const isAdminByClaim = claims.admin === true || claims.role === 'admin' || isSuperAdminUser;
 
                         if (isSuperAdminUser && userData.role !== 'admin') {
                             const newAdminData = {
@@ -145,15 +159,16 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     setCurrentUser(user);
                                     setUserRole('Super Admin');
                                 });
-                        } else if (userData.role === 'admin') {
-                            const isSuper = !!(isSuperAdminUser || userData.superAdmin);
+                        } else if (isAdminByClaim) {
+                            const isSuper = isSuperAdminUser;
                             const role = isSuper ? 'Super Admin' : 'Administrator';
                             setIsAdmin(true);
                             setCurrentUser(user);
                             setUserRole(role);
                             setIsSuperAdmin(isSuper);
-                            // null = no restrictions, array = specific permissions
-                            setAdminPermissions(isSuper ? null : (userData.adminPermissions ?? null));
+                            // null = ไม่จำกัดสิทธิ์ — super admin หรือบัญชีที่ยังไม่ได้ย้าย claim
+                            // (ตาข่ายกันล็อกตัวเองออกระหว่างย้ายระบบ ตรงกับ grantedPermissions())
+                            setAdminPermissions(isSuper ? null : (Array.isArray(claims.p) ? claims.p as string[] : null));
                         } else {
                             setIsAdmin(false);
                             setCurrentUser(null);
@@ -206,11 +221,10 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     };
 
     // null adminPermissions = Super Admin / unrestricted
-    const hasPermission = (permission?: string): boolean => {
-        if (!permission) return true;           // no restriction on this item
-        if (adminPermissions === null) return true;  // Super Admin sees all
-        return adminPermissions.includes(permission);
-    };
+    // ใช้ helper กลางเพื่อให้สิทธิ์แม่ครอบสิทธิ์ลูกเหมือนฝั่ง server
+    // (ถือ 'financials' ต้องเห็นเมนู 'financials.withdrawals' ด้วย)
+    const hasPermission = (permission?: string): boolean =>
+        checkPermission(adminPermissions, permission);
 
     const searchParams = useSearchParams();
     const isActive = (href: string) => {

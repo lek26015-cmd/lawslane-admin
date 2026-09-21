@@ -49,42 +49,42 @@ export const navSections: NavSection[] = [
     {
         title: "จัดการผู้ใช้งาน",
         items: [
-            { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า" },
-            { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ" },
-            { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย" },
+            { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า", permission: "users.customers" },
+            { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ", permission: "users.lawyers" },
+            { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย", permission: "users.registry" },
         ]
     },
     {
         title: "ห้องสนทนา",
         items: [
-            { href: "/chats", icon: <MessageSquare className="h-4 w-4" />, label: "แชททั้งหมด" },
+            { href: "/chats", icon: <MessageSquare className="h-4 w-4" />, label: "แชททั้งหมด", permission: "chat" },
         ]
     },
     {
         title: "คำขอใช้บริการ",
         items: [
-            { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา" },
-            { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน" },
-            { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME" },
+            { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา", permission: "requests" },
+            { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน", permission: "requests" },
+            { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME", permission: "requests" },
         ]
     },
     {
         title: "แบบสำรวจ",
         items: [
-            { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ SME", externalLink: "https://lawslane.com/th/survey" },
-            { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)", externalLink: "https://lawslane.com/th/survey-lawyer" },
-            { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)", externalLink: "https://lawslane.com/th/survey-public" },
+            { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ SME", externalLink: "https://lawslane.com/th/survey" , permission: "surveys" },
+            { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)", externalLink: "https://lawslane.com/th/survey-lawyer" , permission: "surveys" },
+            { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)", externalLink: "https://lawslane.com/th/survey-public" , permission: "surveys" },
         ]
     },
     {
         title: "เนื้อหาและการตลาด",
         items: [
-            { href: "/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages" },
-            { href: "/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา" },
-            { href: "/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา" },
-            { href: "/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย" },
-            { href: "/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย" },
-            { href: "/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI" },
+            { href: "/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages", permission: "content" },
+            { href: "/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา", permission: "content" },
+            { href: "/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา", permission: "content" },
+            { href: "/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย", permission: "content" },
+            { href: "/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย", permission: "content" },
+            { href: "/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI", permission: "rag" },
         ]
     },
     {
@@ -101,8 +101,8 @@ export const navSections: NavSection[] = [
     {
         title: "ระบบและสนับสนุน",
         items: [
-            { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ" },
-            { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล" },
+            { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ", permission: "support" },
+            { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล", permission: "support" },
         ]
     },
     {
