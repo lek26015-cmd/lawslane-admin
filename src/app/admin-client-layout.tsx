@@ -166,9 +166,10 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                             setCurrentUser(user);
                             setUserRole(role);
                             setIsSuperAdmin(isSuper);
-                            // null = ไม่จำกัดสิทธิ์ — super admin หรือบัญชีที่ยังไม่ได้ย้าย claim
-                            // (ตาข่ายกันล็อกตัวเองออกระหว่างย้ายระบบ ตรงกับ grantedPermissions())
-                            setAdminPermissions(isSuper ? null : (Array.isArray(claims.p) ? claims.p as string[] : null));
+                            // null = ไม่จำกัดสิทธิ์ สงวนไว้ให้ super admin เท่านั้น
+                            // ที่เหลือค่าเริ่มต้นเป็น [] (ไม่เห็นเมนูที่ต้องใช้สิทธิ์)
+                            // ให้ตรงกับ grantedPermissions() ใน lib/auth-guard.ts
+                            setAdminPermissions(isSuper ? null : (Array.isArray(claims.p) ? claims.p as string[] : []));
                         } else {
                             setIsAdmin(false);
                             setCurrentUser(null);

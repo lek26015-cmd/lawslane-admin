@@ -50,18 +50,20 @@ export function isSuperAdminToken(token: DecodedIdToken): boolean {
 /**
  * ดึงรายการสิทธิ์ย่อยออกจาก claim
  *
- * คืน `null` = ไม่จำกัดสิทธิ์ ซึ่งเกิดได้ 2 กรณี
- *   1. super admin (`su: true` หรือ claim เก่า `superAdmin: true`)
- *   2. บัญชีที่ยังไม่ได้ย้ายสิทธิ์ (ไม่มี `p` ใน claim)
+ * คืน `null` = ไม่จำกัดสิทธิ์ สงวนไว้ให้ super admin (`su: true` หรือ claim เก่า
+ * `superAdmin: true`) เท่านั้น
  *
- * ⚠️ กรณีที่ 2 เป็น "ตาข่ายกันล็อกตัวเองออก" ระหว่างย้ายระบบเท่านั้น
- *    เมื่อรัน scripts/set-admin-claim.ts ครบทุกบัญชีแล้ว ให้เปลี่ยนบรรทัดสุดท้าย
- *    เป็น `return []` เพื่อให้ค่าเริ่มต้นคือ "ไม่มีสิทธิ์อะไรเลย"
+ * ค่าเริ่มต้นคือ `[]` = ไม่มีสิทธิ์ย่อยอะไรเลย (fail-closed) — แอดมินที่ยังไม่ได้
+ * ตั้งสิทธิ์จึงผ่าน requireAdmin() เปล่าๆ ได้ แต่ผ่าน requireAdmin('<perm>') ไม่ได้
+ *
+ * เดิมตรงนี้คืน `null` เป็น "ตาข่ายกันล็อกตัวเองออก" ระหว่างย้ายระบบ ปิดได้แล้ว
+ * เมื่อ 2026-09-22 หลังรัน scripts/set-admin-claim.ts --apply ครบทั้ง 3 บัญชี
+ * (audit-admin-claims.ts ยืนยัน "ยังไม่ได้ย้าย: 0 บัญชี")
  */
 function grantedPermissions(token: DecodedIdToken): string[] | null {
   if (token.su === true || token.superAdmin === true) return null;
   if (Array.isArray(token.p)) return token.p as string[];
-  return null;
+  return [];
 }
 
 /**
