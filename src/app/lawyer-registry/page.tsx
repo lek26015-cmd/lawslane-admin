@@ -5,6 +5,7 @@ import { useFirebase } from '@/firebase';
 import { collection, getDocs, doc, writeBatch, query, orderBy, limit, where, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Upload, CheckCircle, AlertCircle, FileText, Search, Trash2, Plus, FileType, RefreshCw } from 'lucide-react';
+import { Loader2, Upload, CheckCircle, AlertCircle, FileText, Search, Trash2, Plus, FileType, RefreshCw, ScanLine } from 'lucide-react';
 import Papa from 'papaparse';
 import { VerifiedLawyer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -325,6 +326,12 @@ export default function LawyerRegistryPage() {
                     <p className="text-slate-500">จัดการฐานข้อมูลรายชื่อทนายความสำหรับตรวจสอบสถานะ</p>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="outline" className="gap-2" asChild>
+                        <Link href="/lawyer-registry/import">
+                            <ScanLine className="w-4 h-4" />
+                            นำเข้าจากรูปภาพ (OCR)
+                        </Link>
+                    </Button>
                     <Button
                         variant="outline"
                         onClick={handleSync}
