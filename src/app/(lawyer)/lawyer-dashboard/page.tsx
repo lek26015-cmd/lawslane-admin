@@ -48,9 +48,6 @@ export default function LawyerDashboardPage() {
   const { toast } = useToast();
 
   // Pricing state
-  const [appointmentFee, setAppointmentFee] = useState<string>('3500');
-  const [chatFee, setChatFee] = useState<string>('500');
-  const [isSavingPricing, setIsSavingPricing] = useState(false);
   const [platformGPRate, setPlatformGPRate] = useState<number>(0.15); // Default 15%
 
   // Fetch platform GP rate
@@ -150,10 +147,6 @@ export default function LawyerDashboardPage() {
           setStats(statsData);
           setLawyerProfile(profile || null);
           // Load pricing
-          if (profile?.pricing) {
-            setAppointmentFee(profile.pricing.appointmentFee.toString());
-            setChatFee(profile.pricing.chatFee.toString());
-          }
         }
       } catch (error) {
         console.error("Error fetching lawyer dashboard data:", error);
@@ -430,99 +423,6 @@ export default function LawyerDashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Pricing Settings */}
-            <Card className="rounded-3xl shadow-sm border-none">
-              <CardHeader>
-                <CardTitle className="font-bold flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                  ตั้งค่าค่าบริการ
-                </CardTitle>
-                <CardDescription>
-                  {isMockAdmin ? 'ตัวอย่างการตั้งค่าสำหรับทนาย' : 'กำหนดค่าใช้จ่ายของคุณเอง'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="appointment-fee">ค่านัดหมายปรึกษา (฿)</Label>
-                  <Input
-                    id="appointment-fee"
-                    type="number"
-                    value={appointmentFee}
-                    onChange={(e) => setAppointmentFee(e.target.value)}
-                    className="rounded-2xl"
-                    min="0"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    คุณจะได้รับ: ฿{(parseFloat(appointmentFee || '0') * (1 - platformGPRate)).toLocaleString()} (หัก GP {(platformGPRate * 100).toFixed(1)}%)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="chat-fee">ค่าปรึกษาผ่านแชท (฿)</Label>
-                  <Input
-                    id="chat-fee"
-                    type="number"
-                    value={chatFee}
-                    onChange={(e) => setChatFee(e.target.value)}
-                    className="rounded-2xl"
-                    min="0"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    คุณจะได้รับ: ฿{(parseFloat(chatFee || '0') * (1 - platformGPRate)).toLocaleString()} (หัก GP {(platformGPRate * 100).toFixed(1)}%)
-                  </p>
-                </div>
-
-                <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
-                  <p className="text-xs text-blue-800 font-medium">💡 ค่า Platform Fee (GP)</p>
-                  <p className="text-xs text-blue-600 mt-1">แพลตฟอร์มหัก {(platformGPRate * 100).toFixed(1)}% จากค่าบริการทั้งหมด</p>
-                </div>
-
-                {isMockAdmin && (
-                  <div className="p-3 bg-yellow-50 rounded-2xl border border-yellow-200">
-                    <p className="text-xs text-yellow-800">
-                      ℹ️ <strong>โหมดตัวอย่าง:</strong> นี่คือการ์ดที่ทนายจะเห็น คุณไม่สามารถบันทึกได้ในโหมด Admin
-                    </p>
-                  </div>
-                )}
-
-                <Button
-                  className="w-full rounded-full"
-                  onClick={async () => {
-                    if (!firestore || !user || isMockAdmin) return;
-                    setIsSavingPricing(true);
-                    try {
-                      const apptFee = parseFloat(appointmentFee || '0');
-                      const chtFee = parseFloat(chatFee || '0');
-
-                      if (apptFee < 0 || chtFee < 0) {
-                        toast({ variant: 'destructive', title: 'ค่าบริการต้องมากกว่า 0' });
-                        return;
-                      }
-
-                      const { doc, updateDoc } = await import('firebase/firestore');
-                      await updateDoc(doc(firestore, 'lawyerProfiles', user.uid), {
-                        pricing: {
-                          appointmentFee: apptFee,
-                          chatFee: chtFee,
-                          platformFeeRate: platformGPRate
-                        }
-                      });
-
-                      toast({ title: 'บันทึกค่าบริการสำเร็จ' });
-                    } catch (error) {
-                      console.error('Error saving pricing:', error);
-                      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถบันทึกได้' });
-                    } finally {
-                      setIsSavingPricing(false);
-                    }
-                  }}
-                  disabled={isSavingPricing || isMockAdmin}
-                >
-                  {isSavingPricing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {isMockAdmin ? 'โหมดดูตัวอย่าง (บันทึกไม่ได้)' : 'บันทึกค่าบริการ'}
-                </Button>
-              </CardContent>
-            </Card>
 
             <Card className="bg-green-600 text-white shadow-lg rounded-3xl border-none">
               <Link href={incomeStat.href} className="block p-6 hover:bg-green-700/50 rounded-lg transition-colors">
