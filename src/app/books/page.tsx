@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { uploadToCloudflareImages } from '@/app/actions/upload-cloudflare-images';
 import { Book } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { 
@@ -36,15 +37,40 @@ export default function AdminBooksPage() {
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string; author: string; description: string;
+    price: number; originalPrice: number; pageCount: number;
+    type: 'ebook' | 'physical' | 'both';
+    stock: number; category: string; imageUrl: string;
+  }>({
     title: '',
     author: '',
     description: '',
     price: 0,
+    // ยกมาจากฟอร์มของ education ตอนรวมหลังบ้าน (Module 2)
+    originalPrice: 0,
+    pageCount: 0,
+    type: 'physical',
     stock: 0,
     category: 'business',
     imageUrl: '/images/lawslane-cover-book.png'
   });
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  const handleCoverUpload = async (file: File) => {
+    setIsUploadingCover(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const url = await uploadToCloudflareImages(fd);
+      setFormData(prev => ({ ...prev, imageUrl: url }));
+      toast({ title: 'อัปโหลดปกสำเร็จ' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'อัปโหลดปกไม่สำเร็จ', description: String(e) });
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
 
   const fetchBooks = async () => {
     setIsLoading(true);
@@ -120,7 +146,7 @@ export default function AdminBooksPage() {
         <div className="flex gap-2">
           <Button onClick={() => {
             setEditingBook(null);
-            setFormData({ title: '', author: '', description: '', price: 0, stock: 0, category: 'business', imageUrl: '/images/lawslane-cover-book.png' });
+            setFormData({ title: '', author: '', description: '', price: 0, originalPrice: 0, pageCount: 0, type: 'physical' as const, stock: 0, category: 'business', imageUrl: '/images/lawslane-cover-book.png' });
             setShowAddForm(true);
           }}>
             <Plus className="w-4 h-4 mr-2" /> Add New Book
@@ -160,9 +186,49 @@ export default function AdminBooksPage() {
                 <Label>Stock</Label>
                 <Input type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: Number(e.target.value)})} required />
               </div>
+              <div className="space-y-2">
+                <Label>ราคาเต็ม (ก่อนลด)</Label>
+                <Input type="number" value={formData.originalPrice} onChange={e => setFormData({...formData, originalPrice: Number(e.target.value)})} />
+              </div>
+              <div className="space-y-2">
+                <Label>จำนวนหน้า</Label>
+                <Input type="number" value={formData.pageCount} onChange={e => setFormData({...formData, pageCount: Number(e.target.value)})} />
+              </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Image URL / Path</Label>
-                <Input value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="/images/lawslane-cover-book.png" />
+                <Label>รูปแบบ</Label>
+                <select
+                  className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-sm"
+                  value={formData.type}
+                  onChange={e => setFormData({...formData, type: e.target.value as 'ebook' | 'physical' | 'both'})}
+                >
+                  <option value="physical">หนังสือเล่ม</option>
+                  <option value="ebook">E-Book</option>
+                  <option value="both">ทั้ง E-Book และเล่ม</option>
+                </select>
+                <p className="text-xs text-slate-500">ใช้ตัดสินว่าออเดอร์ต้องขอที่อยู่จัดส่งไหม</p>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>ปกหนังสือ</Label>
+                <div className="flex items-center gap-3">
+                  {formData.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={formData.imageUrl} alt="ปกหนังสือ" className="w-16 h-24 object-cover rounded-lg border" />
+                  ) : null}
+                  <div className="flex-1 space-y-2">
+                    <Input value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="/images/lawslane-cover-book.png" />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingCover}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleCoverUpload(f); }}
+                        className="text-xs"
+                      />
+                      {isUploadingCover && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+                    </div>
+                    <p className="text-xs text-slate-500">อัปโหลดขึ้น Cloudflare Images — วาง URL เองก็ได้</p>
+                  </div>
+                </div>
               </div>
               <div className="md:col-span-2 flex justify-end gap-2 pt-4">
                 <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
@@ -247,7 +313,12 @@ export default function AdminBooksPage() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => {
                           setEditingBook(book);
-                          setFormData(book);
+                          setFormData({
+                            title: book.title ?? '', author: book.author ?? '', description: book.description ?? '',
+                            price: book.price ?? 0, originalPrice: book.originalPrice ?? 0, pageCount: book.pageCount ?? 0,
+                            type: book.type ?? 'physical', stock: book.stock ?? 0,
+                            category: book.category ?? 'business', imageUrl: book.imageUrl ?? '',
+                          });
                           setShowAddForm(true);
                         }}>
                           <Pencil className="w-4 h-4 text-slate-600" />

@@ -380,6 +380,11 @@ export interface Book {
   descriptionEn?: string;
   descriptionZh?: string;
   price: number;
+  // ฟิลด์ที่ยกมาจากฟอร์มของ education ตอนรวมหลังบ้าน (Module 2)
+  originalPrice?: number;
+  pageCount?: number;
+  /** ebook = ดาวน์โหลด · physical = จัดส่ง · both = ทั้งคู่ (ใช้ตัดสินว่าต้องขอที่อยู่จัดส่งไหม) */
+  type?: 'ebook' | 'physical' | 'both';
   imageUrl: string;
   category: string;
   stock: number;

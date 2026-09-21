@@ -1,6 +1,12 @@
 'use server';
 
+import { requireAdmin } from '@/lib/auth-guard';
+
+// server action = POST endpoint จริงที่ยิงจากภายนอกได้เสมอ เดิมไม่มีด่านเลย
+// ใครก็อัปโหลดไฟล์เข้าบัญชี Cloudflare Images ของเราได้ไม่จำกัด
 export async function uploadToCloudflareImages(formData: FormData) {
+    await requireAdmin();
+
     const file = formData.get('file') as File;
     if (!file) {
         throw new Error('No file provided');
