@@ -111,6 +111,7 @@ export const navSections: NavSection[] = [
         title: "การศึกษา",
         items: [
             { href: "/education/courses", icon: <GraduationCap className="h-4 w-4" />, label: "คอร์สเรียน", permission: "education.courses" },
+            { href: "/education/exams", icon: <ClipboardList className="h-4 w-4" />, label: "ข้อสอบ", permission: "education.exams" },
         ]
     },
     {
