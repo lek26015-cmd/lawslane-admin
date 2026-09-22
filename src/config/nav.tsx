@@ -117,6 +117,14 @@ export const navSections: NavSection[] = [
         ]
     },
     {
+        // ยกมาจาก lawslane-capdeal ตอนรวมหลังบ้าน (Module 7)
+        title: "CapDeal",
+        items: [
+            { href: "/capdeal/contracts", icon: <FileSignature className="h-4 w-4" />, label: "สัญญา CapDeal", permission: "capdeal.contracts" },
+            { href: "/capdeal/finance", icon: <Landmark className="h-4 w-4" />, label: "การเงิน CapDeal", permission: "capdeal.finance" },
+        ]
+    },
+    {
         title: "ร้านค้าและบริการข้อมูล",
         items: [
             { href: "/books", icon: <Package className="h-4 w-4" />, label: "คลังหนังสือ", permission: "store.books" },
