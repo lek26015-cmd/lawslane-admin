@@ -17,6 +17,7 @@ import {
     Package,
     Percent,
     Scale,
+    Settings,
     ShieldCheck,
     ShoppingBag,
     Ticket,
@@ -112,6 +113,7 @@ export const navSections: NavSection[] = [
         items: [
             { href: "/education/courses", icon: <GraduationCap className="h-4 w-4" />, label: "คอร์สเรียน", permission: "education.courses" },
             { href: "/education/exams", icon: <ClipboardList className="h-4 w-4" />, label: "ข้อสอบ", permission: "education.exams" },
+            { href: "/settings/education", icon: <Settings className="h-4 w-4" />, label: "ตั้งค่า Education", permission: "education.settings" },
         ]
     },
     {
