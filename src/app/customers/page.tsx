@@ -63,6 +63,8 @@ import type { UserProfile } from '@/lib/types';
 import { ensureDate } from '@/lib/data';
 import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useToast } from '@/hooks/use-toast';
+import { setUserRoleAction, deleteUserAction, canManageUsersAction } from '@/app/actions/user-management';
 import { DataTablePagination } from '@/components/admin/DataTablePagination';
 import { TableSkeleton } from '@/components/admin/TableSkeleton';
 
@@ -75,6 +77,38 @@ export default function AdminCustomersPage() {
     const [typeFilters, setTypeFilters] = React.useState({ individual: true, sme: true });
     const [searchInput, setSearchInput] = React.useState('');
     const debouncedSearch = useDebouncedValue(searchInput.trim().toLowerCase(), 300);
+    const { toast } = useToast();
+
+    // การเปลี่ยน role และลบบัญชีสงวนไว้ให้ super admin — ยกมาจากหน้า users ของ
+    // capdeal ตอนรวมหลังบ้าน (Module 7) ที่นั่นทุกแอดมินทำได้และเขียนทับ claim
+    // ทั้งก้อนจนสิทธิ์หาย
+    const [canManage, setCanManage] = React.useState(false);
+    const [pendingUid, setPendingUid] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        canManageUsersAction().then(setCanManage).catch(() => setCanManage(false));
+    }, []);
+
+    const handleSetRole = async (uid: string, role: string) => {
+        setPendingUid(uid);
+        const res = await setUserRoleAction(uid, role);
+        setPendingUid(null);
+        toast(res.ok
+            ? { title: 'เปลี่ยนสิทธิ์แล้ว', description: `ตั้งเป็น ${role} เรียบร้อย` }
+            : { variant: 'destructive', title: 'เปลี่ยนสิทธิ์ไม่สำเร็จ', description: res.error });
+        if (res.ok) router.refresh();
+    };
+
+    const handleDeleteUser = async (uid: string, name?: string) => {
+        if (!window.confirm(`ลบบัญชี "${name || uid}" ถาวร?\n\nลบทั้งใน Firestore และ Firebase Auth ย้อนกลับไม่ได้`)) return;
+        setPendingUid(uid);
+        const res = await deleteUserAction(uid);
+        setPendingUid(null);
+        toast(res.ok
+            ? { title: 'ลบบัญชีแล้ว' }
+            : { variant: 'destructive', title: 'ลบไม่สำเร็จ', description: res.error });
+        if (res.ok) router.refresh();
+    };
 
     const activeTypes = React.useMemo(() => {
         const types: string[] = [];
@@ -348,10 +382,31 @@ export default function AdminCustomersPage() {
                                                             <DropdownMenuItem asChild>
                                                                 <Link href={`/customers/${customer.uid}/edit`}>แก้ไขข้อมูล</Link>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-destructive">
-                                                                ระงับบัญชี
-                                                            </DropdownMenuItem>
+                                                            {canManage && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                                                        ตั้งสิทธิ์
+                                                                    </DropdownMenuLabel>
+                                                                    {(['customer', 'lawyer', 'admin'] as const).map(r => (
+                                                                        <DropdownMenuItem
+                                                                            key={r}
+                                                                            disabled={pendingUid === customer.uid}
+                                                                            onSelect={() => handleSetRole(customer.uid, r)}
+                                                                        >
+                                                                            {r === 'customer' ? 'ลูกค้า' : r === 'lawyer' ? 'ทนายความ' : 'แอดมิน'}
+                                                                        </DropdownMenuItem>
+                                                                    ))}
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive"
+                                                                        disabled={pendingUid === customer.uid}
+                                                                        onSelect={() => handleDeleteUser(customer.uid, customer.name)}
+                                                                    >
+                                                                        ลบบัญชีถาวร
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>

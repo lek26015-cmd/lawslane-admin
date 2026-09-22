@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { FileText, Gavel, ShieldCheck, Ticket, Users2 } from 'lucide-react';
+import { FileSignature, FileText, Gavel, Landmark, ShieldCheck, Ticket, Users2 } from 'lucide-react';
 import { AuthError, requireUser, isSuperAdminToken } from '@/lib/auth-guard';
 import { getAdminDashboardData } from '@/lib/dashboard-data';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -61,6 +61,21 @@ export default async function AdminDashboard() {
           caption="รวมคำขอลงทะเบียน + สัญญา + SME"
           icon={FileText}
           href="/registration-requests"
+        />
+        {/* ยุบมาจากแดชบอร์ดของ capdeal (Module 7) — เดิมต้องเปิด console แยก */}
+        <StatCard
+          title="สัญญา CapDeal"
+          value={stats.capdealContractsCount}
+          caption="สัญญาทั้งหมดในระบบ CapDeal"
+          icon={FileSignature}
+          href="/capdeal/contracts"
+        />
+        <StatCard
+          title="สลิป CapDeal รอตรวจ"
+          value={stats.capdealPendingSlipsCount}
+          caption={stats.capdealPendingSlipsCount > 0 ? 'มีดีลรอยืนยันการชำระเงิน' : 'ไม่มีรายการรอตรวจ'}
+          icon={Landmark}
+          href="/capdeal/finance"
         />
       </div>
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">

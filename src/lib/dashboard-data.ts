@@ -16,6 +16,10 @@ export interface AdminDashboardStats {
   approvedLawyersCount: number;
   /** รวม registrationRequests + contractRequests + smeRequests ที่ยังไม่ถูกดำเนินการ */
   pendingRequestsCount: number;
+  /** ยุบมาจากแดชบอร์ดของ capdeal ตอนรวมหลังบ้าน (Module 7) */
+  capdealContractsCount: number;
+  /** ดีลที่อัปสลิปแล้วรอแอดมินตรวจ — เดิมต้องเปิด console ของ capdeal ถึงจะเห็น */
+  capdealPendingSlipsCount: number;
 }
 
 export interface PendingLawyerPreview {
@@ -47,6 +51,8 @@ const EMPTY_DASHBOARD_DATA: AdminDashboardData = {
     pendingLawyersCount: 0,
     approvedLawyersCount: 0,
     pendingRequestsCount: 0,
+    capdealContractsCount: 0,
+    capdealPendingSlipsCount: 0,
   },
   pendingLawyers: [],
   tickets: [],
@@ -71,6 +77,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       newSmeSnap,
       pendingLawyersPreviewSnap,
       ticketsPreviewSnap,
+      capdealContractsSnap,
+      capdealPendingSlipsSnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('registeredAt', '>=', sevenDaysAgo).count().get(),
@@ -84,6 +92,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       db.collection('smeRequests').where('status', '==', 'new').count().get(),
       db.collection('lawyerProfiles').where('status', '==', 'pending').limit(5).get(),
       db.collection('tickets').where('status', '==', 'pending').limit(5).get(),
+      db.collection('contracts').count().get(),
+      db.collection('cap-deals').where('hasNewPayment', '==', true).count().get(),
     ]);
 
     const pendingLawyers: PendingLawyerPreview[] = pendingLawyersPreviewSnap.docs.map((doc) => {
@@ -118,6 +128,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
           pendingRegistrationSnap.data().count +
           pendingContractSnap.data().count +
           newSmeSnap.data().count,
+        capdealContractsCount: capdealContractsSnap.data().count,
+        capdealPendingSlipsCount: capdealPendingSlipsSnap.data().count,
       },
       pendingLawyers,
       tickets,
