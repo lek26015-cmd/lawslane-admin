@@ -5,6 +5,16 @@ import * as admin from 'firebase-admin';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 
 import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/auth-guard';
+
+/*
+ * ⚠️ ไฟล์นี้เป็นสำเนาจาก chat-actions ของเว็บหลัก แต่ในหลังบ้านไม่มีหน้าไหนเรียกใช้
+ * แล้ว (ยกเว้น notifyPaymentCompletedAction ที่ admin-actions เรียกหลังอนุมัติสลิป)
+ * ทว่า export ใน 'use server' ทุกตัวยังเป็น endpoint ที่ยิงตรงได้ และเกือบทุกตัว
+ * ไม่มีด่าน → ใครก็สร้างห้องแชทสถานะ 'active' / แทรกตัวเองเข้าห้องคนอื่น / ปลอมข้อความ
+ * ในนามคนอื่น / ตั้งค่าบริการ / ตั้งงวดเป็น 'paid' / ส่งอีเมลไปที่ไหนก็ได้
+ * จึงล็อกทุกตัวให้แอดมินที่ถือสิทธิ์ของเรื่องนั้น (getChatDetailsAction มีด่านของตัวเองอยู่แล้ว)
+ */
 
 export async function getChatDetailsAction(chatId: string) {
     try {
@@ -135,6 +145,7 @@ export async function getChatDetailsAction(chatId: string) {
  */
 export async function ensureChatExistsAction(chatId: string, participants: string[], caseTitle: string = 'คดี: มรดก') {
     try {
+        await requireAdmin('chat'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -192,6 +203,7 @@ export async function sendChatMessageAction(params: {
     metadata?: any
 }) {
     try {
+        await requireAdmin('chat'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -414,6 +426,7 @@ export async function sendChatMessageAction(params: {
  */
 export async function markChatAsReadAction(chatId: string, isLawyerView: boolean = true) {
     try {
+        await requireAdmin('chat'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -449,6 +462,7 @@ export async function requestFeeAction(params: {
     reason: string;
 }) {
     try {
+        await requireAdmin('chat'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -547,6 +561,7 @@ export async function notifyPaymentCompletedAction(params: {
     skipAdminNotification?: boolean;
 }) {
     try {
+        await requireAdmin('financials.verification'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -643,6 +658,7 @@ export async function markInstallmentPaidAction(params: {
     payerName?: string;
 }) {
     try {
+        await requireAdmin('financials.verification'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -756,6 +772,7 @@ export async function markInstallmentPaidAction(params: {
  */
 export async function deleteFileAction(chatId: string, fileUrl: string) {
     try {
+        await requireAdmin('chat'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const adminApp = await initAdmin();
         if (!adminApp) return { success: false, error: 'Firebase Admin not initialized.' };
         const db = adminApp.firestore();
@@ -790,6 +807,7 @@ export async function deleteFileAction(chatId: string, fileUrl: string) {
  */
 export async function sendEmailAction(chatId: string, to: string, subject: string) {
     try {
+        await requireAdmin('support'); // ไม่ผ่าน → throw AuthError ไปตก catch ด้านล่าง
         const { NotificationService } = await import('@/services/notification-service');
         const res = await NotificationService.sendEmail(to, subject, `
             <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
