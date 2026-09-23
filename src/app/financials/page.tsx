@@ -119,6 +119,8 @@ type SlipVerificationItem = {
   userId: string;
   lawyerId?: string;
   rawData?: any;
+  /** ใช้แสดงป้ายเท่านั้น — ฝั่ง server แยกประเภทเองจากเอกสารตอนอนุมัติ */
+  paymentKind?: 'initial' | 'additional' | 'installment';
 };
 
 function FinancialsContent() {
@@ -186,7 +188,7 @@ function FinancialsContent() {
     setIsLoading(true);
 
     try {
-      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
+      const [appointmentSnapshot, pendingChatSnapshot, newPaymentChatSnapshot, invoiceSnapshot] = await Promise.all([
         getDocs(query(
           collection(firestore, 'appointments'), 
           where('status', '==', 'pending_payment'),
@@ -199,6 +201,16 @@ function FinancialsContent() {
           orderBy('lastMessageAt', 'desc'),
           limit(100)
         )),
+        // ค่าบริการเพิ่มเติม / งวดผ่อนของเคสที่ active อยู่แล้ว — เว็บหลักและ capdeal
+        // เขียนแค่ hasNewPayment: true + pendingPaymentDetails โดยไม่เปลี่ยน status
+        // ถ้าดึงแค่ status == 'pending_payment' รายการพวกนี้จะไม่โผล่ในคิวตรวจเลย
+        // (ลูกความโอนแล้วแต่ไม่มีใครอนุมัติ) — จงใจไม่ใส่ orderBy เพื่อใช้ index
+        // ฟิลด์เดี่ยวอัตโนมัติ ไม่ต้องสร้าง composite index ใหม่ (เรียงเองด้านล่าง)
+        getDocs(query(
+          collection(firestore, 'chats'),
+          where('hasNewPayment', '==', true),
+          limit(100)
+        )),
         getDocs(query(
           collection(firestore, 'invoices'), 
           where('status', '==', 'pending_verification'),
@@ -206,6 +218,11 @@ function FinancialsContent() {
           limit(100)
         )),
       ]);
+
+      // ห้องเดียวกันอาจติดทั้งสอง query (pending_payment + hasNewPayment) — ตัดซ้ำ
+      const chatDocMap = new Map<string, (typeof pendingChatSnapshot.docs)[number]>();
+      [...pendingChatSnapshot.docs, ...newPaymentChatSnapshot.docs].forEach(d => chatDocMap.set(d.id, d));
+      const chatSnapshot = { docs: Array.from(chatDocMap.values()) };
 
       const pending: SlipVerificationItem[] = [];
       const userIds = new Set<string>();
@@ -263,13 +280,23 @@ function FinancialsContent() {
         const uId = data.userId || data.participants?.[0];
         const attachments = data.attachments;
         
-        // 1. Check top-level/pendingPaymentDetails slip
-        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
-        
         // 2. Check installments for pending_verification
         const pendingInst = Array.isArray(data.installments) 
           ? data.installments.find((inst: any) => inst.status === 'pending_verification')
           : null;
+
+        // ต้องตรงกับ classifyChatPayment() ใน admin-actions.ts — เคส active ที่ติด
+        // hasNewPayment แต่ไม่มีอะไรให้อนุมัติ (ข้อมูลเก่า) ไม่ต้องขึ้นคิว เพราะกดไปก็ถูกปฏิเสธ
+        const isAdditional = data.pendingPaymentDetails?.type === 'additional' && data.hasNewPayment === true;
+        const paymentKind: SlipVerificationItem['paymentKind'] = isAdditional
+          ? 'additional'
+          : pendingInst ? 'installment'
+          : data.status === 'pending_payment' ? 'initial'
+          : undefined;
+        if (!paymentKind) return;
+
+        // 1. Check top-level/pendingPaymentDetails slip
+        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
         
         if (pendingInst && !slipUrl) {
           slipUrl = pendingInst.slipUrl;
@@ -287,13 +314,17 @@ function FinancialsContent() {
             type: 'Chat',
             userName: userProfiles[uId] || 'Unknown User',
             lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
-            amount: pendingInst?.amount || data.pendingPaymentDetails?.amount || data.amount || 0,
+            // ค่าบริการเพิ่มเติม = ยอดที่แจ้งโอนครั้งนี้ ห้าม fallback ไป chat.amount (ยอดทั้งเคส)
+            amount: isAdditional
+              ? Number(data.pendingPaymentDetails?.amount) || 0
+              : Number(pendingInst?.amount || data.pendingPaymentDetails?.amount || data.amount) || 0,
             submittedAt: ensureDate(pendingInst?.submittedAt || data.pendingPaymentDetails?.submittedAt || data.createdAt),
             collectionName: 'chats',
             slipUrl: slipUrl,
             userId: uId,
             lawyerId: data.lawyerId,
-            rawData: data
+            rawData: data,
+            paymentKind,
           });
         }
       });
@@ -531,13 +562,10 @@ function FinancialsContent() {
     setIsLoading(true);
     try {
       const { approvePaymentSlipAction } = await import('@/app/actions/admin-actions');
+      // ส่งแค่ประเภท + id — ยอด/ทนาย/ผู้จ่าย server อ่านจากเอกสารเอง (เดิมส่งยอดจากหน้าจอไป)
       const result = await approvePaymentSlipAction({
         type: item.type.toLowerCase() as 'chat' | 'appointment',
         id: item.id,
-        lawyerId: item.lawyerId || '',
-        amount: item.amount,
-        caseTitle: item.type === 'Chat' ? item.userName : undefined,
-        payerName: item.userName
       });
 
       if (result.success) {
@@ -547,6 +575,28 @@ function FinancialsContent() {
       } else {
         throw new Error(result.error);
       }
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRejectSlip = async (item: SlipVerificationItem) => {
+    const reason = window.prompt(
+      `ปฏิเสธสลิปค่าบริการเพิ่มเติม ฿${item.amount.toLocaleString()}?\n` +
+      `คำขอของทนายจะยังอยู่ ลูกความแนบสลิปใหม่ได้\n\nเหตุผล (แจ้งลูกความ):`
+    );
+    if (reason === null) return;
+
+    setIsLoading(true);
+    try {
+      const { rejectPaymentSlipAction } = await import('@/app/actions/admin-actions');
+      const result = await rejectPaymentSlipAction({ type: 'chat', id: item.id, reason });
+      if (!result.success) throw new Error(result.error);
+      toast({ title: 'สำเร็จ', description: 'ปฏิเสธสลิปแล้ว — แจ้งลูกความให้แนบใหม่' });
+      fetchPendingPayments();
     } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
@@ -621,6 +671,12 @@ function FinancialsContent() {
                       {item.userName}<br/>
                       <div className="flex gap-1 mt-1">
                         <Badge variant="outline" className="text-[10px]">{item.type}</Badge>
+                        {item.paymentKind === 'additional' && (
+                          <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">ค่าบริการเพิ่มเติม</Badge>
+                        )}
+                        {item.paymentKind === 'installment' && (
+                          <Badge variant="outline" className="text-[10px]">งวดผ่อน</Badge>
+                        )}
                         {item.collectionName === 'chats' && (
                           <a href={getMainLink(`/chat/${item.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
                             <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
@@ -647,6 +703,17 @@ function FinancialsContent() {
                       >
                         อนุมัติ
                       </Button>
+                      {item.paymentKind === 'additional' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleRejectSlip(item)}
+                          disabled={isLoading}
+                        >
+                          ปฏิเสธ
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
