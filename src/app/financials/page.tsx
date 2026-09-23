@@ -74,6 +74,7 @@ import { getMainLink } from '@/lib/domain-utils';
 import { isDesignatedSuperAdmin } from '@/lib/super-admin';
 import { useSearchParams } from 'next/navigation';
 import { SlipVerifier } from '@/components/admin/slip-verifier';
+import { listWithdrawalRequests, processWithdrawal, type WithdrawalRow } from '@/app/actions/withdrawal-actions';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
@@ -101,17 +102,9 @@ type Transaction = {
   receiptUrl?: string;
 };
 
-type WithdrawalRequest = {
-  id: string;
-  lawyerId: string;
-  lawyerName: string;
-  amount: number;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: Date;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
-};
+// ยอดคงเหลือของทนายต้องมาจาก server (listWithdrawalRequests) ไม่ใช่จากเอกสารคำร้อง
+// ที่ผู้ขอพิมพ์ยอดมาเอง — ดู src/app/actions/withdrawal-actions.ts
+type WithdrawalRequest = WithdrawalRow & { requestedAtDate: Date };
 
 type SlipVerificationItem = {
   id: string;
@@ -480,75 +473,49 @@ function FinancialsContent() {
   // ทนายสร้างคำร้องได้จากหน้า lawyer-dashboard/financials (เขียนลง `withdrawals`) แต่ไม่มีทางอนุมัติ
   // ผ่านหน้าเว็บเลย ต้องเข้า Firestore console มือ — เพิ่มการ fetch/อนุมัติ/ปฏิเสธจริงตรงนี้
   const fetchWithdrawals = React.useCallback(async () => {
-    if (!firestore || !isAuthorized) return;
+    if (!isAuthorized) return;
     setIsLoading(true);
 
     try {
-      const snap = await getDocs(query(
-        collection(firestore, 'withdrawals'),
-        orderBy('requestedAt', 'desc'),
-        limit(200)
-      ));
-
-      const lawyerIds = new Set<string>();
-      snap.docs.forEach(d => { if (d.data().lawyerId) lawyerIds.add(d.data().lawyerId); });
-
-      const lawyerNames: Record<string, string> = {};
-      if (lawyerIds.size > 0) {
-        const ids = Array.from(lawyerIds);
-        for (let i = 0; i < ids.length; i += 30) {
-          const chunk = ids.slice(i, i + 30);
-          const snaps = await getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)));
-          snaps.forEach(snapDoc => { lawyerNames[snapDoc.id] = snapDoc.data().name || 'Unknown Lawyer'; });
-        }
+      const result = await listWithdrawalRequests();
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: result.error });
+        return;
       }
-
-      const requests: WithdrawalRequest[] = snap.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          lawyerId: data.lawyerId || '',
-          lawyerName: lawyerNames[data.lawyerId] || 'Unknown Lawyer',
-          amount: data.amount || 0,
-          status: data.status || 'pending',
-          requestedAt: ensureDate(data.requestedAt),
-          bankName: data.bankName,
-          accountNumber: data.accountNumber,
-          accountName: data.accountName,
-        };
-      });
-
-      setWithdrawalRequests(requests);
+      setWithdrawalRequests(result.rows.map(r => ({
+        ...r,
+        requestedAtDate: r.requestedAt ? new Date(r.requestedAt) : new Date(0),
+      })));
     } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsLoading(false);
     }
-  }, [firestore, isAuthorized, toast]);
+  }, [isAuthorized, toast]);
 
   const handleProcessWithdrawal = async (item: WithdrawalRequest, newStatus: 'approved' | 'rejected') => {
-    if (!firestore) return;
     const actionLabel = newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ';
-    const confirmProcess = window.confirm(`ยืนยันการ${actionLabel}คำร้องถอนเงิน ฿${item.amount.toLocaleString()} ของ ${item.lawyerName}?`);
+    // ยอดคงเหลือต้องอยู่ในคำถามด้วย — เดิม confirm ถามแค่ยอดที่ผู้ขอพิมพ์มาเอง
+    const confirmProcess = window.confirm(
+      `ยืนยันการ${actionLabel}คำร้องถอนเงิน ฿${item.amount.toLocaleString()} ของ ${item.lawyerName}?\n` +
+      `ยอดที่ถอนได้จริงของทนายคนนี้: ฿${item.availableBalance.toLocaleString()}` +
+      (item.exceedsBalance ? '\n\n⚠️ คำร้องนี้เกินยอดคงเหลือ — ระบบจะปฏิเสธการอนุมัติ' : '')
+    );
     if (!confirmProcess) return;
 
     setProcessingWithdrawalId(item.id);
     try {
-      await updateDoc(doc(firestore, 'withdrawals', item.id), {
-        status: newStatus,
-        processedAt: serverTimestamp(),
-      });
+      // คิดยอดซ้ำฝั่ง server ก่อนเปลี่ยนสถานะเสมอ — ของเดิม updateDoc จากเบราว์เซอร์ตรงๆ
+      const result = await processWithdrawal({ withdrawalId: item.id, decision: newStatus });
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: `${actionLabel}ไม่สำเร็จ`, description: result.error });
+        return;
+      }
       toast({ title: 'สำเร็จ', description: `${actionLabel}คำร้องถอนเงินเรียบร้อยแล้ว` });
       fetchWithdrawals();
     } catch (e: any) {
       console.error(e);
-      const permissionError = new FirestorePermissionError({
-        path: `withdrawals/${item.id}`,
-        operation: 'update',
-        requestResourceData: { status: newStatus },
-      });
-      errorEmitter.emit('permission-error', permissionError);
       toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
     } finally {
       setProcessingWithdrawalId(null);
@@ -750,18 +717,30 @@ function FinancialsContent() {
 
         <TabsContent value="withdrawals" className="mt-4">
           <Card><Table>
-            <TableHeader><TableRow><TableHead>วันที่ขอ</TableHead><TableHead>ทนาย</TableHead><TableHead>บัญชีรับเงิน</TableHead><TableHead className="text-right">ยอด</TableHead><TableHead>สถานะ</TableHead><TableHead className="text-right">จัดการ</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>วันที่ขอ</TableHead><TableHead>ทนาย</TableHead><TableHead>บัญชีรับเงิน</TableHead><TableHead className="text-right">ยอดที่ขอ</TableHead><TableHead className="text-right">ยอดคงเหลือจริง</TableHead><TableHead>สถานะ</TableHead><TableHead className="text-right">จัดการ</TableHead></TableRow></TableHeader>
             <TableBody>
-              {withdrawalRequests.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">ไม่มีคำร้องถอนเงิน</TableCell></TableRow> :
+              {withdrawalRequests.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8">ไม่มีคำร้องถอนเงิน</TableCell></TableRow> :
                 withdrawalRequests.map(w => (
-                  <TableRow key={w.id}>
-                    <TableCell>{format(w.requestedAt, 'd MMM yyyy HH:mm', { locale: th })}</TableCell>
+                  <TableRow key={w.id} className={w.exceedsBalance ? 'bg-red-50/60' : undefined}>
+                    <TableCell>{format(w.requestedAtDate, 'd MMM yyyy HH:mm', { locale: th })}</TableCell>
                     <TableCell className="font-bold">{w.lawyerName}</TableCell>
                     <TableCell>
                       <div className="text-sm">{w.bankName || '-'}</div>
                       <div className="text-[10px] text-muted-foreground font-mono">{w.accountNumber || '-'} {w.accountName ? `(${w.accountName})` : ''}</div>
                     </TableCell>
-                    <TableCell className="text-right font-bold">฿{w.amount.toLocaleString()}</TableCell>
+                    <TableCell className={`text-right font-bold ${w.exceedsBalance ? 'text-red-600' : ''}`}>฿{w.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      {/* ยอดนี้คิดใหม่ฝั่ง server ทุกครั้ง ไม่ใช่ตัวเลขที่ผู้ขอพิมพ์มา */}
+                      <div className="font-bold">฿{w.availableBalance.toLocaleString()}</div>
+                      {w.exceedsBalance && (
+                        <Badge variant="outline" className="mt-1 bg-red-100 text-red-700 border-red-300">
+                          <ShieldAlert className="w-3 h-3 mr-1" /> เกินยอดคงเหลือ
+                        </Badge>
+                      )}
+                      {w.balanceAtRequest !== null && w.balanceAtRequest !== w.availableBalance && (
+                        <div className="text-[10px] text-muted-foreground">ตอนยื่น: ฿{w.balanceAtRequest.toLocaleString()}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {w.status === 'pending' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">รอดำเนินการ</Badge>}
                       {w.status === 'approved' && <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">อนุมัติแล้ว</Badge>}
@@ -773,7 +752,8 @@ function FinancialsContent() {
                           <Button
                             size="sm"
                             className="bg-green-600 hover:bg-green-700"
-                            disabled={processingWithdrawalId === w.id}
+                            disabled={processingWithdrawalId === w.id || w.exceedsBalance}
+                            title={w.exceedsBalance ? 'ยอดขอเกินยอดคงเหลือจริง — อนุมัติไม่ได้' : undefined}
                             onClick={() => handleProcessWithdrawal(w, 'approved')}
                           >
                             <CheckCircle className="w-3 h-3 mr-1" /> อนุมัติ
