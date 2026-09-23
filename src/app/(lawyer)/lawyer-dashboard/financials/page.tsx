@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
+import { getMainLink } from '@/lib/domain-utils';
 
 type Transaction = {
     id: string;
@@ -564,7 +565,8 @@ function LawyerFinancialsContent() {
                                             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                                             <span>
                                                 การยื่นคำร้องขอถอนเงินทำได้ที่เว็บหลักเท่านั้น{' '}
-                                                <a href="https://lawslane.com/lawyer-dashboard/financials" target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                                                {/* ใช้ getMainLink แทน URL ตายตัว — dev/staging จะได้ชี้เว็บหลักของ environment นั้น ไม่หลุดไป production */}
+                                                <a href={getMainLink('/lawyer-dashboard/financials', 'admin')} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
                                                     เปิดหน้าการเงินบนเว็บหลัก
                                                 </a>
                                             </span>
