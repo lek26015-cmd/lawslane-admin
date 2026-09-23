@@ -2,6 +2,7 @@
 
 import { initAdmin } from '@/lib/firebase-admin';
 import { getStorage } from 'firebase-admin/storage';
+import { requireAdmin } from '@/lib/auth-guard';
 
 /**
  * Generates a temporary signed URL for a file in Firebase Storage.
@@ -12,7 +13,13 @@ import { getStorage } from 'firebase-admin/storage';
  * @returns The signed URL
  */
 export async function getSecureDownloadUrl(path: string, expiresAt: number = Date.now() + 3600000) {
+    // เดิมไม่มีด่าน — ใครก็ขอ signed URL ของไฟล์ไหนก็ได้ใน bucket (บัตรประชาชน/ใบอนุญาต
+    // ทนาย/สลิป) หรืออ่าน slipImages ได้แค่รู้ path ผู้เรียกในหลังบ้านมีแค่หน้าแอดมิน
+    // (tickets, ตัวตรวจสลิปใน financials) จึงล็อกให้แอดมินเท่านั้น
+    await requireAdmin();
     if (!path) return null;
+    // จำกัดอายุลิงก์ไม่เกิน 1 วัน — เดิมผู้เรียกกำหนด expiresAt เองได้ไม่จำกัด
+    expiresAt = Math.min(Number(expiresAt) || Date.now() + 3600000, Date.now() + 24 * 3600000);
     
     // If it's already a full URL (legacy R2 data), return as is
     if (path.startsWith('http')) return path;
