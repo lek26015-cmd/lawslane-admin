@@ -162,9 +162,10 @@ export async function approvePaymentSlipAction(params: {
                 // (เคสเก่าที่ไม่มี paidAmount ถือว่าจ่ายครบตาม amount เดิมแล้ว — เคสนี้
                 // active อยู่ แปลว่าค่าเปิดเคสผ่านไปแล้ว)
                 const baseAmount = toAmount(chat.amount);
-                const basePaid = chat.paidAmount !== undefined && chat.paidAmount !== null
-                    ? toAmount(chat.paidAmount)
-                    : baseAmount;
+                // paidAmount ≤ 0 ถือว่าไม่มีข้อมูลเหมือนกัน — หน้าแจ้งโอนรุ่นเก่าเขียน 0 ไว้ตอนรอตรวจ
+                // และการอนุมัติมือรุ่นเก่าไม่เคยตั้งค่าให้ ทั้งที่เคส active = จ่ายค่าเปิดเคสแล้ว
+                const recordedPaid = toAmount(chat.paidAmount);
+                const basePaid = recordedPaid > 0 ? recordedPaid : baseAmount;
                 update.amount = baseAmount + payment.amount;
                 update.paidAmount = basePaid + payment.amount;
                 update.pendingPaymentDetails = admin.firestore.FieldValue.delete();

@@ -188,7 +188,7 @@ function FinancialsContent() {
     setIsLoading(true);
 
     try {
-      const [appointmentSnapshot, pendingChatSnapshot, newPaymentChatSnapshot, invoiceSnapshot] = await Promise.all([
+      const [appointmentSnapshot, pendingChatSnapshot, newPaymentChatSnapshot, additionalFeeChatSnapshot, invoiceSnapshot] = await Promise.all([
         getDocs(query(
           collection(firestore, 'appointments'), 
           where('status', '==', 'pending_payment'),
@@ -211,6 +211,16 @@ function FinancialsContent() {
           where('hasNewPayment', '==', true),
           limit(100)
         )),
+        // ค่าบริการเพิ่มเติมแยก query ของตัวเอง — หน้าจ่ายเงินของ capdeal รุ่นเก่าตั้ง
+        // hasNewPayment: true ให้เคส active โดยไม่มี pendingPaymentDetails และไม่เคยมีใคร
+        // ล้าง ถ้าของค้างพวกนี้เกิน 100 ใบ query ด้านบนจะเต็มก่อนถึงสลิปจริง
+        // (equality 2 ฟิลด์ใช้ index merge ได้ ไม่ต้องสร้าง composite index)
+        getDocs(query(
+          collection(firestore, 'chats'),
+          where('hasNewPayment', '==', true),
+          where('pendingPaymentDetails.type', '==', 'additional'),
+          limit(100)
+        )),
         getDocs(query(
           collection(firestore, 'invoices'), 
           where('status', '==', 'pending_verification'),
@@ -221,7 +231,7 @@ function FinancialsContent() {
 
       // ห้องเดียวกันอาจติดทั้งสอง query (pending_payment + hasNewPayment) — ตัดซ้ำ
       const chatDocMap = new Map<string, (typeof pendingChatSnapshot.docs)[number]>();
-      [...pendingChatSnapshot.docs, ...newPaymentChatSnapshot.docs].forEach(d => chatDocMap.set(d.id, d));
+      [...pendingChatSnapshot.docs, ...newPaymentChatSnapshot.docs, ...additionalFeeChatSnapshot.docs].forEach(d => chatDocMap.set(d.id, d));
       const chatSnapshot = { docs: Array.from(chatDocMap.values()) };
 
       const pending: SlipVerificationItem[] = [];
