@@ -3,7 +3,7 @@
 import * as admin from 'firebase-admin';
 import { initAdmin } from '@/lib/firebase-admin';
 import { requireAdmin, AuthError } from '@/lib/auth-guard';
-import { reduceLawyerBalance } from '@/lib/lawyer-balance';
+import { reduceLawyerBalance, MIN_WITHDRAWAL_AMOUNT } from '@/lib/lawyer-balance';
 
 /**
  * คำร้องถอนเงินฝั่งแอดมิน — ต้องเห็นยอดจริงและต้องคิดซ้ำก่อนอนุมัติ
@@ -60,9 +60,15 @@ function toIso(v: any): string | null {
  *
  * คำร้องที่ยัง pending กันยอดตัวเองไว้ใน pendingWithdrawal อยู่แล้ว ถ้าเอา
  * availableBalance ไปเทียบตรงๆ จะกลายเป็นหักซ้ำ — ต้องบวกยอดของใบนี้กลับเข้าไป
+ *
+ * ⚠️ ต้องบวกคืน "เท่ากับที่ reduceLawyerBalance หักไว้จริง" เป๊ะๆ:
+ *   - status ต้องผ่าน `|| 'pending'` มาก่อนแล้ว (ใบเก่าที่ไม่มี status ถูกนับเป็น pending)
+ *   - amount ต้อง clamp ≥ 0 แบบเดียวกัน (ใบ amount ติดลบถูกหักไว้ 0 ก็ต้องคืน 0)
+ * ถ้าคืนมากกว่าที่หัก ยอดจะพอง → อนุมัติเกินสิทธิ์ได้ ถ้าคืนน้อยกว่า → ใบที่ถูกต้องโดนปัดตก
  */
 function availableFor(balanceParts: ReturnType<typeof reduceLawyerBalance>, row: { amount: number; status: string }) {
-    return balanceParts.availableBalance + (row.status === 'pending' ? row.amount : 0);
+    const reserved = Math.max(0, Number(row.amount) || 0);
+    return balanceParts.availableBalance + (row.status === 'pending' ? reserved : 0);
 }
 
 export async function listWithdrawalRequests(): Promise<ListResult> {
@@ -158,6 +164,20 @@ export async function processWithdrawal(input: {
             const amount = Number(data.amount) || 0;
 
             if (input.decision === 'approved') {
+                // ด่านยอดขั้นต่ำ/ยอดติดลบ — ต้องตรงกับด่านตอนยื่นคำร้องที่เว็บหลัก ใบที่หลุด
+                // ด่านนั้นมาได้คือใบเก่าหรือใบที่ยิง SDK เขียนเอง (ปฏิเสธใบพวกนี้ได้ตามปกติ)
+                if (!lawyerId) {
+                    throw new Rejected('อนุมัติไม่ได้: คำร้องนี้ไม่มีรหัสทนาย');
+                }
+                if (!Number.isFinite(amount) || amount <= 0) {
+                    throw new Rejected('อนุมัติไม่ได้: ยอดขอถอนต้องมากกว่า 0 — กรุณาปฏิเสธคำร้องนี้');
+                }
+                if (amount < MIN_WITHDRAWAL_AMOUNT) {
+                    throw new Rejected(
+                        `อนุมัติไม่ได้: ยอดขอ ฿${amount.toLocaleString()} ต่ำกว่าขั้นต่ำ ฿${MIN_WITHDRAWAL_AMOUNT.toLocaleString()} — กรุณาปฏิเสธคำร้องนี้`
+                    );
+                }
+
                 // คิดยอดใหม่ ณ วินาทีที่กดอนุมัติ — ระหว่างที่แอดมินนั่งดูหน้าจอ อาจมี
                 // คำร้องอื่นถูกอนุมัติไปแล้ว หรือรายได้ถูกยกเลิก
                 const [txSnap, wdSnap] = await Promise.all([
@@ -168,12 +188,32 @@ export async function processWithdrawal(input: {
                 const available = availableFor(parts, { amount, status: 'pending' });
 
                 if (amount > available) {
-                    throw new Rejected(
-                        `อนุมัติไม่ได้: ยอดขอ ฿${amount.toLocaleString()} เกินยอดที่ถอนได้จริง ฿${available.toLocaleString()}`
-                    );
+                    // คำร้อง pending ใบอื่นของทนายคนเดียวกันก็จองยอดไว้ด้วย — ถ้าไม่บอกว่า
+                    // ใบไหนขวางอยู่ แอดมินจะไม่รู้ว่าต้องไปจัดการใบนั้นก่อน (อนุมัติ/ปฏิเสธ)
+                    const blockers = wdSnap.docs
+                        .filter(d => d.id !== ref.id && (d.get('status') || 'pending') === 'pending')
+                        .map(d => ({ id: d.id, amount: Math.max(0, Number(d.get('amount')) || 0) }))
+                        .filter(b => b.amount > 0);
+                    const blockedTotal = blockers.reduce((sum, b) => sum + b.amount, 0);
+
+                    let msg = `อนุมัติไม่ได้: ยอดขอ ฿${amount.toLocaleString()} เกินยอดที่ถอนได้จริง ฿${available.toLocaleString()}`;
+                    if (blockers.length > 0 && amount <= available + blockedTotal) {
+                        msg +=
+                            ` เพราะมีคำร้องอื่นของทนายคนนี้ค้างอยู่และจองยอดไว้: ` +
+                            blockers.map(b => `${b.id} (฿${b.amount.toLocaleString()})`).join(', ') +
+                            ` — ต้องปฏิเสธ/อนุมัติใบนั้นก่อน`;
+                    } else if (blockers.length > 0) {
+                        msg +=
+                            ` (มีคำร้องอื่นค้างอยู่ด้วย: ` +
+                            blockers.map(b => `${b.id} (฿${b.amount.toLocaleString()})`).join(', ') +
+                            ` แต่ถึงไม่มีใบเหล่านั้นก็ยังเกินยอด)`;
+                    }
+                    throw new Rejected(msg);
                 }
             }
 
+            // เขียน status ทับเสมอ — ใบเก่าที่ไม่มีฟิลด์ status (ถูกนับเป็น pending) ก็จะ
+            // ได้สถานะชัดเจนหลังดำเนินการ ไม่ต้องพึ่ง `|| 'pending'` อีกต่อไป
             tx.update(ref, {
                 status: input.decision,
                 processedAt: admin.firestore.FieldValue.serverTimestamp(),

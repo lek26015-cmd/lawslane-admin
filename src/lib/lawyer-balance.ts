@@ -56,10 +56,16 @@ export function reduceLawyerBalance(
 
     for (const d of withdrawalDocs) {
         const data = d.data() ?? {};
-        const amount = Number(data.amount) || 0;
-        if (data.status === 'approved') {
+        // ยอดติดลบ/ไม่ใช่ตัวเลขให้เป็น 0 — ใบ approved ที่ amount < 0 จะทำให้
+        // withdrawnAmount ติดลบแล้วยอดคงเหลือพองขึ้น
+        const amount = Math.max(0, Number(data.amount) || 0);
+        // หน้าเก่าบางหน้าเขียนคำร้องโดยไม่ใส่ status — นับเป็น pending เสมอ
+        // (ฝั่งอนุมัติถือ `status || 'pending'` เหมือนกัน ถ้าสองฝั่งนับไม่ตรงกัน
+        // ฝั่งอนุมัติจะบวกยอดใบนั้นคืนทั้งที่ไม่เคยถูกหัก → อนุมัติเกินยอดได้)
+        const status = data.status || 'pending';
+        if (status === 'approved') {
             withdrawnAmount += amount;
-        } else if (data.status === 'pending') {
+        } else if (status === 'pending') {
             pendingWithdrawal += amount;
             hasPendingWithdrawal = true;
         }
