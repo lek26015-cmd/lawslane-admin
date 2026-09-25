@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
 import { ArrowLeft, DollarSign, TrendingUp, Clock, Loader2, Wallet, History, Briefcase, AlertCircle, Menu, X, PenSquare, Save, Building2, FileText } from 'lucide-react';
-import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, orderBy, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import Link from 'next/link';
@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { notifyAdmins } from '@/app/actions/admin-notifications';
+import { getMainLink } from '@/lib/domain-utils';
 
 type Transaction = {
     id: string;
@@ -111,11 +111,9 @@ function LawyerFinancialsContent() {
 
     // Withdrawal Form State
     const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
-    const [withdrawAmount, setWithdrawAmount] = useState('');
     const [bankName, setBankName] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
     const [accountName, setAccountName] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Edit Bank State
     const [isEditingBank, setIsEditingBank] = useState(false);
@@ -332,70 +330,6 @@ function LawyerFinancialsContent() {
         }
     }, [isUserLoading, user, fetchFinancials, router]);
 
-    const handleWithdraw = async () => {
-        if (!firestore || !user) return;
-
-        const amount = parseFloat(withdrawAmount);
-        if (isNaN(amount) || amount <= 0) {
-            toast({ variant: "destructive", title: "ยอดเงินไม่ถูกต้อง", description: "กรุณาระบุจำนวนเงินที่ถูกต้อง" });
-            return;
-        }
-        if (amount < 1000) {
-            toast({ variant: "destructive", title: "ยอดเงินขั้นต่ำไม่ถึงเกณฑ์", description: "ต้องถอนเงินขั้นต่ำ 1,000 บาทขึ้นไป" });
-            return;
-        }
-        if (amount > stats.availableBalance) {
-            toast({ variant: "destructive", title: "ยอดเงินไม่เพียงพอ", description: "คุณมียอดเงินที่ถอนได้ไม่เพียงพอ" });
-            return;
-        }
-        if (!bankName || !accountNumber || !accountName) {
-            toast({ variant: "destructive", title: "ข้อมูลไม่ครบถ้วน", description: "กรุณากรอกข้อมูลบัญชีธนาคารให้ครบถ้วน" });
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            await addDoc(collection(firestore, 'withdrawals'), {
-                lawyerId: user.uid,
-                amount: amount,
-                bankName,
-                accountNumber,
-            });
-
-            // Create Admin Notification (In-App)
-            await addDoc(collection(firestore, 'notifications'), {
-                type: 'withdrawal',
-                title: 'คำร้องขอถอนเงินใหม่',
-                message: `มีคำร้องขอถอนเงินจากทนายความ (฿${amount.toLocaleString()})`,
-                createdAt: serverTimestamp(),
-                read: false,
-                recipient: 'admin',
-                link: `/financials`,
-                relatedId: user.uid
-            });
-
-            // Send Email Notification to Admins
-            // We don't await this to prevent blocking the UI response
-            notifyAdmins('withdrawal', {
-                lawyerName: user.displayName || accountName || 'Unknown Lawyer',
-                amount: amount,
-                bankName: bankName,
-                accountNumber: accountNumber
-            });
-
-            toast({ title: "ส่งคำร้องสำเร็จ", description: "คำร้องขอถอนเงินของคุณถูกส่งเรียบร้อยแล้ว" });
-            setIsWithdrawOpen(false);
-            setWithdrawAmount('');
-            // Refresh data
-            fetchFinancials();
-        } catch (error) {
-            console.error("Withdrawal error:", error);
-            toast({ variant: "destructive", title: "เกิดข้อผิดพลาด", description: "ไม่สามารถส่งคำร้องได้" });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
     const handleUpdateBankDetails = async () => {
         if (!firestore || !user) return;
 
@@ -487,8 +421,13 @@ function LawyerFinancialsContent() {
                         <p className="text-muted-foreground">จัดการรายได้และการถอนเงินของคุณ</p>
                     </div>
 
+                    {/* หน้านี้เป็นสำเนาแดชบอร์ดทนายที่ค้างอยู่ใน repo หลังบ้าน เดิมปุ่มนี้เปิดกล่อง
+                        "แจ้งถอนเงิน" ที่ยิง addDoc('withdrawals') ฝั่ง client ตรงๆ โดยตรวจยอด
+                        แค่ในเบราว์เซอร์ (และไม่ได้เขียน status/requestedAt ด้วยซ้ำ)
+                        คำร้องถอนเงินอยู่ที่เว็บหลักซึ่งคิดยอดใหม่ฝั่ง server แล้ว
+                        (Lawslane/src/app/actions/withdrawal-actions.ts) ที่นี่เหลือแค่จัดการบัญชีรับเงิน */}
                     <Button className="bg-blue-600 hover:bg-blue-700 rounded-full" onClick={() => setIsWithdrawOpen(true)}>
-                        <Wallet className="mr-2 h-4 w-4" /> แจ้งถอนเงิน
+                        <Wallet className="mr-2 h-4 w-4" /> จัดการบัญชีรับเงิน
                     </Button>
 
                     <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
@@ -505,10 +444,10 @@ function LawyerFinancialsContent() {
                                 <div className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] p-6 text-white">
                                     <DialogHeader className="text-white">
                                         <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                                            <Wallet className="w-6 h-6 animate-bounce" /> แจ้งถอนเงิน
+                                            <Wallet className="w-6 h-6" /> บัญชีรับเงิน
                                         </DialogTitle>
                                         <DialogDescription className="text-blue-100">
-                                            ระบุจำนวนเงินที่ต้องการถอนเข้าบัญชีของคุณ
+                                            ตรวจสอบและแก้ไขบัญชีที่ใช้รับเงินค่าวิชาชีพของคุณ
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
@@ -622,34 +561,22 @@ function LawyerFinancialsContent() {
                                             )}
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label htmlFor="amount" className="text-base font-semibold">จำนวนเงินที่ต้องการถอน</Label>
-                                            <div className="relative group">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-light group-focus-within:text-blue-600 transition-colors">฿</span>
-                                                <Input
-                                                    id="amount"
-                                                    type="number"
-                                                    className="pl-10 h-14 text-lg rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300"
-                                                    placeholder="0.00"
-                                                    value={withdrawAmount}
-                                                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                                                />
-                                            </div>
-                                            <p className="text-xs text-muted-foreground pl-1">* ขั้นต่ำ 1,000 บาท</p>
+                                        <div className="flex items-start gap-2 text-sm text-blue-800 bg-blue-50 border border-blue-100 p-3 rounded-2xl">
+                                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>
+                                                การยื่นคำร้องขอถอนเงินทำได้ที่เว็บหลักเท่านั้น{' '}
+                                                {/* ใช้ getMainLink แทน URL ตายตัว — dev/staging จะได้ชี้เว็บหลักของ environment นั้น ไม่หลุดไป production */}
+                                                <a href={getMainLink('/lawyer-dashboard/financials', 'admin')} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                                                    เปิดหน้าการเงินบนเว็บหลัก
+                                                </a>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <DialogFooter className="gap-2 sm:gap-0 px-6 pb-6">
                                     <Button variant="ghost" onClick={() => setIsWithdrawOpen(false)} className="rounded-full hover:bg-gray-100 text-muted-foreground">
-                                        ยกเลิก
-                                    </Button>
-                                    <Button
-                                        onClick={handleWithdraw}
-                                        disabled={isSubmitting || parseFloat(withdrawAmount) > stats.availableBalance || parseFloat(withdrawAmount) < 1000 || !bankName}
-                                        className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-8 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40 transition-all duration-300 transform hover:-translate-y-0.5"
-                                    >
-                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'ยืนยันการถอน'}
+                                        ปิด
                                     </Button>
                                 </DialogFooter>
                             </div>

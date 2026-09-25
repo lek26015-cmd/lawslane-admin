@@ -4,18 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   query,
-  where,
-  getDocs,
   addDoc,
   serverTimestamp,
   onSnapshot,
   orderBy,
   doc,
   getDoc,
-  setDoc,
   updateDoc,
   Firestore,
-  Query,
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import type { LawyerProfile, HumanChatMessage } from '@/lib/types';
@@ -103,23 +99,12 @@ export function ChatBox({
       try {
         const chatSnap = await getDoc(chatRef);
         if (!chatSnap.exists()) {
-          const newChatData = {
-            participants: [currentUser.uid, otherUser.userId],
-            createdAt: serverTimestamp(),
-            caseTitle: 'คดี: มรดก',
-          };
-          setDoc(chatRef, newChatData)
-            .then(() => {
-              setIsChatReady(true);
-            })
-            .catch(serverError => {
-              const permissionError = new FirestorePermissionError({
-                path: chatRef.path,
-                operation: 'create',
-                requestResourceData: newChatData,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-            });
+          // เดิมตรงนี้ setDoc สร้างห้องใหม่เองฝั่ง client (caseTitle ตายตัว 'คดี: มรดก')
+          // ซึ่งต้องพึ่งกฎ `chats: allow create` ที่เปิดให้ client สร้างห้องได้ ตอนนี้
+          // ห้องแชทสร้างผ่าน Admin SDK เท่านั้น (ดู Lawslane/firestore.rules) และทุกหน้า
+          // ที่ใช้คอมโพเนนต์นี้โหลดห้องที่มีอยู่แล้วเสมอ — ไม่มีห้องก็แค่ไม่เปิดแชท
+          console.warn(`ChatBox: chat ${chatId} does not exist — not creating it client-side`);
+          setIsLoading(false);
         } else {
           setIsChatReady(true);
         }
