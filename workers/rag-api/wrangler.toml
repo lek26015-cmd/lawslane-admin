@@ -1,12 +1,5 @@
-name = "lawslane-rag-api"
-main = "src/index.ts"
-compatibility_date = "2024-04-05"
-
-# Enable Vectorize
-[[vectorize]]
-binding = "VECTORIZE_INDEX"
-index_name = "lawslane-index"
-
-# Enable Workers AI
-[ai]
-binding = "AI"
+# ⛔ STOP — DO NOT DEPLOY FROM THIS REPO
+# Source ของ worker `lawslane-rag-api` อยู่ที่ repo Lawslane (workers/rag-api/) ที่เดียว
+# สำเนานี้ไม่มี auth — ถ้า deploy จะทับตัวจริงและเปิด /ingest ให้ใครก็เขียนข้อมูลปลอมเข้าฐานกฎหมายได้
+# ไฟล์นี้ตั้งใจให้ syntax ผิด เพื่อให้ `wrangler deploy` ล้มทันที
+THIS FILE IS INTENTIONALLY INVALID ===

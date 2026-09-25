@@ -6,7 +6,10 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfRequire = require('pdf-parse');
 
-const WORKER_URL = 'https://lawslane-rag-api.lawslane-app.workers.dev';
+const WORKER_URL = 'https://lawslane-rag-api.lawlanes-app.workers.dev';
+// worker ปิด /ingest ถ้าไม่มี key — ตั้งใน .env.local หรือ shell: RAG_INGEST_KEY=...
+const RAG_INGEST_KEY = process.env.RAG_INGEST_KEY;
+if (!RAG_INGEST_KEY) throw new Error('RAG_INGEST_KEY is not set');
 const PDF_DIR = path.join(process.cwd(), 'src/data/pdfs');
 
 async function loadPdf(filePath: string): Promise<string> {
@@ -40,7 +43,8 @@ async function ingestChunk(text: string, metadata: any) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'Lawslane-Ingestor/1.0'
+                'User-Agent': 'Lawslane-Ingestor/1.0',
+                'Authorization': `Bearer ${RAG_INGEST_KEY}`,
             },
             body: JSON.stringify({ text, metadata, id: metadata.id })
         });
@@ -86,7 +90,7 @@ async function main() {
             /*
             const checkRes = await fetch(`${WORKER_URL}/exists`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAG_INGEST_KEY}` },
                 body: JSON.stringify({ id })
             });
             const checkData = await checkRes.json() as any;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
+import { ragAuthHeaders } from '@/lib/rag';
 
 // Server-side cache to prevent rate limiting Workers during concurrent dashboard access
 let cachedData: any = { vectorCount: 188053, dimensions: 1024, lastChecked: new Date().toISOString() };
@@ -23,7 +24,7 @@ export async function GET() {
         const workerUrl = process.env.NEXT_PUBLIC_RAG_WORKER_URL || 'https://lawslane-rag-api.lawlanes-app.workers.dev';
         const response = await fetch(`${workerUrl}/stats`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...ragAuthHeaders() },
             cache: 'no-store'
         });
 

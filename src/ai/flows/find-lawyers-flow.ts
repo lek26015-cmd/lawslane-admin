@@ -8,7 +8,7 @@
 
 import { z } from 'zod';
 
-const WORKER_URL = 'https://lawslane-rag-api.lawslane-app.workers.dev';
+import { RAG_WORKER_URL as WORKER_URL, ragAuthHeaders } from '@/lib/rag';
 
 const FindLawyersInputSchema = z.object({
   problem: z.string().describe("The user's description of their legal problem."),
@@ -35,7 +35,7 @@ export async function findLawyerSpecialties(input: FindLawyersInput): Promise<Fi
 
     const response = await fetch(`${WORKER_URL}/query`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ragAuthHeaders() },
       body: JSON.stringify({
         question: input.problem,
         filter: { type: 'lawyer' },
