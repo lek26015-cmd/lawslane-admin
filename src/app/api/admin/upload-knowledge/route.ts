@@ -4,7 +4,7 @@ import { parsePdfFromBuffer } from '@/lib/pdf-loader';
 import crypto from 'crypto';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 
-const WORKER_URL = 'https://lawslane-rag-api.lawslane-app.workers.dev';
+import { RAG_WORKER_URL as WORKER_URL, ragAuthHeaders } from '@/lib/rag';
 
 function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200): string[] {
     const chunks: string[] = [];
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         try {
             const checkRes = await fetch(`${WORKER_URL}/exists`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...ragAuthHeaders('ingest') },
                 body: JSON.stringify({ id: firstChunkId })
             });
             const checkData = await checkRes.json() as any;
@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'User-Agent': 'Lawslane-Admin/1.0'
+                        'User-Agent': 'Lawslane-Admin/1.0',
+                        ...ragAuthHeaders('ingest'),
                     },
                     body: JSON.stringify({
                         text: chunk,

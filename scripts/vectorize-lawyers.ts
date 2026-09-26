@@ -5,6 +5,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 import { collection, getDocs, query, where } from 'firebase/firestore';
 
 const WORKER_URL = 'https://lawslane-rag-api.lawlanes-app.workers.dev';
+// worker ปิด /ingest ถ้าไม่มี key — ตั้งใน .env.local หรือ shell: RAG_INGEST_KEY=...
+const RAG_INGEST_KEY = process.env.RAG_INGEST_KEY;
+if (!RAG_INGEST_KEY) throw new Error('RAG_INGEST_KEY is not set');
 
 async function ingestLawyer(id: string, text: string, lawyerId: string) {
     try {
@@ -12,7 +15,8 @@ async function ingestLawyer(id: string, text: string, lawyerId: string) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'Lawslane-Vectorizer/1.0'
+                'User-Agent': 'Lawslane-Vectorizer/1.0',
+                'Authorization': `Bearer ${RAG_INGEST_KEY}`,
             },
             body: JSON.stringify({
                 text,

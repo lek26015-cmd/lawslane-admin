@@ -1,6 +1,7 @@
 'use server';
 
 import { Resend } from 'resend';
+import { requireAdmin, AuthError } from '@/lib/auth-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -9,6 +10,15 @@ export async function sendAdminEmail(
     subject: string,
     body: string
 ) {
+    // เดิมไม่มีด่านตรวจสิทธิ์ — action นี้รับรายชื่อผู้รับ + หัวข้อ + เนื้อหา HTML จากผู้เรียก
+    // ตรงๆ ใครก็ใช้ส่งอีเมลในนาม noreply@lawslane.com ไปหาใครก็ได้ (open relay สำหรับ phishing)
+    try {
+        await requireAdmin('support');
+    } catch (e) {
+        if (e instanceof AuthError) return { success: false, error: e.message };
+        throw e;
+    }
+
     if (!process.env.RESEND_API_KEY) {
         return { success: false, error: 'Missing API Key' };
     }
