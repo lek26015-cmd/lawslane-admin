@@ -32,6 +32,8 @@ export type NavItem = {
     href: string;
     icon: React.ReactNode;
     label: string;
+    /** ชื่อเมนูภาษาอังกฤษ (หลังบ้านสลับภาษาได้ ดู admin-i18n) */
+    labelEn: string;
     /** ถ้าตั้งไว้ จะแสดงเมื่อผู้ใช้มีสิทธิ์นี้เท่านั้น (ดู hasPermission ใน admin-client-layout) */
     permission?: string;
     /** ลิงก์ภายนอกที่แสดงเป็นไอคอนเล็กข้างรายการ */
@@ -40,6 +42,7 @@ export type NavItem = {
 
 export type NavSection = {
     title: string;
+    titleEn: string;
     items: NavItem[];
 };
 
@@ -52,89 +55,99 @@ export type NavSection = {
 export const navSections: NavSection[] = [
     {
         title: "จัดการผู้ใช้งาน",
+        titleEn: "User Management",
         items: [
-            { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า", permission: "users.customers" },
-            { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ", permission: "users.lawyers" },
-            { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย", permission: "users.registry" },
-            { href: "/interpreters", icon: <Languages className="h-4 w-4" />, label: "ล่าม", permission: "users.interpreters" },
+            { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า", labelEn: "Customers", permission: "users.customers" },
+            { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ", labelEn: "Lawyers", permission: "users.lawyers" },
+            { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย", labelEn: "Lawyer Registry", permission: "users.registry" },
+            { href: "/interpreters", icon: <Languages className="h-4 w-4" />, label: "ล่าม", labelEn: "Interpreters", permission: "users.interpreters" },
         ]
     },
     {
         title: "ห้องสนทนา",
+        titleEn: "Conversations",
         items: [
-            { href: "/chats", icon: <MessageSquare className="h-4 w-4" />, label: "แชททั้งหมด", permission: "chat" },
+            { href: "/chats", icon: <MessageSquare className="h-4 w-4" />, label: "แชททั้งหมด", labelEn: "All Chats", permission: "chat" },
         ]
     },
     {
         title: "คำขอใช้บริการ",
+        titleEn: "Service Requests",
         items: [
-            { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา", permission: "requests" },
-            { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน", permission: "requests" },
-            { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME", permission: "requests" },
-            { href: "/interpreter-bookings", icon: <Languages className="h-4 w-4" />, label: "งานล่าม", permission: "requests.interpreters" },
+            { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา", labelEn: "Contract Requests", permission: "requests" },
+            { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน", labelEn: "Registration Requests", permission: "requests" },
+            { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME", labelEn: "SME Requests", permission: "requests" },
+            { href: "/interpreter-bookings", icon: <Languages className="h-4 w-4" />, label: "งานล่าม", labelEn: "Interpreter Jobs", permission: "requests.interpreters" },
         ]
     },
     {
         title: "แบบสำรวจ",
+        titleEn: "Surveys",
         items: [
-            { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ SME", externalLink: "https://lawslane.com/th/survey" , permission: "surveys" },
-            { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)", externalLink: "https://lawslane.com/th/survey-lawyer" , permission: "surveys" },
-            { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)", externalLink: "https://lawslane.com/th/survey-public" , permission: "surveys" },
+            { href: "/surveys", icon: <ClipboardList className="h-4 w-4" />, label: "แบบสำรวจ SME", labelEn: "SME Survey", externalLink: "https://lawslane.com/th/survey" , permission: "surveys" },
+            { href: "/survey-lawyer", icon: <Scale className="h-4 w-4" />, label: "แบบสอบถาม (ทนาย)", labelEn: "Survey (Lawyers)", externalLink: "https://lawslane.com/th/survey-lawyer" , permission: "surveys" },
+            { href: "/survey-public", icon: <Users2 className="h-4 w-4" />, label: "แบบสอบถาม (บุคคลทั่วไป)", labelEn: "Survey (Public)", externalLink: "https://lawslane.com/th/survey-public" , permission: "surveys" },
         ]
     },
     {
         title: "เนื้อหาและการตลาด",
+        titleEn: "Content & Marketing",
         items: [
-            { href: "/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages", permission: "content" },
-            { href: "/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา", permission: "content" },
-            { href: "/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา", permission: "content" },
-            { href: "/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย", permission: "content" },
-            { href: "/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย", permission: "content" },
-            { href: "/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI", permission: "rag" },
+            { href: "/landing-pages", icon: <LayoutTemplate className="h-4 w-4" />, label: "Landing Pages", labelEn: "Landing Pages", permission: "content" },
+            { href: "/ads", icon: <Megaphone className="h-4 w-4" />, label: "จัดการโฆษณา", labelEn: "Ads", permission: "content" },
+            { href: "/content", icon: <FileEdit className="h-4 w-4" />, label: "จัดการเนื้อหา", labelEn: "Content", permission: "content" },
+            { href: "/forms", icon: <FileText className="h-4 w-4" />, label: "แบบฟอร์มกฎหมาย", labelEn: "Legal Forms", permission: "content" },
+            { href: "/legal", icon: <Scale className="h-4 w-4" />, label: "เอกสารทางกฎหมาย", labelEn: "Legal Documents", permission: "content" },
+            { href: "/knowledge", icon: <BrainCircuit className="h-4 w-4" />, label: "คลังความรู้ AI", labelEn: "AI Knowledge Base", permission: "rag" },
         ]
     },
     {
         title: "การเงิน",
+        titleEn: "Finance",
         items: [
-            { href: "/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", permission: "financials.overview" },
-            { href: "/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", permission: "financials.verification" },
-            { href: "/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", permission: "financials.transactions" },
-            { href: "/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", permission: "financials.withdrawals" },
-            { href: "/interpreter-payouts", icon: <HandCoins className="h-4 w-4" />, label: "จ่ายเงินล่าม", permission: "financials.interpreterPayouts" },
-            { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", permission: "coupons" },
-            { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", permission: "gp_coupons" },
+            { href: "/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", labelEn: "Finance Overview", permission: "financials.overview" },
+            { href: "/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", labelEn: "Slip Verification", permission: "financials.verification" },
+            { href: "/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", labelEn: "Transactions", permission: "financials.transactions" },
+            { href: "/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", labelEn: "Withdrawals", permission: "financials.withdrawals" },
+            { href: "/interpreter-payouts", icon: <HandCoins className="h-4 w-4" />, label: "จ่ายเงินล่าม", labelEn: "Interpreter Payouts", permission: "financials.interpreterPayouts" },
+            { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", labelEn: "Discount Coupons", permission: "coupons" },
+            { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", labelEn: "Lawyer GP Coupons", permission: "gp_coupons" },
         ]
     },
     {
         title: "ระบบและสนับสนุน",
+        titleEn: "System & Support",
         items: [
-            { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ", permission: "support" },
-            { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล", permission: "support" },
+            { href: "/tickets", icon: <Ticket className="h-4 w-4" />, label: "Ticket ช่วยเหลือ", labelEn: "Support Tickets", permission: "support" },
+            { href: "/email", icon: <Mail className="h-4 w-4" />, label: "ระบบอีเมล", labelEn: "Email", permission: "support" },
         ]
     },
     {
         // ยกมาจาก lawlanes-education ตอนรวมหลังบ้าน (Module 4 เป็นต้นไป)
         title: "การศึกษา",
+        titleEn: "Education",
         items: [
-            { href: "/education/courses", icon: <GraduationCap className="h-4 w-4" />, label: "คอร์สเรียน", permission: "education.courses" },
-            { href: "/education/exams", icon: <ClipboardList className="h-4 w-4" />, label: "ข้อสอบ", permission: "education.exams" },
-            { href: "/settings/education", icon: <Settings className="h-4 w-4" />, label: "ตั้งค่า Education", permission: "education.settings" },
+            { href: "/education/courses", icon: <GraduationCap className="h-4 w-4" />, label: "คอร์สเรียน", labelEn: "Courses", permission: "education.courses" },
+            { href: "/education/exams", icon: <ClipboardList className="h-4 w-4" />, label: "ข้อสอบ", labelEn: "Exams", permission: "education.exams" },
+            { href: "/settings/education", icon: <Settings className="h-4 w-4" />, label: "ตั้งค่า Education", labelEn: "Education Settings", permission: "education.settings" },
         ]
     },
     {
         // ยกมาจาก lawslane-capdeal ตอนรวมหลังบ้าน (Module 7)
         title: "CapDeal",
+        titleEn: "CapDeal",
         items: [
-            { href: "/capdeal/contracts", icon: <FileSignature className="h-4 w-4" />, label: "สัญญา CapDeal", permission: "capdeal.contracts" },
-            { href: "/capdeal/finance", icon: <Landmark className="h-4 w-4" />, label: "การเงิน CapDeal", permission: "capdeal.finance" },
+            { href: "/capdeal/contracts", icon: <FileSignature className="h-4 w-4" />, label: "สัญญา CapDeal", labelEn: "CapDeal Contracts", permission: "capdeal.contracts" },
+            { href: "/capdeal/finance", icon: <Landmark className="h-4 w-4" />, label: "การเงิน CapDeal", labelEn: "CapDeal Finance", permission: "capdeal.finance" },
         ]
     },
     {
         title: "ร้านค้าและบริการข้อมูล",
+        titleEn: "Store & Data Services",
         items: [
-            { href: "/books", icon: <Package className="h-4 w-4" />, label: "คลังหนังสือ", permission: "store.books" },
-            { href: "/orders", icon: <ShoppingBag className="h-4 w-4" />, label: "รายการสั่งซื้อ", permission: "store.orders" },
-            { href: "/rag", icon: <Database className="h-4 w-4" />, label: "มอนิเตอร์ RAG", permission: "rag" },
+            { href: "/books", icon: <Package className="h-4 w-4" />, label: "คลังหนังสือ", labelEn: "Bookstore", permission: "store.books" },
+            { href: "/orders", icon: <ShoppingBag className="h-4 w-4" />, label: "รายการสั่งซื้อ", labelEn: "Orders", permission: "store.orders" },
+            { href: "/rag", icon: <Database className="h-4 w-4" />, label: "มอนิเตอร์ RAG", labelEn: "RAG Monitor", permission: "rag" },
         ]
     }
 ];

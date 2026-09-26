@@ -43,17 +43,27 @@ import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { DataTablePagination } from '@/components/admin/DataTablePagination';
 import { TableSkeleton } from '@/components/admin/TableSkeleton';
+import { useAdminLocale } from '@/lib/admin-i18n';
 
 const PAGE_SIZE = 25;
-const STATUS_TABS: { value: string; label: string }[] = [
-  { value: 'all', label: 'ทั้งหมด' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'PAID', label: 'Paid' },
-  { value: 'SHIPPING', label: 'Shipping' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'DELIVERED', label: 'Delivered' },
-  { value: 'REJECTED', label: 'Rejected' },
+const STATUS_TABS: { value: string; label: [string, string] }[] = [
+  { value: 'all', label: ['ทั้งหมด', 'All'] },
+  { value: 'PENDING', label: ['รอตรวจสอบ', 'Pending'] },
+  { value: 'PAID', label: ['ชำระแล้ว', 'Paid'] },
+  { value: 'SHIPPING', label: ['กำลังจัดส่ง', 'Shipping'] },
+  { value: 'COMPLETED', label: ['สำเร็จ', 'Completed'] },
+  { value: 'DELIVERED', label: ['จัดส่งแล้ว', 'Delivered'] },
+  { value: 'REJECTED', label: ['ถูกปฏิเสธ', 'Rejected'] },
 ];
+
+const STATUS_LABEL: Record<string, [string, string]> = {
+  PENDING: ['รอตรวจสอบ', 'Pending'],
+  PAID: ['ชำระแล้ว / ยืนยันแล้ว', 'Paid / Confirmed'],
+  SHIPPING: ['จัดส่งแล้ว (ระหว่างทาง)', 'Shipped'],
+  COMPLETED: ['สำเร็จ', 'Completed'],
+  DELIVERED: ['ส่งถึงแล้ว', 'Delivered'],
+  REJECTED: ['ถูกปฏิเสธ', 'Rejected'],
+};
 
 export default function BookOrdersPage() {
   const [activeTab, setActiveTab] = useState('all');
@@ -63,6 +73,7 @@ export default function BookOrdersPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const { toast } = useToast();
+  const { tx, locale } = useAdminLocale();
 
   const source: AdminListSource<StoreOrder> = React.useMemo(
     () => ({
@@ -88,8 +99,9 @@ export default function BookOrdersPage() {
 
   React.useEffect(() => {
     if (error) {
-      toast({ title: 'Error', description: 'Failed to fetch orders', variant: 'destructive' });
+      toast({ title: tx('เกิดข้อผิดพลาด', 'Error'), description: tx('โหลดรายการสั่งซื้อไม่สำเร็จ', 'Failed to fetch orders'), variant: 'destructive' });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, toast]);
 
   const handleUpdateStatus = async (orderId: string, status: StoreOrder['status'], tNum?: string) => {
@@ -97,12 +109,12 @@ export default function BookOrdersPage() {
     try {
       const res = await updateOrderStatusAction(orderId, status, tNum);
       if (res.success) {
-        toast({ title: "Updated", description: `Order status changed to ${status}` });
+        toast({ title: tx('อัปเดตแล้ว', 'Updated'), description: tx(`เปลี่ยนสถานะออเดอร์เป็น ${STATUS_LABEL[status]?.[0] ?? status}`, `Order status changed to ${STATUS_LABEL[status]?.[1] ?? status}`) });
         setSelectedOrder(null);
         refresh();
       }
     } catch (error) {
-      toast({ title: "Error", description: "Feedback update failed", variant: "destructive" });
+      toast({ title: tx('เกิดข้อผิดพลาด', 'Error'), description: tx('อัปเดตสถานะไม่สำเร็จ', 'Status update failed'), variant: 'destructive' });
     } finally {
       setIsUpdating(false);
     }
@@ -110,12 +122,12 @@ export default function BookOrdersPage() {
 
   const getStatusBadge = (status: StoreOrder['status']) => {
     switch (status) {
-      case 'PENDING': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase font-black text-[10px] tracking-wider">Pending</Badge>;
-      case 'PAID': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase font-black text-[10px] tracking-wider">Paid / Confirmed</Badge>;
-      case 'SHIPPING': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 uppercase font-black text-[10px] tracking-wider">Shipped</Badge>;
-      case 'COMPLETED': return <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200 uppercase font-black text-[10px] tracking-wider">Completed</Badge>;
-      case 'DELIVERED': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 uppercase font-black text-[10px] tracking-wider">Delivered</Badge>;
-      case 'REJECTED': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 uppercase font-black text-[10px] tracking-wider">Rejected</Badge>;
+      case 'PENDING': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase font-black text-[10px] tracking-wider">{tx(...STATUS_LABEL.PENDING)}</Badge>;
+      case 'PAID': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase font-black text-[10px] tracking-wider">{tx(...STATUS_LABEL.PAID)}</Badge>;
+      case 'SHIPPING': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 uppercase font-black text-[10px] tracking-wider">{tx(...STATUS_LABEL.SHIPPING)}</Badge>;
+      case 'COMPLETED': return <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200 uppercase font-black text-[10px] tracking-wider">{tx(...STATUS_LABEL.COMPLETED)}</Badge>;
+      case 'DELIVERED': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 uppercase font-black text-[10px] tracking-wider">{tx(...STATUS_LABEL.DELIVERED)}</Badge>;
+      case 'REJECTED': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 uppercase font-black text-[10px] tracking-wider">{tx(...STATUS_LABEL.REJECTED)}</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -125,23 +137,23 @@ export default function BookOrdersPage() {
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <ShoppingBag className="w-8 h-8 text-blue-600" />
-          Store Orders
+          {tx('รายการสั่งซื้อ', 'Store Orders')}
         </h1>
-        <p className="text-slate-500">Verify payments and manage fulfillment for book/course/exam purchases from Lawslane Wittaya</p>
+        <p className="text-slate-500">{tx('ตรวจสอบการชำระเงินและจัดการการจัดส่งคำสั่งซื้อหนังสือ/คอร์ส/ข้อสอบจาก Lawslane Wittaya', 'Verify payments and manage fulfillment for book/course/exam purchases from Lawslane Wittaya')}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap h-auto">
             {STATUS_TABS.map((t) => (
-              <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+              <TabsTrigger key={t.value} value={t.value}>{tx(...t.label)}</TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
         <div className="relative w-full max-w-[240px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="ค้นหาด้วย User ID (ตรงทั้งหมด)..."
+            placeholder={tx('ค้นหาด้วย User ID (ตรงทั้งหมด)...', 'Search by User ID (exact match)...')}
             className="pl-8 h-9"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -155,11 +167,11 @@ export default function BookOrdersPage() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Order ID / Date</TableHead>
-                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Customer</TableHead>
-                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Total</TableHead>
-                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Status</TableHead>
-                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400 text-right">Actions</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('รหัสออเดอร์ / วันที่', 'Order ID / Date')}</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('ลูกค้า', 'Customer')}</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('ยอดรวม', 'Total')}</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('สถานะ', 'Status')}</TableHead>
+                  <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400 text-right">{tx('จัดการ', 'Actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableSkeleton rows={8} columns={5} />
@@ -168,8 +180,8 @@ export default function BookOrdersPage() {
             <div className="p-20">
               <EmptyState
                 icon={ShoppingBag}
-                title={debouncedSearch ? `ไม่พบออเดอร์สำหรับ userId "${debouncedSearch}"` : 'No orders found yet'}
-                description={debouncedSearch ? 'ลองล้างคำค้นหาแล้วค้นหาใหม่' : 'ออเดอร์ใหม่จากลูกค้าจะแสดงที่นี่'}
+                title={debouncedSearch ? tx(`ไม่พบออเดอร์สำหรับ userId "${debouncedSearch}"`, `No orders found for userId "${debouncedSearch}"`) : tx('ยังไม่มีออเดอร์', 'No orders found yet')}
+                description={debouncedSearch ? tx('ลองล้างคำค้นหาแล้วค้นหาใหม่', 'Try clearing the search and searching again') : tx('ออเดอร์ใหม่จากลูกค้าจะแสดงที่นี่', 'New customer orders will appear here')}
               />
             </div>
           ) : (
@@ -177,11 +189,11 @@ export default function BookOrdersPage() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Order ID / Date</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Customer</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Total</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">Status</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400 text-right">Actions</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('รหัสออเดอร์ / วันที่', 'Order ID / Date')}</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('ลูกค้า', 'Customer')}</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('ยอดรวม', 'Total')}</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400">{tx('สถานะ', 'Status')}</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] uppercase font-black text-slate-400 text-right">{tx('จัดการ', 'Actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100">
@@ -191,7 +203,7 @@ export default function BookOrdersPage() {
                         <div className="font-bold text-slate-900">{order.id.substring(0, 8)}...</div>
                         <div className="text-slate-400 mt-1 flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(order.createdAt).toLocaleDateString('th-TH')}
+                          {new Date(order.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'th-TH')}
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-4">
@@ -203,7 +215,7 @@ export default function BookOrdersPage() {
                         ) : (
                           <>
                             <div className="font-mono text-xs text-slate-500">{order.userId.substring(0, 12)}...</div>
-                            <div className="text-[10px] text-slate-400 italic">สินค้าดิจิทัล ไม่ต้องจัดส่ง</div>
+                            <div className="text-[10px] text-slate-400 italic">{tx('สินค้าดิจิทัล ไม่ต้องจัดส่ง', 'Digital product, no shipping')}</div>
                           </>
                         )}
                       </TableCell>
@@ -223,7 +235,7 @@ export default function BookOrdersPage() {
                             setTrackingNumber(order.trackingNumber || '');
                           }}
                         >
-                          <Eye className="w-4 h-4" /> Details
+                          <Eye className="w-4 h-4" /> {tx('รายละเอียด', 'Details')}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -255,7 +267,7 @@ export default function BookOrdersPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-2xl font-black mb-1 flex items-center gap-2">
-                       Order Details
+                       {tx('รายละเอียดออเดอร์', 'Order Details')}
                     </h2>
                     <p className="text-slate-400 text-xs font-mono">ID: {selectedOrder.id}</p>
                   </div>
@@ -268,7 +280,7 @@ export default function BookOrdersPage() {
                 <div className="p-8 border-r border-slate-100 flex flex-col gap-6">
                   <div>
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                      <User className="w-3 h-3" /> Customer & Shipping
+                      <User className="w-3 h-3" /> {tx('ลูกค้าและการจัดส่ง', 'Customer & Shipping')}
                     </h3>
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
                       {selectedOrder.shippingInfo ? (
@@ -280,14 +292,14 @@ export default function BookOrdersPage() {
                           <p className="text-xs font-bold text-blue-600">{selectedOrder.shippingInfo.phone}</p>
                         </>
                       ) : (
-                        <p className="text-xs text-slate-500 italic">สินค้าดิจิทัล (ebook/คอร์ส) ไม่ต้องจัดส่ง — userId: {selectedOrder.userId}</p>
+                        <p className="text-xs text-slate-500 italic">{tx('สินค้าดิจิทัล (ebook/คอร์ส) ไม่ต้องจัดส่ง', 'Digital product (ebook/course), no shipping')} — userId: {selectedOrder.userId}</p>
                       )}
                     </div>
                   </div>
 
                   <div>
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                      <ShoppingBag className="w-3 h-3" /> Items Purchased
+                      <ShoppingBag className="w-3 h-3" /> {tx('รายการสินค้า', 'Items Purchased')}
                     </h3>
                     <div className="space-y-3">
                       {selectedOrder.items.map((item, idx) => (
@@ -295,7 +307,7 @@ export default function BookOrdersPage() {
                           <img src={item.coverUrl} className="w-10 h-12 object-cover rounded-lg border border-slate-100" />
                           <div className="flex-1">
                             <p className="text-xs font-bold text-slate-800 line-clamp-1">{item.title} <span className="text-slate-400 font-normal">({item.type})</span></p>
-                            <p className="text-[10px] text-slate-500">Qty: {item.quantity} x ฿{item.price.toLocaleString()}</p>
+                            <p className="text-[10px] text-slate-500">{tx('จำนวน', 'Qty')}: {item.quantity} x ฿{item.price.toLocaleString()}</p>
                           </div>
                         </div>
                       ))}
@@ -304,7 +316,7 @@ export default function BookOrdersPage() {
 
                   <div className="pt-4 border-t border-slate-100">
                     <div className="flex justify-between items-end">
-                      <p className="text-xs font-black uppercase tracking-widest text-slate-400">Total Amount</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-400">{tx('ยอดรวม', 'Total Amount')}</p>
                       <p className="text-2xl font-black text-blue-600">฿{selectedOrder.totalAmount.toLocaleString()}</p>
                     </div>
                   </div>
@@ -314,7 +326,7 @@ export default function BookOrdersPage() {
                 <div className="p-8 bg-slate-50/50 flex flex-col gap-6">
                   <div>
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                      <CreditCard className="w-3 h-3" /> Payment Verification
+                      <CreditCard className="w-3 h-3" /> {tx('ตรวจสอบการชำระเงิน', 'Payment Verification')}
                     </h3>
                     {selectedOrder.slipUrl ? (
                       <div className="relative group cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden aspect-[3/4] bg-white">
@@ -322,7 +334,7 @@ export default function BookOrdersPage() {
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                            <Button variant="outline" className="bg-white border-none text-black rounded-full" asChild>
                              <a href={selectedOrder.slipUrl} target="_blank" rel="noopener noreferrer">
-                               <ExternalLink className="w-4 h-4 mr-2" /> View Original
+                               <ExternalLink className="w-4 h-4 mr-2" /> {tx('ดูรูปต้นฉบับ', 'View Original')}
                              </a>
                            </Button>
                         </div>
@@ -330,20 +342,20 @@ export default function BookOrdersPage() {
                     ) : (
                       <div className="p-10 text-center bg-white border border-slate-200 rounded-2xl">
                         <XCircle className="w-10 h-10 text-slate-200 mx-auto mb-2" />
-                        <p className="text-xs text-slate-400">No payment slip uploaded</p>
+                        <p className="text-xs text-slate-400">{tx('ยังไม่มีการอัปโหลดสลิป', 'No payment slip uploaded')}</p>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-4">
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <Truck className="w-3 h-3" /> Fulfillment
+                      <Truck className="w-3 h-3" /> {tx('การจัดส่ง', 'Fulfillment')}
                     </h3>
                     {selectedOrder.shippingInfo && (
                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase">Tracking Number</Label>
+                          <Label className="text-[10px] font-black text-slate-400 uppercase">{tx('เลขพัสดุ', 'Tracking Number')}</Label>
                           <Input
-                              placeholder="Enter carrier tracking code..."
+                              placeholder={tx('กรอกเลขพัสดุของขนส่ง...', 'Enter carrier tracking code...')}
                               value={trackingNumber}
                               onChange={(e) => setTrackingNumber(e.target.value)}
                               className="bg-white rounded-xl border-slate-200"
@@ -357,7 +369,7 @@ export default function BookOrdersPage() {
                         className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
                         onClick={() => handleUpdateStatus(selectedOrder.id, 'PAID')}
                       >
-                        <CheckCircle2 className="w-4 h-4" /> Confirm Payment
+                        <CheckCircle2 className="w-4 h-4" /> {tx('ยืนยันการชำระเงิน', 'Confirm Payment')}
                       </Button>
                       <Button
                         variant="outline"
@@ -365,7 +377,7 @@ export default function BookOrdersPage() {
                         className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-xs font-bold"
                         onClick={() => handleUpdateStatus(selectedOrder.id, 'REJECTED')}
                       >
-                        <XCircle className="w-4 h-4" /> Reject
+                        <XCircle className="w-4 h-4" /> {tx('ปฏิเสธ', 'Reject')}
                       </Button>
                       {selectedOrder.shippingInfo ? (
                         <>
@@ -374,14 +386,14 @@ export default function BookOrdersPage() {
                             className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
                             onClick={() => handleUpdateStatus(selectedOrder.id, 'SHIPPING', trackingNumber)}
                           >
-                            <Truck className="w-4 h-4" /> Mark Shipped
+                            <Truck className="w-4 h-4" /> {tx('ทำเครื่องหมายว่าจัดส่งแล้ว', 'Mark Shipped')}
                           </Button>
                           <Button
                             disabled={isUpdating || selectedOrder.status !== 'SHIPPING'}
                             className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
                             onClick={() => handleUpdateStatus(selectedOrder.id, 'DELIVERED')}
                           >
-                            <CheckCircle2 className="w-4 h-4" /> Mark Delivered
+                            <CheckCircle2 className="w-4 h-4" /> {tx('ทำเครื่องหมายว่าส่งถึงแล้ว', 'Mark Delivered')}
                           </Button>
                         </>
                       ) : (
@@ -390,7 +402,7 @@ export default function BookOrdersPage() {
                           className="col-span-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-10 gap-2 text-xs font-bold"
                           onClick={() => handleUpdateStatus(selectedOrder.id, 'COMPLETED')}
                         >
-                          <CheckCircle2 className="w-4 h-4" /> Mark Completed
+                          <CheckCircle2 className="w-4 h-4" /> {tx('ทำเครื่องหมายว่าสำเร็จ', 'Mark Completed')}
                         </Button>
                       )}
                     </div>
