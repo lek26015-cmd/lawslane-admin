@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { FileSignature, FileText, Gavel, Landmark, ShieldCheck, Ticket, Users2 } from 'lucide-react';
+import { FileSignature, FileText, Gavel, Landmark, Languages, ShieldCheck, Ticket, Users2 } from 'lucide-react';
 import { AuthError, requireUser, isSuperAdminToken } from '@/lib/auth-guard';
 import { getAdminDashboardData } from '@/lib/dashboard-data';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -76,6 +76,20 @@ export default async function AdminDashboard() {
           caption={stats.capdealPendingSlipsCount > 0 ? 'มีดีลรอยืนยันการชำระเงิน' : 'ไม่มีรายการรอตรวจ'}
           icon={Landmark}
           href="/capdeal/finance"
+        />
+        <StatCard
+          title="ล่ามรออนุมัติ"
+          value={stats.pendingInterpretersCount}
+          caption="ใบสมัครล่ามรอตรวจเอกสาร"
+          icon={Languages}
+          href="/interpreters"
+        />
+        <StatCard
+          title="งานล่ามรอดำเนินการ"
+          value={stats.interpreterBookingsNeedingActionCount}
+          caption={`สลิปรอตรวจ / รอคืนเงิน · รอโอนให้ล่าม ${stats.interpreterPayoutsDueCount} งาน`}
+          icon={Languages}
+          href="/interpreter-bookings"
         />
       </div>
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">

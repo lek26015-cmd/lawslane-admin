@@ -17,8 +17,10 @@ export const PERMISSIONS = {
     'users.customers': 'ลูกค้า',
     'users.lawyers': 'ทนายความ',
     'users.registry': 'ฐานข้อมูลทนาย',
+    'users.interpreters': 'ล่าม',
     'chat': 'แชททั้งหมด',
     'requests': 'คำขอใช้บริการ',
+    'requests.interpreters': 'งานล่าม (ตรวจสลิป/ยกเลิก)',
     'surveys': 'แบบสำรวจ',
     'content': 'เนื้อหาและการตลาด',
     // 4 รหัสนี้มีใช้อยู่แล้วใน adminPermissions ของเดิม — ห้ามเปลี่ยนชื่อ
@@ -26,6 +28,7 @@ export const PERMISSIONS = {
     'financials.verification': 'ตรวจสอบสลิป',
     'financials.transactions': 'รายการธุรกรรม',
     'financials.withdrawals': 'คำร้องถอนเงิน',
+    'financials.interpreterPayouts': 'จ่ายเงินล่าม / คืนเงิน / ตั้ง GP ล่าม',
     'coupons': 'คูปองส่วนลด',
     'gp_coupons': 'คูปอง GP ทนาย',
     'support': 'Ticket และอีเมล',
