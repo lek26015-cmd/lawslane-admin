@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BadgeCheck, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getCloudflareVariantUrl } from '@/lib/cloudflare-images';
 import { listInterpretersAction } from '@/app/actions/interpreter-admin-actions';
 import {
     INTERPRETER_LANGUAGE_LABELS,
@@ -61,7 +63,11 @@ export default function AdminInterpretersPage() {
                                 {rows.map(r => (
                                     <TableRow key={r.id}>
                                         <TableCell>
-                                            <Link href={`/interpreters/${r.id}`} className="font-medium hover:underline flex items-center gap-1">
+                                            <Link href={`/interpreters/${r.id}`} className="font-medium hover:underline flex items-center gap-2">
+                                                <Avatar className="h-8 w-8">
+                                                    {r.imageUrl && <AvatarImage src={getCloudflareVariantUrl(r.imageUrl, 'avatar')} alt={r.name} className="object-cover" />}
+                                                    <AvatarFallback className="text-xs">{r.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
                                                 {r.name}{r.verified && <BadgeCheck className="w-4 h-4 text-emerald-600" />}
                                             </Link>
                                         </TableCell>

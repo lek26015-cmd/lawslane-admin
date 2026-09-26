@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { getCloudflareVariantUrl } from '@/lib/cloudflare-images';
 import { getInterpreterDetailAction, setInterpreterStatusAction } from '@/app/actions/interpreter-admin-actions';
 import {
     INTERPRETER_LANGUAGE_LABELS,
@@ -65,7 +67,12 @@ export default function AdminInterpreterDetailPage() {
     return (
         <div className="space-y-6 max-w-5xl">
             <Link href="/interpreters" className="text-sm text-muted-foreground inline-flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> ล่ามทั้งหมด</Link>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
+                <Avatar className="h-20 w-20 border">
+                    {/* รูปหน้าตรงที่ล่ามอัปโหลดตอนสมัคร — ใช้เทียบกับรูปในบัตรตอนตรวจเอกสาร */}
+                    {d.imageUrl && <AvatarImage src={getCloudflareVariantUrl(d.imageUrl, 'avatar')} alt={d.name} className="object-cover" />}
+                    <AvatarFallback className="text-2xl">{d.name.charAt(0)}</AvatarFallback>
+                </Avatar>
                 <h1 className="text-3xl font-bold font-headline">{d.name}</h1>
                 <Badge variant="secondary">{INTERPRETER_STATUS_LABELS[d.status] || d.status}</Badge>
             </div>
