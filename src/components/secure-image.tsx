@@ -14,6 +14,8 @@ interface SecureImageProps {
     fallbackClassName?: string;
     loadingClassName?: string;
     showLoader?: boolean;
+    /** แสดงแทนกล่อง "No Image"/"Error Loading" เมื่อไม่มีรูปหรือโหลดไม่ได้ — ใน Avatar ส่ง null เพื่อให้ AvatarFallback แสดงแทน */
+    fallback?: React.ReactNode;
 }
 
 /**
@@ -26,7 +28,8 @@ export function SecureImage({
     className, 
     fallbackClassName, 
     loadingClassName,
-    showLoader = true 
+    showLoader = true,
+    fallback,
 }: SecureImageProps) {
     const { storage } = useFirebase();
     const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
@@ -71,6 +74,9 @@ export function SecureImage({
 
         resolvePath();
     }, [src, storage]);
+
+    if (!src && fallback !== undefined) return <>{fallback}</>;
+    if (error && fallback !== undefined) return <>{fallback}</>;
 
     if (!src) {
         return (
