@@ -23,7 +23,9 @@ import {
     Ticket,
     UserCheck,
     Users2,
-    GraduationCap
+    GraduationCap,
+    Languages,
+    HandCoins
 } from 'lucide-react';
 
 export type NavItem = {
@@ -54,6 +56,7 @@ export const navSections: NavSection[] = [
             { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า", permission: "users.customers" },
             { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ", permission: "users.lawyers" },
             { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย", permission: "users.registry" },
+            { href: "/interpreters", icon: <Languages className="h-4 w-4" />, label: "ล่าม", permission: "users.interpreters" },
         ]
     },
     {
@@ -68,6 +71,7 @@ export const navSections: NavSection[] = [
             { href: "/contract-requests", icon: <FileSignature className="h-4 w-4" />, label: "คำขอร่างสัญญา", permission: "requests" },
             { href: "/registration-requests", icon: <Building2 className="h-4 w-4" />, label: "คำขอจดทะเบียน", permission: "requests" },
             { href: "/sme-requests", icon: <Briefcase className="h-4 w-4" />, label: "คำขอ SME", permission: "requests" },
+            { href: "/interpreter-bookings", icon: <Languages className="h-4 w-4" />, label: "งานล่าม", permission: "requests.interpreters" },
         ]
     },
     {
@@ -96,6 +100,7 @@ export const navSections: NavSection[] = [
             { href: "/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", permission: "financials.verification" },
             { href: "/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", permission: "financials.transactions" },
             { href: "/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", permission: "financials.withdrawals" },
+            { href: "/interpreter-payouts", icon: <HandCoins className="h-4 w-4" />, label: "จ่ายเงินล่าม", permission: "financials.interpreterPayouts" },
             { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", permission: "coupons" },
             { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", permission: "gp_coupons" },
         ]
