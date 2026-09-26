@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useAdminLocale } from '@/lib/admin-i18n';
 
 interface Contract {
     id: string;
@@ -21,8 +22,20 @@ interface Contract {
     ownerId: string;
 }
 
+// ป้ายสถานะที่แสดงผล (ค่าจริงใน DB ยังเป็นภาษาอังกฤษ)
+const STATUS_LABEL: Record<string, [string, string]> = {
+    draft: ['ฉบับร่าง', 'Draft'],
+    pending: ['รอดำเนินการ', 'Pending'],
+    succeeded: ['สำเร็จ', 'Succeeded'],
+    completed: ['เสร็จสิ้น', 'Completed'],
+    active: ['ใช้งานอยู่', 'Active'],
+    cancelled: ['ยกเลิกแล้ว', 'Cancelled'],
+    failed: ['ล้มเหลว', 'Failed'],
+};
+
 export default function AdminContractsPage() {
     const { user: currentUser } = useUser();
+    const { tx, locale } = useAdminLocale();
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -60,15 +73,15 @@ export default function AdminContractsPage() {
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Contract Management</h2>
-                    <p className="text-slate-500">View and manage all user-generated contracts</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">{tx('จัดการสัญญา', 'Contract Management')}</h2>
+                    <p className="text-slate-500">{tx('ดูและจัดการสัญญาที่ผู้ใช้สร้างทั้งหมด', 'View and manage all user-generated contracts')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button variant="outline" className="rounded-xl border-slate-200">
-                        <Filter className="w-4 h-4 mr-2" /> Filter
+                        <Filter className="w-4 h-4 mr-2" /> {tx('ตัวกรอง', 'Filter')}
                     </Button>
                     <Button className="rounded-xl bg-slate-900 text-white">
-                        Export CSV
+                        {tx('ส่งออก CSV', 'Export CSV')}
                     </Button>
                 </div>
             </div>
@@ -78,7 +91,7 @@ export default function AdminContractsPage() {
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
-                            placeholder="Search contracts by title, task, or ID..."
+                            placeholder={tx('ค้นหาสัญญาจากชื่อ งาน หรือ ID...', 'Search contracts by title, task, or ID...')}
                             className="pl-11 h-12 rounded-2xl bg-slate-50 border-none focus:bg-white focus:ring-2 focus:ring-slate-900 transition-all text-base"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -94,12 +107,12 @@ export default function AdminContractsPage() {
                         <Table>
                             <TableHeader className="bg-slate-50">
                                 <TableRow className="border-none hover:bg-transparent">
-                                    <TableHead className="py-4 pl-6 font-bold text-slate-500">CONTRACT</TableHead>
-                                    <TableHead className="py-4 font-bold text-slate-500">TASK</TableHead>
-                                    <TableHead className="py-4 font-bold text-slate-500">OWNER ID</TableHead>
-                                    <TableHead className="py-4 font-bold text-slate-500">PRICE</TableHead>
-                                    <TableHead className="py-4 font-bold text-slate-500">DATE</TableHead>
-                                    <TableHead className="py-4 font-bold text-slate-500">STATUS</TableHead>
+                                    <TableHead className="py-4 pl-6 font-bold text-slate-500">{tx('สัญญา', 'CONTRACT')}</TableHead>
+                                    <TableHead className="py-4 font-bold text-slate-500">{tx('งาน', 'TASK')}</TableHead>
+                                    <TableHead className="py-4 font-bold text-slate-500">{tx('ผู้สร้าง', 'OWNER ID')}</TableHead>
+                                    <TableHead className="py-4 font-bold text-slate-500">{tx('ราคา', 'PRICE')}</TableHead>
+                                    <TableHead className="py-4 font-bold text-slate-500">{tx('วันที่', 'DATE')}</TableHead>
+                                    <TableHead className="py-4 font-bold text-slate-500">{tx('สถานะ', 'STATUS')}</TableHead>
                                     <TableHead className="py-4 text-right pr-6"></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -108,7 +121,7 @@ export default function AdminContractsPage() {
                                     <TableRow key={contract.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
                                         <TableCell className="py-5 pl-6">
                                             <Link href={`/contract/${contract.id}`} className="hover:underline">
-                                                <div className="font-bold text-slate-900">{contract.title || 'Untitled'}</div>
+                                                <div className="font-bold text-slate-900">{contract.title || tx('ไม่มีชื่อ', 'Untitled')}</div>
                                             </Link>
                                             <div className="text-xs text-slate-400 font-mono mt-0.5">{contract.id}</div>
                                         </TableCell>
@@ -119,10 +132,10 @@ export default function AdminContractsPage() {
                                             <div className="text-xs text-slate-500 font-mono">{contract.ownerId || '-'}</div>
                                         </TableCell>
                                         <TableCell className="py-5 font-bold text-slate-900">
-                                            ฿{(contract.price || 0).toLocaleString()}
+                                            ฿{(contract.price || 0).toLocaleString(locale === 'en' ? 'en-US' : 'th-TH')}
                                         </TableCell>
                                         <TableCell className="py-5 text-sm text-slate-500">
-                                            {new Date(contract.createdAt).toLocaleDateString('th-TH')}
+                                            {new Date(contract.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'th-TH')}
                                         </TableCell>
                                         <TableCell className="py-5">
                                             <Badge className={cn(
@@ -131,17 +144,21 @@ export default function AdminContractsPage() {
                                                     contract.status === 'draft' ? "bg-amber-50 text-amber-600" :
                                                         "bg-slate-100 text-slate-600"
                                             )}>
-                                                {contract.status?.toUpperCase() || 'DRAFT'}
+                                                {(() => {
+                                                    if (!contract.status) return tx(...STATUS_LABEL.draft);
+                                                    const label = STATUS_LABEL[contract.status];
+                                                    return label ? tx(...label) : contract.status.toUpperCase();
+                                                })()}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="py-5 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Link href={`/contract/${contract.id}`}>
-                                                    <Button size="icon" variant="ghost" className="rounded-full hover:bg-white shadow-sm border border-slate-100">
+                                                    <Button size="icon" variant="ghost" className="rounded-full hover:bg-white shadow-sm border border-slate-100" aria-label={tx('ดูสัญญา', 'View contract')} title={tx('ดูสัญญา', 'View contract')}>
                                                         <Eye className="w-4 h-4 text-slate-600" />
                                                     </Button>
                                                 </Link>
-                                                <Button size="icon" variant="ghost" className="rounded-full">
+                                                <Button size="icon" variant="ghost" className="rounded-full" aria-label={tx('ตัวเลือกเพิ่มเติม', 'More options')} title={tx('ตัวเลือกเพิ่มเติม', 'More options')}>
                                                     <MoreVertical className="w-4 h-4 text-slate-400" />
                                                 </Button>
                                             </div>
@@ -153,7 +170,7 @@ export default function AdminContractsPage() {
                     )}
                     {!isLoading && filteredContracts.length === 0 && (
                         <div className="p-20 text-center text-slate-500">
-                            No contracts found matching your search.
+                            {tx('ไม่พบสัญญาที่ตรงกับคำค้นหา', 'No contracts found matching your search.')}
                         </div>
                     )}
                 </CardContent>

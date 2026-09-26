@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { CheckCircle, XCircle, Eye } from 'lucide-react';
+import { useAdminLocale } from '@/lib/admin-i18n';
 
 interface Transaction {
     id: string;
@@ -43,10 +44,25 @@ interface PendingDeal {
     status: string;
 }
 
+// ป้ายสถานะธุรกรรมที่แสดงผล (ค่าจริงจาก API ยังเป็นภาษาอังกฤษ)
+const TX_STATUS_LABEL: Record<string, [string, string]> = {
+    succeeded: ['สำเร็จ', 'Succeeded'],
+    success: ['สำเร็จ', 'Success'],
+    paid: ['ชำระแล้ว', 'Paid'],
+    completed: ['เสร็จสิ้น', 'Completed'],
+    active: ['ใช้งานอยู่', 'Active'],
+    pending: ['รอดำเนินการ', 'Pending'],
+    pending_payment: ['รอชำระเงิน', 'Pending payment'],
+    failed: ['ล้มเหลว', 'Failed'],
+    refunded: ['คืนเงินแล้ว', 'Refunded'],
+};
+
 export default function AdminFinancePage() {
     const { user: currentUser } = useUser();
     const { firestore } = useFirebase();
     const { toast } = useToast();
+    const { tx, locale } = useAdminLocale();
+    const numLocale = locale === 'en' ? 'en-US' : 'th-TH';
     const [data, setData] = useState<{ transactions: Transaction[], chartData: ChartItem[], summary: any } | null>(null);
     const [pendingDeals, setPendingDeals] = useState<PendingDeal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -117,10 +133,10 @@ export default function AdminFinancePage() {
         //  และต่อให้เพิ่มกฎ การให้ client เขียน status การเงินเองก็ไม่ปลอดภัย)
         const res = await approveDealPayment(deal.id);
         if (!res.ok) {
-            toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: res.error });
+            toast({ variant: 'destructive', title: tx('เกิดข้อผิดพลาด', 'Error'), description: res.error });
             return;
         }
-        toast({ title: 'อนุมัติเรียบร้อย', description: 'ดีลนี้เปลี่ยนสถานะเป็น Active แล้ว' });
+        toast({ title: tx('อนุมัติเรียบร้อย', 'Approved'), description: tx('ดีลนี้เปลี่ยนสถานะเป็น Active แล้ว', 'This deal is now Active.') });
         fetchPendingDeals();
         setIsVerifierOpen(false);
     };
@@ -129,10 +145,10 @@ export default function AdminFinancePage() {
         if (!selectedDeal || !rejectReason) return;
         const res = await rejectDealPayment(selectedDeal.id, rejectReason);
         if (!res.ok) {
-            toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: res.error });
+            toast({ variant: 'destructive', title: tx('เกิดข้อผิดพลาด', 'Error'), description: res.error });
             return;
         }
-        toast({ title: 'ปฏิเสธรายการแล้ว', description: 'แจ้งเหตุผลให้ลูกค้าเรียบร้อยแล้ว' });
+        toast({ title: tx('ปฏิเสธรายการแล้ว', 'Payment rejected'), description: tx('แจ้งเหตุผลให้ลูกค้าเรียบร้อยแล้ว', 'The customer has been notified of the reason.') });
         setIsRejectDialogOpen(false);
         setIsVerifierOpen(false);
         setRejectReason('');
@@ -151,23 +167,23 @@ export default function AdminFinancePage() {
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Financial Overview</h2>
-                    <p className="text-slate-500">Track revenue and transactions for Cap and Deal</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">{tx('ภาพรวมการเงิน', 'Financial Overview')}</h2>
+                    <p className="text-slate-500">{tx('ติดตามรายได้และธุรกรรมของ Cap and Deal', 'Track revenue and transactions for Cap and Deal')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button variant="outline" className="rounded-xl border-slate-200">
-                        <Calendar className="w-4 h-4 mr-2" /> Last 30 Days
+                        <Calendar className="w-4 h-4 mr-2" /> {tx('30 วันล่าสุด', 'Last 30 Days')}
                     </Button>
                     <Button className="rounded-xl bg-slate-900 text-white">
-                        Export Report
+                        {tx('ส่งออกรายงาน', 'Export Report')}
                     </Button>
                 </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="mb-4">
-                    <TabsTrigger value="overview">Financial Overview</TabsTrigger>
-                    <TabsTrigger value="verification">Slip Verification {pendingDeals.length > 0 && <Badge className="ml-2 bg-red-100 text-red-600 border-none">{pendingDeals.length}</Badge>}</TabsTrigger>
+                    <TabsTrigger value="overview">{tx('ภาพรวมการเงิน', 'Financial Overview')}</TabsTrigger>
+                    <TabsTrigger value="verification">{tx('ตรวจสอบสลิป', 'Slip Verification')} {pendingDeals.length > 0 && <Badge className="ml-2 bg-red-100 text-red-600 border-none">{pendingDeals.length}</Badge>}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
@@ -187,8 +203,8 @@ export default function AdminFinancePage() {
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-slate-400 mb-1">Total Revenue</p>
-                                <p className="text-3xl font-bold tracking-tight">฿{(data?.summary?.totalRevenue || 0).toLocaleString()}</p>
+                                <p className="text-sm font-medium text-slate-400 mb-1">{tx('รายได้รวม', 'Total Revenue')}</p>
+                                <p className="text-3xl font-bold tracking-tight">฿{(data?.summary?.totalRevenue || 0).toLocaleString(numLocale)}</p>
                             </div>
                         </Card>
 
@@ -199,8 +215,8 @@ export default function AdminFinancePage() {
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-slate-500 mb-1">Total Transactions</p>
-                                <p className="text-3xl font-bold text-slate-900 tracking-tight">{data?.summary?.transactionCount || 0}</p>
+                                <p className="text-sm font-medium text-slate-500 mb-1">{tx('จำนวนธุรกรรมทั้งหมด', 'Total Transactions')}</p>
+                                <p className="text-3xl font-bold text-slate-900 tracking-tight">{(data?.summary?.transactionCount || 0).toLocaleString(numLocale)}</p>
                             </div>
                         </Card>
 
@@ -211,9 +227,9 @@ export default function AdminFinancePage() {
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-slate-500 mb-1">Avg. Transaction Value</p>
+                                <p className="text-sm font-medium text-slate-500 mb-1">{tx('มูลค่าเฉลี่ยต่อธุรกรรม', 'Avg. Transaction Value')}</p>
                                 <p className="text-3xl font-bold text-slate-900 tracking-tight">
-                                    ฿{Math.round((data?.summary?.totalRevenue || 0) / (data?.summary?.transactionCount || 1)).toLocaleString()}
+                                    ฿{Math.round((data?.summary?.totalRevenue || 0) / (data?.summary?.transactionCount || 1)).toLocaleString(numLocale)}
                                 </p>
                             </div>
                         </Card>
@@ -222,8 +238,8 @@ export default function AdminFinancePage() {
                     {/* Revenue Chart */}
                     <Card className="border-none shadow-sm rounded-3xl p-6">
                         <CardHeader className="px-0 pt-0">
-                            <CardTitle className="text-lg font-bold">Revenue Trends</CardTitle>
-                            <CardDescription>Daily revenue for the last 30 days</CardDescription>
+                            <CardTitle className="text-lg font-bold">{tx('แนวโน้มรายได้', 'Revenue Trends')}</CardTitle>
+                            <CardDescription>{tx('รายได้รายวันในช่วง 30 วันล่าสุด', 'Daily revenue for the last 30 days')}</CardDescription>
                         </CardHeader>
                         <CardContent className="px-0 pt-6 h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -234,17 +250,17 @@ export default function AdminFinancePage() {
                                         axisLine={false}
                                         tickLine={false}
                                         tick={{ fontSize: 12, fill: '#64748b' }}
-                                        tickFormatter={(str) => new Date(str).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                                        tickFormatter={(str) => new Date(str).toLocaleDateString(numLocale, { day: 'numeric', month: 'short' })}
                                     />
                                     <YAxis
                                         axisLine={false}
                                         tickLine={false}
                                         tick={{ fontSize: 12, fill: '#64748b' }}
-                                        tickFormatter={(val) => `฿${val.toLocaleString()}`}
+                                        tickFormatter={(val) => `฿${val.toLocaleString(numLocale)}`}
                                     />
                                     <Tooltip
                                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(val: number) => [`฿${val.toLocaleString()}`, 'Revenue']}
+                                        formatter={(val: number) => [`฿${val.toLocaleString(numLocale)}`, tx('รายได้', 'Revenue')]}
                                     />
                                     <Line
                                         type="monotone"
@@ -262,38 +278,38 @@ export default function AdminFinancePage() {
                     {/* Transactions Table */}
                     <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
                         <CardHeader className="p-6 border-b border-slate-100">
-                            <CardTitle className="text-lg font-bold">Recent Transactions</CardTitle>
+                            <CardTitle className="text-lg font-bold">{tx('ธุรกรรมล่าสุด', 'Recent Transactions')}</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
                                 <TableHeader className="bg-slate-50">
                                     <TableRow className="border-none hover:bg-transparent">
-                                        <TableHead className="py-4 pl-6 font-bold text-slate-500">TRANSACTION</TableHead>
-                                        <TableHead className="py-4 font-bold text-slate-500">CUSTOMER</TableHead>
-                                        <TableHead className="py-4 font-bold text-slate-500">AMOUNT</TableHead>
-                                        <TableHead className="py-4 font-bold text-slate-500">DATE</TableHead>
-                                        <TableHead className="py-4 font-bold text-slate-500">STATUS</TableHead>
+                                        <TableHead className="py-4 pl-6 font-bold text-slate-500">{tx('ธุรกรรม', 'TRANSACTION')}</TableHead>
+                                        <TableHead className="py-4 font-bold text-slate-500">{tx('ลูกค้า', 'CUSTOMER')}</TableHead>
+                                        <TableHead className="py-4 font-bold text-slate-500">{tx('จำนวนเงิน', 'AMOUNT')}</TableHead>
+                                        <TableHead className="py-4 font-bold text-slate-500">{tx('วันที่', 'DATE')}</TableHead>
+                                        <TableHead className="py-4 font-bold text-slate-500">{tx('สถานะ', 'STATUS')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {data?.transactions.map((tx) => (
-                                        <TableRow key={tx.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                    {data?.transactions.map((txn) => (
+                                        <TableRow key={txn.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
                                             <TableCell className="py-5 pl-6">
-                                                <div className="font-bold text-slate-900">{tx.title}</div>
-                                                <div className="text-xs text-slate-400 font-mono mt-0.5">{tx.id}</div>
+                                                <div className="font-bold text-slate-900">{txn.title}</div>
+                                                <div className="text-xs text-slate-400 font-mono mt-0.5">{txn.id}</div>
                                             </TableCell>
                                             <TableCell className="py-5">
-                                                <div className="text-xs text-slate-500 font-mono line-clamp-1 max-w-[150px]">{tx.customer}</div>
+                                                <div className="text-xs text-slate-500 font-mono line-clamp-1 max-w-[150px]">{txn.customer}</div>
                                             </TableCell>
                                             <TableCell className="py-5 font-bold text-slate-900">
-                                                ฿{tx.amount.toLocaleString()}
+                                                ฿{txn.amount.toLocaleString(numLocale)}
                                             </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-500">
-                                                {new Date(tx.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                                {new Date(txn.date).toLocaleDateString(numLocale, { day: 'numeric', month: 'long', year: 'numeric' })}
                                             </TableCell>
                                             <TableCell className="py-5">
                                                 <Badge className="bg-emerald-50 text-emerald-600 rounded-full px-3 py-1 text-xs font-bold border-none">
-                                                    {tx.status.toUpperCase()}
+                                                    {TX_STATUS_LABEL[txn.status] ? tx(...TX_STATUS_LABEL[txn.status]) : txn.status.toUpperCase()}
                                                 </Badge>
                                             </TableCell>
                                         </TableRow>
@@ -301,7 +317,7 @@ export default function AdminFinancePage() {
                                 </TableBody>
                             </Table>
                             {data?.transactions.length === 0 && (
-                                <div className="p-20 text-center text-slate-500"> No transactions found. </div>
+                                <div className="p-20 text-center text-slate-500">{tx('ไม่พบธุรกรรม', 'No transactions found.')}</div>
                             )}
                         </CardContent>
                     </Card>
@@ -311,21 +327,21 @@ export default function AdminFinancePage() {
                     <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
                         <CardHeader className="p-6 border-b border-slate-100 flex flex-row items-center justify-between">
                             <div>
-                                <CardTitle className="text-lg font-bold">Pending Slip Verification</CardTitle>
-                                <CardDescription>Verify large-sum payments for Cap and Deal contracts</CardDescription>
+                                <CardTitle className="text-lg font-bold">{tx('สลิปที่รอตรวจสอบ', 'Pending Slip Verification')}</CardTitle>
+                                <CardDescription>{tx('ตรวจสอบการชำระเงินยอดสูงของสัญญา Cap and Deal', 'Verify large-sum payments for Cap and Deal contracts')}</CardDescription>
                             </div>
                             <Button onClick={fetchPendingDeals} variant="outline" size="sm" disabled={isVerifying}>
-                                {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
+                                {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : tx('รีเฟรช', 'Refresh')}
                             </Button>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
                                 <TableHeader className="bg-slate-50">
                                     <TableRow className="border-none hover:bg-transparent">
-                                        <TableHead className="py-4 pl-6 font-bold text-slate-500">DEAL TITLE</TableHead>
-                                        <TableHead className="py-4 font-bold text-slate-500">AMOUNT</TableHead>
-                                        <TableHead className="py-4 font-bold text-slate-500">SUBMITTED AT</TableHead>
-                                        <TableHead className="py-4 text-right font-bold text-slate-500 pr-6">ACTIONS</TableHead>
+                                        <TableHead className="py-4 pl-6 font-bold text-slate-500">{tx('ชื่อดีล', 'DEAL TITLE')}</TableHead>
+                                        <TableHead className="py-4 font-bold text-slate-500">{tx('จำนวนเงิน', 'AMOUNT')}</TableHead>
+                                        <TableHead className="py-4 font-bold text-slate-500">{tx('ส่งเมื่อ', 'SUBMITTED AT')}</TableHead>
+                                        <TableHead className="py-4 text-right font-bold text-slate-500 pr-6">{tx('การดำเนินการ', 'ACTIONS')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -336,17 +352,17 @@ export default function AdminFinancePage() {
                                                 <div className="text-xs text-slate-400 font-mono mt-0.5">{deal.id}</div>
                                             </TableCell>
                                             <TableCell className="py-5 font-bold text-slate-900">
-                                                ฿{deal.amount.toLocaleString()}
+                                                ฿{deal.amount.toLocaleString(numLocale)}
                                             </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-500">
-                                                {new Date(deal.submittedAt).toLocaleString('th-TH')}
+                                                {new Date(deal.submittedAt).toLocaleString(numLocale)}
                                             </TableCell>
                                             <TableCell className="py-5 text-right pr-6">
                                                 <Button size="sm" variant="outline" className="rounded-xl" onClick={() => {
                                                     setSelectedDeal(deal);
                                                     setIsVerifierOpen(true);
                                                 }}>
-                                                    <Eye className="w-4 h-4 mr-1" /> View Slip
+                                                    <Eye className="w-4 h-4 mr-1" /> {tx('ดูสลิป', 'View Slip')}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -356,7 +372,7 @@ export default function AdminFinancePage() {
                             {pendingDeals.length === 0 && !isVerifying && (
                                 <div className="p-20 text-center text-slate-500">
                                     <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-50" />
-                                    No pending slip verifications.
+                                    {tx('ไม่มีสลิปที่รอตรวจสอบ', 'No pending slip verifications.')}
                                 </div>
                             )}
                         </CardContent>
@@ -368,8 +384,8 @@ export default function AdminFinancePage() {
             <Dialog open={isVerifierOpen} onOpenChange={setIsVerifierOpen}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle>ตรวจสอบสลิปโอนเงิน</DialogTitle>
-                        <DialogDescription>ดีล: {selectedDeal?.title} | ยอดเงิน: ฿{selectedDeal?.amount.toLocaleString()}</DialogDescription>
+                        <DialogTitle>{tx('ตรวจสอบสลิปโอนเงิน', 'Verify Transfer Slip')}</DialogTitle>
+                        <DialogDescription>{tx('ดีล', 'Deal')}: {selectedDeal?.title} | {tx('ยอดเงิน', 'Amount')}: ฿{selectedDeal?.amount.toLocaleString(numLocale)}</DialogDescription>
                     </DialogHeader>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
@@ -377,40 +393,40 @@ export default function AdminFinancePage() {
                             {selectedDeal?.slipUrl ? (
                                 <Image 
                                     src={selectedDeal.slipUrl} 
-                                    alt="Slip" 
+                                    alt={tx('สลิป', 'Slip')} 
                                     fill 
                                     className="object-contain"
                                 />
                             ) : (
-                                <div className="flex items-center justify-center h-full text-slate-400">สลิปไม่พบ</div>
+                                <div className="flex items-center justify-center h-full text-slate-400">{tx('ไม่พบสลิป', 'Slip not found')}</div>
                             )}
                         </div>
                         
                         <div className="space-y-6">
                             <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                                <h4 className="font-bold mb-4">รายละเอียดดีล</h4>
+                                <h4 className="font-bold mb-4">{tx('รายละเอียดดีล', 'Deal Details')}</h4>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-slate-500">รหัสดีล:</span>
+                                        <span className="text-slate-500">{tx('รหัสดีล:', 'Deal ID:')}</span>
                                         <span className="font-mono">{selectedDeal?.id}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-slate-500">ผู้เป็นเจ้าของ:</span>
+                                        <span className="text-slate-500">{tx('ผู้เป็นเจ้าของ:', 'Owner:')}</span>
                                         <span>{selectedDeal?.ownerId}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-slate-500">ยอดที่ต้องชำระ:</span>
-                                        <span className="font-bold text-lg text-slate-900">฿{selectedDeal?.amount.toLocaleString()}</span>
+                                        <span className="text-slate-500">{tx('ยอดที่ต้องชำระ:', 'Amount due:')}</span>
+                                        <span className="font-bold text-lg text-slate-900">฿{selectedDeal?.amount.toLocaleString(numLocale)}</span>
                                     </div>
                                 </div>
                             </div>
                             
                             <div className="flex flex-col gap-3 pt-4">
                                 <Button className="w-full bg-slate-900 text-white rounded-2xl h-12 text-lg font-bold" onClick={() => handleApprove(selectedDeal!)}>
-                                    <CheckCircle className="w-5 h-5 mr-2" /> ยืนยันยอดเงิน
+                                    <CheckCircle className="w-5 h-5 mr-2" /> {tx('ยืนยันยอดเงิน', 'Confirm Payment')}
                                 </Button>
                                 <Button variant="outline" className="w-full border-red-200 text-red-600 hover:bg-red-50 rounded-2xl h-12 text-lg font-bold" onClick={() => setIsRejectDialogOpen(true)}>
-                                    <XCircle className="w-5 h-5 mr-2" /> ปฏิเสธสลิป
+                                    <XCircle className="w-5 h-5 mr-2" /> {tx('ปฏิเสธสลิป', 'Reject Slip')}
                                 </Button>
                             </div>
                         </div>
@@ -422,21 +438,21 @@ export default function AdminFinancePage() {
             <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
                 <DialogContent className="rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle>ระบุเหตุผลที่ปฏิเสธ</DialogTitle>
-                        <DialogDescription>เหตุผลนี้จะถูกส่งไปยังลูกค้าเพื่อแจ้งให้ทราบ</DialogDescription>
+                        <DialogTitle>{tx('ระบุเหตุผลที่ปฏิเสธ', 'Reason for Rejection')}</DialogTitle>
+                        <DialogDescription>{tx('เหตุผลนี้จะถูกส่งไปยังลูกค้าเพื่อแจ้งให้ทราบ', 'This reason will be sent to the customer.')}</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <Textarea 
-                            placeholder="เช่น ยอดเงินไม่ตรง, สลิปไม่ชัดเจน, สลิปซ้ำ..."
+                            placeholder={tx('เช่น ยอดเงินไม่ตรง, สลิปไม่ชัดเจน, สลิปซ้ำ...', 'e.g. amount mismatch, unclear slip, duplicate slip...')}
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
                             className="min-h-[120px] rounded-2xl p-4"
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" className="rounded-xl" onClick={() => setIsRejectDialogOpen(false)}>ยกเลิก</Button>
+                        <Button variant="outline" className="rounded-xl" onClick={() => setIsRejectDialogOpen(false)}>{tx('ยกเลิก', 'Cancel')}</Button>
                         <Button className="bg-red-600 text-white rounded-xl" onClick={handleReject} disabled={!rejectReason.trim()}>
-                            ยืนยันการปฏิเสธ
+                            {tx('ยืนยันการปฏิเสธ', 'Confirm Rejection')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

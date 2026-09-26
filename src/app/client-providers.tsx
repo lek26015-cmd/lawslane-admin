@@ -7,6 +7,7 @@ import { ChatProvider } from '@/context/chat-context';
 import ClientLayout from '@/components/layout/client-layout';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from 'next-themes';
+import { AdminLocaleProvider } from '@/lib/admin-i18n';
 
 export function ClientProviders({ children, domainType = 'main' }: { children: React.ReactNode; domainType?: string }) {
   React.useEffect(() => {
@@ -21,12 +22,14 @@ export function ClientProviders({ children, domainType = 'main' }: { children: R
       disableTransitionOnChange={false}
       forcedTheme={domainType === 'main' ? 'light' : undefined}
     >
-      <FirebaseClientProvider>
-        <ChatProvider>
-          <ClientLayout domainType={domainType}>{children}</ClientLayout>
-          <Toaster />
-        </ChatProvider>
-      </FirebaseClientProvider>
+      <AdminLocaleProvider>
+        <FirebaseClientProvider>
+          <ChatProvider>
+            <ClientLayout domainType={domainType}>{children}</ClientLayout>
+            <Toaster />
+          </ChatProvider>
+        </FirebaseClientProvider>
+      </AdminLocaleProvider>
     </ThemeProvider>
   );
 }

@@ -36,6 +36,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { NotificationBell } from '@/components/admin/notification-bell';
+import { useAdminLocale, AdminLocaleToggle } from '@/lib/admin-i18n';
 import { navSections, findSectionForPath } from '@/config/nav';
 import { isDesignatedSuperAdmin } from '@/lib/super-admin';
 import { hasPermission as checkPermission } from '@/lib/permissions';
@@ -52,6 +53,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [userRole, setUserRole] = useState<string | null>(null);
+    const { tx } = useAdminLocale();
     // null = unrestricted (Super Admin), string[] = specific permissions
     const [adminPermissions, setAdminPermissions] = useState<string[] | null>(null);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -293,18 +295,18 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                 )}
                             >
                                 <LayoutDashboard className="h-4 w-4" />
-                                แดชบอร์ด
+                                {tx('แดชบอร์ด', 'Dashboard')}
                             </Link>
 
                             {navSections.map((section, index) => (
                                 <Collapsible
-                                    key={section.title}
+                                    key={tx(section.title, section.titleEn)}
                                     open={openSection === section.title}
                                     onOpenChange={() => toggleSection(section.title)}
                                     className="mb-2"
                                 >
                                     <CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-2 text-xs font-semibold text-slate-400 tracking-wider uppercase hover:text-white transition-colors">
-                                        {section.title}
+                                        {tx(section.title, section.titleEn)}
                                         <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", openSection !== section.title && "-rotate-90")} />
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="space-y-1 overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -317,7 +319,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                                     )}
                                                 >
                                                     {item.icon}
-                                                    {item.label}
+                                                    {tx(item.label, item.labelEn)}
                                                 </Link>
                                                 {item.externalLink && (
                                                     <a
@@ -342,13 +344,14 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-all hover:bg-slate-800 hover:text-white"
                             >
                                 <ArrowLeftCircle className="h-4 w-4" />
-                                กลับไปหน้าเว็บไซต์
+                                {tx('กลับไปหน้าเว็บไซต์', 'Back to website')}
                             </Link>
                         </nav>
                     </div>
                     <div className="mt-auto p-4 space-y-4">
                         <div className="border-t border-slate-700 pt-4">
                             <div className="flex justify-end mb-2 px-2 md:hidden">
+                                <AdminLocaleToggle className="mr-2" />
                                 <NotificationBell />
                             </div>
                             <DropdownMenu>
@@ -361,7 +364,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                             </Avatar>
                                             <div className="flex-1 text-left">
                                                 <p className="text-sm font-semibold">{currentUser?.displayName || currentUser?.email}</p>
-                                                <p className="text-xs text-slate-400">{userRole}</p>
+                                                <p className="text-xs text-slate-400">{userRole === 'Super Admin' ? tx('ผู้ดูแลระบบสูงสุด', 'Super Admin') : userRole === 'Administrator' ? tx('ผู้ดูแลระบบ', 'Administrator') : userRole}</p>
                                             </div>
                                             <ChevronDown className="h-4 w-4 text-slate-400" />
                                         </div>
@@ -380,19 +383,19 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     <DropdownMenuItem asChild>
                                         <Link href="/settings">
                                             <Settings className="mr-2 h-4 w-4" />
-                                            <span>ตั้งค่า</span>
+                                            <span>{tx('ตั้งค่า', 'Settings')}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                         <Link href={getMainLink()}>
                                             <ArrowLeftCircle className="mr-2 h-4 w-4" />
-                                            <span>กลับไปหน้าเว็บไซต์</span>
+                                            <span>{tx('กลับไปหน้าเว็บไซต์', 'Back to website')}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                                         <LogOut className="mr-2 h-4 w-4" />
-                                        <span>ออกจากระบบ</span>
+                                        <span>{tx('ออกจากระบบ', 'Log out')}</span>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -437,19 +440,19 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     )}
                                 >
                                     <LayoutDashboard className="h-5 w-5" />
-                                    แดชบอร์ด
+                                    {tx('แดชบอร์ด', 'Dashboard')}
                                 </Link>
 
                                 {/* Collapsible Sections */}
                                 {navSections.map((section) => (
                                     <Collapsible
-                                        key={section.title}
+                                        key={tx(section.title, section.titleEn)}
                                         open={openSection === section.title}
                                         onOpenChange={() => toggleSection(section.title)}
                                         className=""
                                     >
                                         <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 tracking-wider uppercase hover:text-white transition-colors rounded-lg hover:bg-slate-800/50">
-                                            {section.title}
+                                            {tx(section.title, section.titleEn)}
                                             <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", openSection === section.title && "rotate-90")} />
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="space-y-1 pl-2 pt-1">
@@ -463,7 +466,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                                         )}
                                                     >
                                                         {item.icon}
-                                                        {item.label}
+                                                        {tx(item.label, item.labelEn)}
                                                     </Link>
                                                     {item.externalLink && (
                                                         <a
@@ -489,7 +492,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-all hover:bg-slate-800 hover:text-white"
                                 >
                                     <ArrowLeftCircle className="h-5 w-5" />
-                                    กลับไปหน้าเว็บไซต์
+                                    {tx('กลับไปหน้าเว็บไซต์', 'Back to website')}
                                 </Link>
                             </nav>
 
@@ -502,19 +505,20 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     </Avatar>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold truncate">{currentUser?.displayName || currentUser?.email}</p>
-                                        <p className="text-xs text-slate-400">{userRole}</p>
+                                        <p className="text-xs text-slate-400">{userRole === 'Super Admin' ? tx('ผู้ดูแลระบบสูงสุด', 'Super Admin') : userRole === 'Administrator' ? tx('ผู้ดูแลระบบ', 'Administrator') : userRole}</p>
                                     </div>
                                 </div>
                                 <Button onClick={handleLogout} variant="destructive" className="w-full">
                                     <LogOut className="mr-2 h-4 w-4" />
-                                    ออกจากระบบ
+                                    {tx('ออกจากระบบ', 'Log out')}
                                 </Button>
                             </div>
                         </SheetContent>
                     </Sheet>
                     <div className="w-full flex-1">
                     </div>
-                    <NotificationBell />
+                    <AdminLocaleToggle className="mr-2" />
+                                <NotificationBell />
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-8 lg:gap-6 lg:p-12">
                     {React.isValidElement(children) ? React.cloneElement(children as any, { userRole }) : children}
