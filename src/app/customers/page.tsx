@@ -64,7 +64,7 @@ import { ensureDate } from '@/lib/data';
 import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useToast } from '@/hooks/use-toast';
-import { setUserRoleAction, deleteUserAction, canManageUsersAction } from '@/app/actions/user-management';
+import { setUserRoleAction, deleteUserAction, canManageUsersAction, getAuthPhotoUrlsAction } from '@/app/actions/user-management';
 import { DataTablePagination } from '@/components/admin/DataTablePagination';
 import { TableSkeleton } from '@/components/admin/TableSkeleton';
 
@@ -174,6 +174,21 @@ export default function AdminCustomersPage() {
         pageSize: PAGE_SIZE,
         resetKey: `${activeTab}|${activeTypes.join(',')}|${debouncedSearch}`,
     });
+
+    // ลูกค้าส่วนใหญ่ไม่มี users.avatar — ใช้รูปจากบัญชี Google/LINE (Firebase Auth) แทน
+    const [authPhotos, setAuthPhotos] = React.useState<Record<string, string>>({});
+    React.useEffect(() => {
+        const missing = data.filter(c => !c.avatar && !(c.uid in authPhotos)).map(c => c.uid);
+        if (missing.length === 0) return;
+        let cancelled = false;
+        getAuthPhotoUrlsAction(missing).then(photos => {
+            if (cancelled) return;
+            // uid ที่ไม่มีรูปเก็บเป็น '' กันยิงซ้ำ
+            setAuthPhotos(prev => ({ ...prev, ...Object.fromEntries(missing.map(uid => [uid, photos[uid] || ''])) }));
+        });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data]);
 
     // เมื่อค้นหาอยู่ query ตัด filter สถานะ/ประเภทออกไปแล้ว (ดูเหตุผลใน buildQuery) —
     // กรองสองอย่างนี้เพิ่มในเครื่องจากหน้าที่ได้มา ถ้ามีการเลือก filter ไว้ไม่ครบ
@@ -325,7 +340,7 @@ export default function AdminCustomersPage() {
                                             >
                                                 <TableCell className="hidden sm:table-cell">
                                                     <Avatar className="h-9 w-9">
-                                                        <SecureImage src={customer.avatar} alt={customer.name || 'User'} className="h-full w-full" />
+                                                        <SecureImage src={customer.avatar || authPhotos[customer.uid]} alt={customer.name || 'User'} className="absolute inset-0 z-10 h-full w-full" showLoader={false} fallback={null} />
                                                         <AvatarFallback>{(customer.name || 'U').slice(0, 2).toUpperCase()}</AvatarFallback>
                                                     </Avatar>
                                                 </TableCell>

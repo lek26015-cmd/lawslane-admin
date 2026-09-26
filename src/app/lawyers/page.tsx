@@ -312,7 +312,7 @@ export default function AdminLawyersPage() {
                                                 <TableCell className="font-medium">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="h-9 w-9">
-                                                            <SecureImage src={lawyer.imageUrl} alt={lawyer.name} className="h-full w-full" />
+                                                            <SecureImage src={lawyer.imageUrl} alt={lawyer.name} className="absolute inset-0 z-10 h-full w-full" showLoader={false} fallback={null} />
                                                             <AvatarFallback>{lawyer.name.slice(0, 2)}</AvatarFallback>
                                                         </Avatar>
                                                         <div>

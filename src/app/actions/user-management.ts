@@ -79,3 +79,24 @@ export async function canManageUsersAction(): Promise<boolean> {
         return false;
     }
 }
+
+/**
+ * รูปโปรไฟล์จาก Firebase Auth (Google/LINE) ของลูกค้าที่ไม่ได้อัปโหลด `users.avatar` เอง
+ * — ผู้ใช้ส่วนใหญ่ไม่มี avatar ใน Firestore แต่มี photoURL จากการล็อกอิน
+ * คืนเฉพาะ URL https · สูงสุด 100 uid ต่อครั้ง (ขีดจำกัดของ getUsers)
+ */
+export async function getAuthPhotoUrlsAction(uids: string[]): Promise<Record<string, string>> {
+    try {
+        const { adminApp } = await requireAdmin('users.customers');
+        const ids = [...new Set((Array.isArray(uids) ? uids : []).filter(u => typeof u === 'string' && u && !u.includes('/')))].slice(0, 100);
+        if (ids.length === 0) return {};
+        const res = await adminApp.auth().getUsers(ids.map(uid => ({ uid })));
+        const out: Record<string, string> = {};
+        for (const u of res.users) {
+            if (u.photoURL?.startsWith('https://')) out[u.uid] = u.photoURL;
+        }
+        return out;
+    } catch {
+        return {};
+    }
+}
