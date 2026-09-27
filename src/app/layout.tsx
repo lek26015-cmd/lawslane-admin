@@ -6,6 +6,7 @@ import messages from '../../messages/th.json';
 import { Toaster } from '@/components/ui/toaster';
 import { AdminClientLayout } from './admin-client-layout';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AdminLocaleProvider } from '@/lib/admin-i18n';
 
 export const metadata: Metadata = {
     title: 'Lawslane Admin',
@@ -29,14 +30,16 @@ export default function RootLayout({
                 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet" />
             </head>
             <body className="font-body antialiased">
-                <FirebaseClientProvider>
-                    <NextIntlClientProvider locale="th" messages={messages}>
-                        <React.Suspense fallback={<div className="flex h-screen items-center justify-center text-slate-500">Loading Layout...</div>}>
-                            <AdminClientLayout>{children}</AdminClientLayout>
-                        </React.Suspense>
-                        <Toaster />
-                    </NextIntlClientProvider>
-                </FirebaseClientProvider>
+                <AdminLocaleProvider>
+                    <FirebaseClientProvider>
+                        <NextIntlClientProvider locale="th" messages={messages}>
+                            <React.Suspense fallback={<div className="flex h-screen items-center justify-center text-slate-500">Loading Layout...</div>}>
+                                <AdminClientLayout>{children}</AdminClientLayout>
+                            </React.Suspense>
+                            <Toaster />
+                        </NextIntlClientProvider>
+                    </FirebaseClientProvider>
+                </AdminLocaleProvider>
             </body>
         </html>
     );
