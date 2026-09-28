@@ -25,7 +25,8 @@ import {
     Users2,
     GraduationCap,
     Languages,
-    HandCoins
+    HandCoins,
+    BadgeCheck
 } from 'lucide-react';
 
 export type NavItem = {
@@ -130,6 +131,7 @@ export const navSections: NavSection[] = [
             { href: "/education/courses", icon: <GraduationCap className="h-4 w-4" />, label: "คอร์สเรียน", labelEn: "Courses", permission: "education.courses" },
             { href: "/education/exams", icon: <ClipboardList className="h-4 w-4" />, label: "ข้อสอบ", labelEn: "Exams", permission: "education.exams" },
             { href: "/settings/education", icon: <Settings className="h-4 w-4" />, label: "ตั้งค่า Education", labelEn: "Education Settings", permission: "education.settings" },
+            { href: "/education/plans", icon: <BadgeCheck className="h-4 w-4" />, label: "แพ็กเกจและสิทธิ์", labelEn: "Plans & Entitlements", permission: "education.plans" },
         ]
     },
     {
@@ -139,6 +141,7 @@ export const navSections: NavSection[] = [
         items: [
             { href: "/capdeal/contracts", icon: <FileSignature className="h-4 w-4" />, label: "สัญญา CapDeal", labelEn: "CapDeal Contracts", permission: "capdeal.contracts" },
             { href: "/capdeal/finance", icon: <Landmark className="h-4 w-4" />, label: "การเงิน CapDeal", labelEn: "CapDeal Finance", permission: "capdeal.finance" },
+            { href: "/capdeal/plans", icon: <BadgeCheck className="h-4 w-4" />, label: "แพ็กเกจและสิทธิ์", labelEn: "Plans & Entitlements", permission: "capdeal.plans" },
         ]
     },
     {
