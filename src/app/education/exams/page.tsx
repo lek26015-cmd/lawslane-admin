@@ -227,7 +227,7 @@ export default function AdminExamsPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`/exams/${exam.id}`} target="_blank">
+                                                    <Link href={`https://education.lawslane.com/exams/${exam.id}`} target="_blank" rel="noopener noreferrer">
                                                         <Eye className="w-4 h-4 mr-2" />
                                                         ดูข้อสอบ
                                                     </Link>
