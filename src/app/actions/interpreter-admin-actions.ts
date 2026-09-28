@@ -346,12 +346,16 @@ export async function reviewInterpreterSlipAction(id: string, approve: boolean, 
                 for (const s of slots) {
                     tx.set(s.ref, { interpreterId: b.interpreterId, bookingId: ref.id, holdUntil: null });
                 }
+                // งานจากลิงก์ชำระเงินที่แอดมินส่งในแชท (interpreter-payment-link-actions.ts) — สถานะลิงก์ตามผลตรวจ
+                if (b.paymentLinkId) tx.update(db.collection('interpreterPaymentLinks').doc(String(b.paymentLinkId)), { status: 'paid' });
                 tx.update(ref, {
                     status: 'paid', hasNewPayment: false, holdUntil: null,
                     slipReviewedBy: adminUid, slipReviewedAt: ts, slipReviewNote: str(note, 500) || null, updatedAt: ts,
                 });
             } else {
                 for (const s of slots) if (s.exists && s.data()!.bookingId === ref.id) tx.delete(s.ref);
+                // สลิปไม่ผ่าน → เปิดลิงก์ให้ลูกค้าแนบสลิปใหม่ได้
+                if (b.paymentLinkId) tx.update(db.collection('interpreterPaymentLinks').doc(String(b.paymentLinkId)), { status: 'open', bookingId: null });
                 tx.update(ref, {
                     status: 'cancelled', hasNewPayment: false,
                     slipReviewedBy: adminUid, slipReviewedAt: ts, slipReviewNote: str(note, 500) || null,
