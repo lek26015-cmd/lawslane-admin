@@ -26,10 +26,12 @@ interface Contract {
 const STATUS_LABEL: Record<string, [string, string]> = {
     draft: ['ฉบับร่าง', 'Draft'],
     pending: ['รอดำเนินการ', 'Pending'],
+    signed: ['ลงนามแล้ว', 'Signed'],
     succeeded: ['สำเร็จ', 'Succeeded'],
     completed: ['เสร็จสิ้น', 'Completed'],
     active: ['ใช้งานอยู่', 'Active'],
     cancelled: ['ยกเลิกแล้ว', 'Cancelled'],
+    canceled: ['ยกเลิกแล้ว', 'Cancelled'],
     failed: ['ล้มเหลว', 'Failed'],
 };
 
@@ -120,7 +122,7 @@ export default function AdminContractsPage() {
                                 {filteredContracts.map((contract) => (
                                     <TableRow key={contract.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
                                         <TableCell className="py-5 pl-6">
-                                            <Link href={`/contract/${contract.id}`} className="hover:underline">
+                                            <Link href={`/capdeal/contracts/${encodeURIComponent(contract.id)}`} className="hover:underline">
                                                 <div className="font-bold text-slate-900">{contract.title || tx('ไม่มีชื่อ', 'Untitled')}</div>
                                             </Link>
                                             <div className="text-xs text-slate-400 font-mono mt-0.5">{contract.id}</div>
@@ -140,7 +142,7 @@ export default function AdminContractsPage() {
                                         <TableCell className="py-5">
                                             <Badge className={cn(
                                                 "rounded-full px-3 py-1 text-xs font-bold border-none",
-                                                contract.status === 'succeeded' ? "bg-emerald-50 text-emerald-600" :
+                                                ['succeeded', 'signed', 'completed'].includes(contract.status) ? "bg-emerald-50 text-emerald-600" :
                                                     contract.status === 'draft' ? "bg-amber-50 text-amber-600" :
                                                         "bg-slate-100 text-slate-600"
                                             )}>
@@ -153,7 +155,7 @@ export default function AdminContractsPage() {
                                         </TableCell>
                                         <TableCell className="py-5 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Link href={`/contract/${contract.id}`}>
+                                                <Link href={`/capdeal/contracts/${encodeURIComponent(contract.id)}`}>
                                                     <Button size="icon" variant="ghost" className="rounded-full hover:bg-white shadow-sm border border-slate-100" aria-label={tx('ดูสัญญา', 'View contract')} title={tx('ดูสัญญา', 'View contract')}>
                                                         <Eye className="w-4 h-4 text-slate-600" />
                                                     </Button>
