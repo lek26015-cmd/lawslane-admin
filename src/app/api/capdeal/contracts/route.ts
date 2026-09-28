@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 import { initAdmin } from '@/lib/firebase-admin';
+import { toContractSummary } from '@/lib/capdeal-contract-view';
 
 export async function GET() {
     try {
@@ -21,14 +22,8 @@ export async function GET() {
             .limit(100)
             .get();
 
-        const contracts = contractsSnap.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-            };
-        });
+        // ส่งเฉพาะฟิลด์ที่ตารางใช้ — เดิม `...data` ส่งเลขบัตร/ลายเซ็น/shareToken/sharePin ไปทั้งก้อน
+        const contracts = contractsSnap.docs.map(doc => toContractSummary(doc.id, doc.data()));
 
         return NextResponse.json({ contracts });
     } catch (error: any) {
