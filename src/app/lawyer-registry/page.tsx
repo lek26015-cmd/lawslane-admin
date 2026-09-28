@@ -327,6 +327,12 @@ export default function LawyerRegistryPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" className="gap-2" asChild>
+                        <Link href="/lawyer-registry/council">
+                            <FileText className="w-4 h-4" />
+                            ประกาศสภาทนายความ
+                        </Link>
+                    </Button>
+                    <Button variant="outline" className="gap-2" asChild>
                         <Link href="/lawyer-registry/import">
                             <ScanLine className="w-4 h-4" />
                             นำเข้าจากรูปภาพ (OCR)
