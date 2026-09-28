@@ -131,6 +131,19 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // หน้าการเงินทนายในเว็บนี้เป็นสำเนาเก่าของเว็บหลัก — ยังคิดรายได้แบบหัก GP 15% และอ่าน
+      // withdrawals จาก browser ซึ่งไม่ตรงกับโมเดลปัจจุบัน (ลูกความโอนให้ทนายตรง ไม่มีถอนเงิน)
+      // จึงพาไปหน้าเดียวของเว็บหลักแทน (ดู LAWSLANE-PLAN-06)
+      {
+        source: '/lawyer-dashboard/financials',
+        destination: 'https://www.lawslane.com/lawyer-dashboard/financials',
+        permanent: false,
+      },
+      {
+        source: '/:locale(th|en|zh)/lawyer-dashboard/financials',
+        destination: 'https://www.lawslane.com/:locale/lawyer-dashboard/financials',
+        permanent: false,
+      },
       {
         source: '/b2b-surveys',
         destination: '/surveys',
