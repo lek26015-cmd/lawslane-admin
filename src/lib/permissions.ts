@@ -39,9 +39,11 @@ export const PERMISSIONS = {
     'education.courses': 'คอร์สเรียน',
     'education.exams': 'ข้อสอบ',
     'education.settings': 'ตั้งค่า Education',
+    'education.plans': 'แพ็กเกจและสิทธิ์ลูกค้า Wittaya',
     // ใหม่ — ยกมาจาก lawslane-capdeal
     'capdeal.contracts': 'สัญญา CapDeal',
     'capdeal.finance': 'การเงิน CapDeal',
+    'capdeal.plans': 'แพ็กเกจและสิทธิ์ลูกค้า CapDeal',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
