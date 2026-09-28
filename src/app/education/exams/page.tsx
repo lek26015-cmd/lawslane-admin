@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Edit, Trash2, Eye, MoreHorizontal, ClipboardList, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, MoreHorizontal, ClipboardList, Clock, AlertCircle, ExternalLink } from 'lucide-react';
+import { studentExamUrl } from '@/lib/education-site';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -227,10 +228,16 @@ export default function AdminExamsPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`https://education.lawslane.com/exams/${exam.id}`} target="_blank" rel="noopener noreferrer">
+                                                    <Link href={`/education/exams/${exam.id}`}>
                                                         <Eye className="w-4 h-4 mr-2" />
                                                         ดูข้อสอบ
                                                     </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <a href={studentExamUrl(exam.id)} target="_blank" rel="noopener noreferrer">
+                                                        <ExternalLink className="w-4 h-4 mr-2" />
+                                                        เปิดหน้านักเรียน
+                                                    </a>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem asChild>
                                                     <Link href={`/education/exams/${exam.id}/edit`}>

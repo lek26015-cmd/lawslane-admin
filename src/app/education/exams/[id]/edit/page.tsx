@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Eye, Plus, Edit, Trash2, Loader2, GripVertical, Sparkles } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Plus, Edit, Trash2, Loader2, GripVertical, Sparkles, ChevronDown, ChevronUp, ListOrdered } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -78,6 +78,16 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<Question | null>(null);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+    // ข้อที่กดขยายให้เห็นคำถามเต็ม (ค่าเริ่มต้นย่อไว้ 2 บรรทัด)
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+    const toggleExpanded = (qid: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(qid)) next.delete(qid); else next.add(qid);
+            return next;
+        });
+    };
 
     // AI Generation
     const [aiDialogOpen, setAiDialogOpen] = useState(false);
@@ -212,6 +222,9 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
                     const created = await response.json();
                     setQuestions(prev => [...prev, created]);
                     toast({ title: "เพิ่มคำถามสำเร็จ" });
+                } else {
+                    const err = await response.json().catch(() => null);
+                    toast({ title: "เพิ่มคำถามไม่สำเร็จ", description: err?.error, variant: "destructive" });
                 }
             }
         } catch (error) {
@@ -264,6 +277,7 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
                 const data = await response.json();
 
                 // Add each generated question to the exam
+                let failed = 0;
                 for (const q of data.questions) {
                     const res = await fetch(`/api/education/exams/${id}/questions`, {
                         method: 'POST',
@@ -274,12 +288,15 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
                     if (res.ok) {
                         const created = await res.json();
                         setQuestions(prev => [...prev, created]);
+                    } else {
+                        failed++;
                     }
                 }
 
                 toast({
-                    title: "สร้างคำถามสำเร็จ",
-                    description: `เพิ่ม ${data.questions.length} คำถามจาก AI`
+                    title: failed === 0 ? "สร้างคำถามสำเร็จ" : "บันทึกคำถามจาก AI ได้บางส่วน",
+                    description: `เพิ่ม ${data.questions.length - failed} คำถามจาก AI${failed ? ` (ไม่สำเร็จ ${failed} ข้อ)` : ''}`,
+                    variant: failed > 0 && failed === data.questions.length ? "destructive" : undefined,
                 });
                 setAiDialogOpen(false);
                 setAiTopic('');
@@ -315,6 +332,9 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="ghost" asChild>
+                        <Link href={`/education/exams/${id}`}><ListOrdered className="w-4 h-4 mr-2" />ดูรายข้อ</Link>
+                    </Button>
                     <Button variant="outline" onClick={() => handleSubmit('draft')} disabled={isSubmitting}>
                         <Save className="w-4 h-4 mr-2" />บันทึกแบบร่าง
                     </Button>
@@ -407,12 +427,21 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
                                     {idx + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-slate-900 line-clamp-2">{q.text}</p>
-                                    <div className="flex gap-2 mt-2">
+                                    <p className={`text-slate-900 whitespace-pre-wrap break-words ${expandedIds.has(q.id) ? '' : 'line-clamp-2'}`}>{q.text}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
                                         <Badge variant="outline" className="text-xs">
                                             {q.type === 'MULTIPLE_CHOICE' ? 'ปรนัย' : 'อัตนัย'}
                                         </Badge>
                                         {q.subject && <Badge variant="secondary" className="text-xs">{q.subject}</Badge>}
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleExpanded(q.id)}
+                                            className="inline-flex items-center text-xs text-indigo-600 hover:underline"
+                                        >
+                                            {expandedIds.has(q.id)
+                                                ? <><ChevronUp className="w-3 h-3 mr-0.5" />ย่อ</>
+                                                : <><ChevronDown className="w-3 h-3 mr-0.5" />ดูคำถามเต็ม</>}
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
