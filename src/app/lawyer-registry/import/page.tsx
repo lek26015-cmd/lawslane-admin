@@ -332,6 +332,9 @@ export default function RegistryImportPage() {
                             <CardDescription className="text-emerald-100 text-sm">
                                 พบ {extractedData.length} รายการ — คลิกที่ช่องเพื่อแก้ไข
                             </CardDescription>
+                            <p className="text-xs text-emerald-50 mt-1">
+                                เลขใบอนุญาต: ใส่เฉพาะเลขที่พิมพ์อยู่ในเอกสารจริง ถ้าเอกสารไม่มีให้เว้นว่าง ห้ามเดา
+                            </p>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
@@ -363,6 +366,10 @@ export default function RegistryImportPage() {
                                                         <option value="นาย">นาย</option>
                                                         <option value="นาง">นาง</option>
                                                         <option value="นางสาว">นางสาว</option>
+                                                        {/* ยศ/คำนำหน้าอื่นที่อ่านได้จากเอกสาร เช่น ร.ต.ท. */}
+                                                        {!['นาย', 'นาง', 'นางสาว'].includes(lawyer.prefix) && lawyer.prefix && (
+                                                            <option value={lawyer.prefix}>{lawyer.prefix}</option>
+                                                        )}
                                                     </select>
                                                 </td>
                                                 <td className="px-3 py-1.5">
@@ -384,6 +391,7 @@ export default function RegistryImportPage() {
                                                         value={lawyer.licenseNumber}
                                                         onChange={(e) => updateRow(idx, 'licenseNumber', e.target.value)}
                                                         className="h-8 text-sm border-slate-200 rounded-lg font-mono"
+                                                        placeholder="ไม่มีในเอกสาร"
                                                     />
                                                 </td>
                                                 <td className="px-3 py-1.5">
