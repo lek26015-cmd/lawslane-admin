@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/council-announcements", "schedule": "0 20 * * *" }
+  ]
+}
