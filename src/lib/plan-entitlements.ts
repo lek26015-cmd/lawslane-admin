@@ -130,9 +130,9 @@ export const PLAN_CATALOG: Record<PlanProduct, ProductCatalog> = {
             { key: 'invoices', type: 'boolean', label: ['ใบแจ้งหนี้', 'Invoices'] },
             { key: 'aiAssistant', type: 'boolean', label: ['ผู้ช่วย AI งานคดี', 'AI case assistant'], help: ['ค้นมาตรา/ฎีกา ร่างเอกสาร ตรวจสัญญา', 'Statutes, judgments, drafting, contract review'] },
             {
-                key: 'aiMessagesPerDay', type: 'number',
-                label: ['คำถาม AI (ครั้ง/วัน)', 'AI questions per day'],
-                help: ['รีเซ็ตเที่ยงคืนเวลาไทย', 'Resets at midnight Bangkok time'],
+                key: 'aiCreditsPerMonth', type: 'number',
+                label: ['เครดิต AI (ต่อเดือน)', 'AI credits per month'],
+                help: ['รีเซ็ตต้นเดือนเวลาไทย · ถาม/มาตรา/ฎีกา 1 · ร่างเอกสาร/ตรวจสัญญา 2 · อ่าน PDF/รูป ไฟล์ละ 1', 'Resets monthly (Bangkok) · ask 1 · draft/contract 2 · PDF/image read 1'],
                 nullable: { label: ['ไม่จำกัด', 'Unlimited'] },
             },
             { key: 'personalSite', type: 'boolean', label: ['เผยแพร่หน้าเว็บส่วนตัว', 'Publish personal page'], help: ['lawslane.com/p/ชื่อทนาย', 'lawslane.com/p/lawyer-name'] },
@@ -140,9 +140,9 @@ export const PLAN_CATALOG: Record<PlanProduct, ProductCatalog> = {
         // ค่าเริ่มต้น = พฤติกรรมตอนเปิดระบบนี้ (ฟีเจอร์ทั้งหมดเป็นของ Pro/บริษัท)
         // ป้ายทนายแนะนำ / ลำดับในรายชื่อ / การ์ดกรอบทอง ผูกกับระดับแพลนโดยตรง ไม่ได้ตั้งที่นี่
         defaults: {
-            free: { caseManagement: false, invoices: false, aiAssistant: false, aiMessagesPerDay: 0, personalSite: false },
-            pro: { caseManagement: true, invoices: true, aiAssistant: true, aiMessagesPerDay: null, personalSite: true },
-            top: { caseManagement: true, invoices: true, aiAssistant: true, aiMessagesPerDay: null, personalSite: true },
+            free: { caseManagement: false, invoices: false, aiAssistant: false, aiCreditsPerMonth: 0, personalSite: false },
+            pro: { caseManagement: true, invoices: true, aiAssistant: true, aiCreditsPerMonth: 300, personalSite: true },
+            top: { caseManagement: true, invoices: true, aiAssistant: true, aiCreditsPerMonth: 1000, personalSite: true },
         },
         basePlan: 'free',
         grantNote: [
