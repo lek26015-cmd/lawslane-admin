@@ -45,11 +45,11 @@ export function PlanEntitlementsManager({ product }: { product: PlanProduct }) {
         <div className="space-y-8">
             <div>
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                    {tx(`แพ็กเกจและสิทธิ์ ${catalog.name}`, `${catalog.name} Plans & Entitlements`)}
+                    {product === 'lawyer' ? tx('แพลนและสิทธิ์ทนาย', 'Lawyer Plans & Entitlements') : tx(`แพ็กเกจและสิทธิ์ ${catalog.name}`, `${catalog.name} Plans & Entitlements`)}
                 </h2>
                 <p className="text-slate-500">
                     {tx(
-                        'กำหนดว่าแต่ละแพ็กเกจใช้ฟีเจอร์อะไรได้เท่าไร และมอบแพ็กเกจให้ลูกค้ารายคน — ระบบบังคับใช้ฝั่ง server ทันที',
+                        `กำหนดว่าแต่ละแพ็กเกจใช้ฟีเจอร์อะไรได้เท่าไร และมอบแพ็กเกจให้${catalog.subject[0]}รายคน — ระบบบังคับใช้ฝั่ง server ทันที`,
                         'Set what each plan can use, and grant plans to individual customers. Enforced server-side immediately.',
                     )}
                 </p>
@@ -58,7 +58,7 @@ export function PlanEntitlementsManager({ product }: { product: PlanProduct }) {
             <Tabs defaultValue="plans">
                 <TabsList>
                     <TabsTrigger value="plans">{tx('สิทธิ์ของแต่ละแพ็กเกจ', 'Plan entitlements')}</TabsTrigger>
-                    <TabsTrigger value="grants">{tx('ลูกค้ารายคน', 'Customers')}</TabsTrigger>
+                    <TabsTrigger value="grants">{tx(`${catalog.subject[0]}รายคน`, `${catalog.subject[1]}s`)}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="plans" className="mt-6">
                     <PlanConfigEditor product={product} />
@@ -322,7 +322,7 @@ function CustomerGrants({ product }: { product: PlanProduct }) {
     const tableHead = (
         <TableHeader>
             <TableRow>
-                <TableHead>{tx('ลูกค้า', 'Customer')}</TableHead>
+                <TableHead>{tx(...catalog.subject)}</TableHead>
                 <TableHead>{tx('แพ็กเกจ', 'Plan')}</TableHead>
                 <TableHead>{tx('หมดอายุ', 'Expires')}</TableHead>
                 <TableHead>{tx('หมายเหตุ', 'Note')}</TableHead>
@@ -340,14 +340,14 @@ function CustomerGrants({ product }: { product: PlanProduct }) {
 
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
                 <CardHeader className="border-b border-slate-100">
-                    <CardTitle className="text-lg">{tx('ค้นหาลูกค้า', 'Find a customer')}</CardTitle>
+                    <CardTitle className="text-lg">{tx(`ค้นหา${catalog.subject[0]}`, `Find a ${catalog.subject[1].toLowerCase()}`)}</CardTitle>
                     <form onSubmit={search} className="flex gap-2 pt-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <Input
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
-                                placeholder={tx('อีเมล หรือ UID ของลูกค้า', 'Customer email or UID')}
+                                placeholder={tx(...catalog.searchHint)}
                                 className="pl-9"
                             />
                         </div>
@@ -359,7 +359,7 @@ function CustomerGrants({ product }: { product: PlanProduct }) {
                 {results && (
                     <CardContent className="p-0">
                         {results.length === 0 ? (
-                            <p className="p-6 text-sm text-slate-500">{tx('ไม่พบลูกค้า — ค้นหาด้วยอีเมลแบบเต็ม หรือ UID', 'No customer found — use the full email or UID')}</p>
+                            <p className="p-6 text-sm text-slate-500">{tx(`ไม่พบ${catalog.subject[0]} — ค้นหาด้วย${catalog.searchHint[0]}แบบเต็ม`, `Not found — search by ${catalog.searchHint[1].toLowerCase()}`)}</p>
                         ) : (
                             <Table>{tableHead}<TableBody>{results.map(renderRow)}</TableBody></Table>
                         )}
@@ -369,7 +369,7 @@ function CustomerGrants({ product }: { product: PlanProduct }) {
 
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
                 <CardHeader className="border-b border-slate-100">
-                    <CardTitle className="text-lg">{tx('ลูกค้าที่ได้รับแพ็กเกจจากแอดมิน', 'Customers with admin-granted plans')}</CardTitle>
+                    <CardTitle className="text-lg">{tx(`${catalog.subject[0]}ที่ได้รับแพ็กเกจจากแอดมิน`, `${catalog.subject[1]}s with admin-granted plans`)}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     {listError ? (
@@ -377,7 +377,7 @@ function CustomerGrants({ product }: { product: PlanProduct }) {
                     ) : !rows ? (
                         <div className="p-6"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                     ) : rows.length === 0 ? (
-                        <p className="p-6 text-sm text-slate-500">{tx('ยังไม่มีลูกค้าที่ได้รับแพ็กเกจ', 'No granted plans yet')}</p>
+                        <p className="p-6 text-sm text-slate-500">{tx(`ยังไม่มี${catalog.subject[0]}ที่ได้รับแพ็กเกจ`, 'No granted plans yet')}</p>
                     ) : (
                         <div className="overflow-x-auto">
                             <Table>{tableHead}<TableBody>{rows.map(renderRow)}</TableBody></Table>

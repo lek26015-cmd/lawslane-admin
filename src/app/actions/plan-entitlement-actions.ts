@@ -155,6 +155,12 @@ export async function listPlanGrantsAction(product: PlanProduct): Promise<Result
     try {
         const { db } = await guard(product);
         const granted = PLAN_CATALOG[product].plans.map(p => p.id).filter(id => id !== PLAN_CATALOG[product].basePlan);
+        if (product === 'lawyer') {
+            const snap = await db.collection('lawyerProfiles').where('planGrant.tier', 'in', granted).limit(300).get();
+            const rows = await withLawyerRecords(db, snap.docs);
+            rows.sort((a, b) => (b.grant?.grantedAt ?? '').localeCompare(a.grant?.grantedAt ?? ''));
+            return { ok: true, data: rows };
+        }
         const snap = await db.collection('users')
             .where(`planGrants.${product}.planId`, 'in', granted)
             .limit(300)
@@ -173,6 +179,7 @@ export async function findCustomerAction(product: PlanProduct, query: string): P
         const { db, admin: session } = await guard(product);
         const q = (query ?? '').trim();
         if (!q || q.length > 200) return { ok: true, data: [] };
+        if (product === 'lawyer') return { ok: true, data: await findLawyers(db, session, q) };
 
         const found = new Map<string, admin.firestore.DocumentSnapshot>();
         if (q.includes('@')) {
@@ -221,6 +228,10 @@ export async function grantPlanAction(
             if (expires.getTime() <= Date.now()) throw new Error('วันหมดอายุต้องอยู่ในอนาคต');
         }
         const cleanNote = (note ?? '').trim().slice(0, 500);
+        if (product === 'lawyer') {
+            await grantLawyerPlan(db, session, uid, planId, expires, cleanNote);
+            return { ok: true, data: null };
+        }
 
         const ref = db.collection('users').doc(uid);
         const snap = await ref.get();
@@ -256,6 +267,10 @@ export async function revokePlanAction(product: PlanProduct, uid: string): Promi
     try {
         const { db, admin: session } = await guard(product);
         if (typeof uid !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(uid)) throw new Error('ไม่พบลูกค้า');
+        if (product === 'lawyer') {
+            await revokeLawyerPlan(db, session, uid);
+            return { ok: true, data: null };
+        }
         const ref = db.collection('users').doc(uid);
         const snap = await ref.get();
         if (!snap.exists) throw new Error('ไม่พบลูกค้า');
@@ -273,4 +288,119 @@ export async function revokePlanAction(product: PlanProduct, uid: string): Promi
     } catch (e) {
         return fail(e);
     }
+}
+
+// ---------------------------------------------------------------------------
+// ทนาย — แพลนอยู่บน lawyerProfiles (ไม่ใช่ users) · row.uid ของทนาย = รหัสโปรไฟล์ทนาย
+// ฝั่งเว็บทนายอ่าน lawyerProfiles.planGrant ผ่าน grantTier()/lawyerTier() ใน Lawlanes/src/lib/provider-plans.ts
+// ---------------------------------------------------------------------------
+
+type AdminSession = Awaited<ReturnType<typeof requireAdmin>>;
+
+function isoOf(v: any): string | null {
+    if (typeof v === 'string') return v;
+    return toIso(v);
+}
+
+function toLawyerRow(doc: admin.firestore.DocumentSnapshot, record?: admin.firestore.DocumentData | null, email?: string | null): CustomerPlanRow {
+    const d = doc.data() ?? {};
+    const g = d.planGrant;
+    return {
+        uid: doc.id,
+        name: d.name ?? null,
+        email: email ?? d.email ?? null,
+        grant: g?.tier ? {
+            planId: g.tier,
+            expiresAt: toIso(g.expiresAt),
+            note: record?.note ?? null,
+            grantedAt: toIso(g.grantedAt),
+            grantedByEmail: record?.grantedBy?.email ?? null,
+        } : null,
+        stripe: d.plan?.tier ? {
+            planId: d.plan.tier,
+            status: d.plan.status ?? null,
+            currentPeriodEnd: isoOf(d.plan.currentPeriodEnd),
+        } : null,
+    };
+}
+
+async function withLawyerRecords(db: admin.firestore.Firestore, docs: admin.firestore.DocumentSnapshot[], emails?: Map<string, string>) {
+    if (docs.length === 0) return [];
+    const records = await db.getAll(...docs.map(doc => recordRef(db, 'lawyer', doc.id)));
+    return docs.map((doc, i) => toLawyerRow(doc, records[i].data() ?? null, emails?.get(doc.id)));
+}
+
+/** หาทนายด้วยอีเมล, UID ผู้ใช้, รหัสโปรไฟล์ หรือต้นชื่อ */
+async function findLawyers(db: admin.firestore.Firestore, session: AdminSession, q: string): Promise<CustomerPlanRow[]> {
+    const found = new Map<string, admin.firestore.DocumentSnapshot>();
+    const emails = new Map<string, string>();
+    const byUserId = async (uid: string, email?: string) => {
+        const snap = await db.collection('lawyerProfiles').where('userId', '==', uid).limit(3).get();
+        snap.docs.forEach(doc => { found.set(doc.id, doc); if (email) emails.set(doc.id, email); });
+    };
+
+    if (q.includes('@')) {
+        const lower = q.toLowerCase();
+        const [profiles, users] = await Promise.all([
+            Promise.all([...new Set([q, lower])].map(email => db.collection('lawyerProfiles').where('email', '==', email).limit(5).get())),
+            Promise.all([...new Set([q, lower])].map(email => db.collection('users').where('email', '==', email).limit(5).get())),
+        ]);
+        profiles.forEach(s => s.docs.forEach(doc => found.set(doc.id, doc)));
+        for (const s of users) for (const u of s.docs) await byUserId(u.id, u.get('email'));
+        if (found.size === 0) {
+            const authUser = await session.adminApp.auth().getUserByEmail(lower).catch(() => null);
+            if (authUser) await byUserId(authUser.uid, authUser.email ?? undefined);
+        }
+    } else if (/^[A-Za-z0-9_-]{6,128}$/.test(q)) {
+        const doc = await db.collection('lawyerProfiles').doc(q).get();
+        if (doc.exists) found.set(doc.id, doc);
+        else await byUserId(q);
+    }
+    if (found.size === 0 && !q.includes('@')) {
+        // ชื่อทนาย (ตรงต้นชื่อ ตัวพิมพ์ตามที่บันทึกไว้)
+        const snap = await db.collection('lawyerProfiles').orderBy('name').startAt(q).endAt(q + '\uf8ff').limit(10).get();
+        snap.docs.forEach(doc => found.set(doc.id, doc));
+    }
+    return withLawyerRecords(db, [...found.values()], emails);
+}
+
+async function grantLawyerPlan(db: admin.firestore.Firestore, session: AdminSession, profileId: string, tier: string, expires: Date | null, note: string) {
+    const ref = db.collection('lawyerProfiles').doc(profileId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('ไม่พบทนาย');
+    const before = snap.data()?.planGrant ?? null;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const expiresTs = expires ? admin.firestore.Timestamp.fromDate(expires) : null;
+    const batch = db.batch();
+    batch.update(ref, { planGrant: { tier, expiresAt: expiresTs, grantedAt: now } });
+    batch.set(recordRef(db, 'lawyer', profileId), {
+        product: 'lawyer', uid: profileId, lawyerUserId: snap.get('userId') ?? null, planId: tier,
+        expiresAt: expiresTs,
+        note: note || null,
+        grantedAt: now,
+        grantedBy: { uid: session.uid, email: session.token.email ?? null },
+    });
+    await batch.commit();
+    await log(db, {
+        product: 'lawyer', action: 'grant.set', uid: profileId, planId: tier,
+        expiresAt: expires?.toISOString() ?? null, note: note || null,
+        before: before ? { planId: before.tier ?? null, expiresAt: toIso(before.expiresAt) } : null,
+        by: { uid: session.uid, email: session.token.email },
+    });
+}
+
+async function revokeLawyerPlan(db: admin.firestore.Firestore, session: AdminSession, profileId: string) {
+    const ref = db.collection('lawyerProfiles').doc(profileId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('ไม่พบทนาย');
+    const before = snap.data()?.planGrant ?? null;
+    const batch = db.batch();
+    batch.update(ref, { planGrant: admin.firestore.FieldValue.delete() });
+    batch.delete(recordRef(db, 'lawyer', profileId));
+    await batch.commit();
+    await log(db, {
+        product: 'lawyer', action: 'grant.revoke', uid: profileId,
+        before: before ? { planId: before.tier ?? null, expiresAt: toIso(before.expiresAt) } : null,
+        by: { uid: session.uid, email: session.token.email },
+    });
 }
