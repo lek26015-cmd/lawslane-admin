@@ -135,7 +135,7 @@ export default function NewAdminPage() {
           </CardHeader>
           <form action={handleSubmit}>
             <CardContent className="grid gap-6">
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 flex gap-3">
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg p-4 flex gap-3">
                 <ShieldAlert className="h-5 w-5 text-yellow-600" />
                 <div className="text-sm text-yellow-700">
                   <p className="font-semibold">ข้อจำกัดความปลอดภัย</p>
