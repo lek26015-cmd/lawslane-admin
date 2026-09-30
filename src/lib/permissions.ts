@@ -15,7 +15,9 @@
 
 export const PERMISSIONS = {
     'users.customers': 'ลูกค้า',
+    'customers.plans': 'แพ็กเกจ Lawslane AI ของลูกค้า',
     'users.lawyers': 'ทนายความ',
+    'lawyers.plans': 'แพลนและสิทธิ์ทนาย',
     'users.registry': 'ฐานข้อมูลทนาย',
     'users.interpreters': 'ล่าม',
     'chat': 'แชททั้งหมด',
