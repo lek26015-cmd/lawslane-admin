@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    /* ความมนของมุม — tailwind.config ใช้ค่านี้กับ rounded-sm/md/lg (เดิมไม่ได้ประกาศไว้ มุมจึงเป็นเหลี่ยม) */
+    --radius: 0.625rem;
     --background: 0 0% 100%;
     --foreground: 203 100% 16%;
     /* #003654 */
