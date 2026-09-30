@@ -59,6 +59,7 @@ export const navSections: NavSection[] = [
         titleEn: "User Management",
         items: [
             { href: "/customers", icon: <Users2 className="h-4 w-4" />, label: "ลูกค้า", labelEn: "Customers", permission: "users.customers" },
+            { href: "/customer-plans", icon: <BadgeCheck className="h-4 w-4" />, label: "แพ็กเกจ Lawslane AI", labelEn: "Lawslane AI Plans", permission: "customers.plans" },
             { href: "/lawyers", icon: <UserCheck className="h-4 w-4" />, label: "ทนายความ", labelEn: "Lawyers", permission: "users.lawyers" },
             { href: "/lawyer-registry", icon: <Database className="h-4 w-4" />, label: "ฐานข้อมูลทนาย", labelEn: "Lawyer Registry", permission: "users.registry" },
             { href: "/lawyer-plans", icon: <BadgeCheck className="h-4 w-4" />, label: "แพลนและสิทธิ์ทนาย", labelEn: "Lawyer Plans", permission: "lawyers.plans" },

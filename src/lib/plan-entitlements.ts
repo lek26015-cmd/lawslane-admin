@@ -16,10 +16,11 @@
  *   - lawslane-capdeal/src/lib/entitlement.ts     (ใช้แพ็กเกจที่สูงกว่าระหว่าง Stripe กับที่มอบ)
  *   - lawlanes-education/src/lib/plan-entitlement.ts
  *   - Lawlanes/src/lib/lawyer-entitlements.ts + provider-plans.ts (grantTier/lawyerTier) สำหรับทนาย
+ *   - Lawlanes/src/lib/customer-ai-plan.ts สำหรับลูกค้า Lawslane AI (product 'lawslane' — มอบผ่าน users.planGrants เหมือน CapDeal)
  * ค่าเริ่มต้นด้านล่างต้องตรงกับค่าเริ่มต้นในสอง repo นั้น (ใช้เมื่อยังไม่มีเอกสาร)
  */
 
-export type PlanProduct = 'capdeal' | 'wittaya' | 'lawyer';
+export type PlanProduct = 'capdeal' | 'wittaya' | 'lawyer' | 'lawslane';
 
 export type EntitlementField =
     | { key: string; type: 'number'; label: [string, string]; help?: [string, string]; nullable?: { label: [string, string] } }
@@ -30,7 +31,7 @@ export type PlanValues = Record<string, number | boolean | null>;
 export type ProductCatalog = {
     product: PlanProduct;
     name: string;
-    permission: 'capdeal.plans' | 'education.plans' | 'lawyers.plans';
+    permission: 'capdeal.plans' | 'education.plans' | 'lawyers.plans' | 'customers.plans';
     /** คำเรียกผู้ใช้ของผลิตภัณฑ์นี้ในหน้าจอ เช่น ลูกค้า / ทนาย */
     subject: [string, string];
     searchHint: [string, string];
@@ -148,6 +149,35 @@ export const PLAN_CATALOG: Record<PlanProduct, ProductCatalog> = {
         grantNote: [
             'ทนายจะได้แพลนที่สูงกว่าระหว่างที่จ่ายผ่าน Stripe กับที่มอบให้ — มอบแพลนแล้วได้ทั้งสิทธิ์ใช้งานและป้าย/ลำดับในรายชื่อทนาย การมอบไม่ยกเลิกหรือเปลี่ยนการเก็บเงินใน Stripe',
             'The lawyer gets the higher of their Stripe plan and the granted plan, including directory badge and ranking. Granting never cancels or changes Stripe billing.',
+        ],
+    },
+    lawslane: {
+        product: 'lawslane',
+        name: 'Lawslane AI',
+        permission: 'customers.plans',
+        subject: ['ลูกค้า', 'Customer'],
+        searchHint: ['อีเมล หรือ UID ของลูกค้า', 'Customer email or UID'],
+        plans: [
+            { id: 'free', name: 'Free' },
+            { id: 'plus', name: 'Plus' },
+        ],
+        fields: [
+            {
+                key: 'aiCreditsPerMonth', type: 'number',
+                label: ['เครดิต Lawslane AI (ต่อเดือน)', 'Lawslane AI credits per month'],
+                help: ['รีเซ็ตต้นเดือนเวลาไทย · ถาม/มาตรา/ฎีกา 1 · ร่างเอกสาร/ตรวจสัญญา 2 · อ่าน PDF/รูป ไฟล์ละ 1', 'Resets monthly (Bangkok) · ask 1 · draft/contract 2 · PDF/image read 1'],
+                nullable: { label: ['ไม่จำกัด', 'Unlimited'] },
+            },
+        ],
+        // Free = ลูกค้าที่ล็อกอินทุกคน · Plus = มอบจากแอดมินเท่านั้น (ยังไม่มีระบบจ่ายเงิน)
+        defaults: {
+            free: { aiCreditsPerMonth: 20 },
+            plus: { aiCreditsPerMonth: 200 },
+        },
+        basePlan: 'free',
+        grantNote: [
+            'ลูกค้าทุกคนที่ล็อกอินได้เครดิตแพ็กเกจ Free ทุกเดือน — มอบ Plus ให้รายคนเพื่อเพิ่มเครดิต (ยังไม่มีระบบซื้อเครดิต)',
+            'Every logged-in customer gets Free credits monthly. Grant Plus to individuals for more credits (no credit purchases yet).',
         ],
     },
 };
