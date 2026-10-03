@@ -33,6 +33,16 @@ interface ViewQuestion {
     tags: string[];
     isAiGenerated: boolean;
     sourcePage: number | null;
+    maxScore?: number | null;
+    requiresForm?: boolean;
+    formType?: string;
+    answerPageImages?: PageImage[];
+    reviewNotes?: string[];
+}
+
+interface PageImage {
+    page: number;
+    url: string;
 }
 
 interface ExamViewData {
@@ -43,6 +53,10 @@ interface ExamViewData {
     session: string;
     examLevel: string;
     totalQuestions: number;
+    status?: string;
+    scenarioText?: string;
+    pageImages?: PageImage[];
+    reviewNotes?: string[];
     questions: ViewQuestion[];
 }
 
@@ -180,6 +194,7 @@ export default function ExamViewPage({ params }: { params: Promise<{ id: string 
                             <span>{total} ข้อ</span>
                             {exam.subjectCode && <Badge variant="outline">{exam.subjectCode}</Badge>}
                             {exam.session && <Badge variant="outline">{exam.session}</Badge>}
+                            {exam.status === 'draft' && <Badge className="bg-slate-200 text-slate-700 hover:bg-slate-200">ฉบับร่าง</Badge>}
                             {noAnswerCount > 0 && (
                                 <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
                                     ยังไม่มีเฉลย {noAnswerCount} ข้อ
@@ -202,6 +217,20 @@ export default function ExamViewPage({ params }: { params: Promise<{ id: string 
                     </Button>
                 </div>
             </div>
+
+            {/* จุดที่ขั้นนำเข้าขอให้ตรวจ + ข้อเท็จจริงร่วม + ภาพหน้าโจทย์ */}
+            {exam.reviewNotes && exam.reviewNotes.length > 0 && <ReviewNotes notes={exam.reviewNotes} />}
+            {(exam.scenarioText || (exam.pageImages && exam.pageImages.length > 0)) && (
+                <details className="bg-white rounded-xl border shadow-sm p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-700">
+                        ข้อเท็จจริง / หน้าโจทย์ต้นฉบับ {exam.pageImages?.length ? `(${exam.pageImages.length} หน้า)` : ''}
+                    </summary>
+                    {exam.scenarioText && (
+                        <p className="mt-3 text-sm text-slate-800 whitespace-pre-wrap break-words leading-relaxed">{exam.scenarioText}</p>
+                    )}
+                    <PageImages images={exam.pageImages || []} />
+                </details>
+            )}
 
             {total === 0 || !q ? (
                 <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-slate-400 space-y-3">
@@ -255,7 +284,11 @@ export default function ExamViewPage({ params }: { params: Promise<{ id: string 
                                 </Badge>
                             )}
                             {q.sourcePage && <Badge variant="secondary">หน้า {q.sourcePage}</Badge>}
+                            {q.maxScore != null && <Badge variant="secondary">{q.maxScore} คะแนน</Badge>}
+                            {q.requiresForm && <Badge variant="secondary">ร่างเอกสาร{q.formType ? `: ${q.formType}` : ''}</Badge>}
                         </div>
+
+                        {q.reviewNotes && q.reviewNotes.length > 0 && <ReviewNotes notes={q.reviewNotes} />}
 
                         <p className="text-slate-900 whitespace-pre-wrap break-words leading-relaxed">
                             {q.questionText || <span className="text-slate-400">(ไม่มีข้อความคำถาม)</span>}
@@ -289,6 +322,14 @@ export default function ExamViewPage({ params }: { params: Promise<{ id: string 
                             <div className="space-y-4">
                                 {q.correctAnswer && (mc ? correctIdx === undefined : true) && (
                                     <AnswerBlock title="คำตอบที่ถูกต้อง" text={q.correctAnswer} tone="green" />
+                                )}
+                                {q.answerPageImages && q.answerPageImages.length > 0 && (
+                                    <div className="rounded-lg border border-sky-200 p-4">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-sky-900 opacity-70">
+                                            ธงคำตอบต้นฉบับ (ภาพ — ที่นักเรียนเห็น)
+                                        </p>
+                                        <PageImages images={q.answerPageImages} />
+                                    </div>
                                 )}
                                 {q.modelAnswer && <AnswerBlock title="ธงคำตอบ / แนวคำตอบ" text={q.modelAnswer} tone="blue" />}
                                 {q.explanation && <AnswerBlock title="คำอธิบาย" text={q.explanation} tone="slate" />}
@@ -325,6 +366,33 @@ export default function ExamViewPage({ params }: { params: Promise<{ id: string 
                     </section>
                 </div>
             )}
+        </div>
+    );
+}
+
+function ReviewNotes({ notes }: { notes: string[] }) {
+    return (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p className="flex items-center gap-2 font-medium"><AlertTriangle className="w-4 h-4" />จุดที่ควรตรวจก่อนเผยแพร่</p>
+            <ul className="mt-1 list-disc pl-6 space-y-0.5">
+                {notes.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+        </div>
+    );
+}
+
+// ภาพสแกนที่ล้างหัว/ท้ายกระดาษแล้ว — แตะเพื่อเปิดขนาดเต็ม
+function PageImages({ images }: { images: PageImage[] }) {
+    if (images.length === 0) return null;
+    return (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {images.map(img => (
+                <a key={img.url} href={img.url} target="_blank" rel="noopener noreferrer" className="block">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- ภาพ A4 จาก R2 */}
+                    <img src={img.url} alt={`หน้า ${img.page}`} loading="lazy" className="w-full h-auto rounded border bg-white" />
+                    <span className="mt-1 block text-center text-xs text-slate-400">หน้า {img.page}</span>
+                </a>
+            ))}
         </div>
     );
 }
