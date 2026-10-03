@@ -33,7 +33,7 @@ import {
     isPdfFile,
     prepareImage,
     preparePdf,
-    uploadToPresignedUrl,
+    uploadExamPage,
 } from '@/lib/exam-import-browser';
 
 /**
@@ -41,7 +41,7 @@ import {
  *
  * ขั้นตอน (ทุกขั้นเรียก API ทีละคำขอ ไม่มีคำขอไหนยาวเกิน maxDuration):
  *  1. เบราว์เซอร์แปลง PDF/ภาพเป็นภาพหน้า JPEG และดึง text layer ของ PDF
- *  2. อัปโหลดภาพหน้าขึ้น R2 ตรงผ่าน presigned URL (ไม่ผ่าน Vercel function)
+ *  2. อัปโหลดภาพหน้าขึ้น Firebase Storage ผ่าน server ทีละหน้า
  *  3. หน้าไหน text layer ใช้ได้ใช้เลย ที่เหลือ OCR ทีละหน้า (Gemini → Typhoon)
  *  4. จัดโครงสร้างเป็นรายข้อด้วย AI ทีละกลุ่มหน้า (สำรองด้วยกฎ) แล้วให้แอดมินตรวจ/แก้
  *  5. บันทึกเป็นชุดแบบร่าง → ไปหน้าตรวจ OCR / AI สร้างเฉลย → เผยแพร่จากหน้าแก้ไข
@@ -220,22 +220,20 @@ export default function ImportExamPage() {
             setPages(items);
             setStep('pages');
 
-            // 2. อัปโหลดภาพทุกหน้าขึ้น R2 (หน้า review ใช้แสดงคู่กับข้อความ)
-            const presign = await postJson<{ items: { page: number; uploadUrl: string; publicUrl: string }[] }>(
-                '/api/education/exams/upload-url', { count: items.length });
+            // 2. อัปโหลดภาพทุกหน้าขึ้น Firebase Storage (หน้า review ใช้แสดงคู่กับข้อความ)
+            const batchId = crypto.randomUUID();
             for (let i = 0; i < items.length; i++) {
                 setProgress({ label: `อัปโหลดภาพหน้า ${i + 1}/${items.length}`, done: i, total: items.length });
                 updatePage(items[i].page, { status: 'uploading' });
+                let url: string;
                 try {
-                    await uploadToPresignedUrl(presign.items[i].uploadUrl, items[i].blob);
+                    url = await uploadExamPage(items[i].blob, batchId, i + 1);
                 } catch (e) {
-                    const msg = e instanceof TypeError
-                        ? 'อัปโหลดถูกบล็อก — ตั้ง CORS ของ bucket R2 ให้อนุญาต PUT จากโดเมนแอดมิน'
-                        : (e as Error).message;
+                    const msg = (e as Error).message;
                     updatePage(items[i].page, { status: 'error', error: msg });
                     throw new Error(msg);
                 }
-                items[i] = { ...items[i], url: presign.items[i].publicUrl, status: items[i].method === 'text' ? 'done' : 'uploaded' };
+                items[i] = { ...items[i], url, status: items[i].method === 'text' ? 'done' : 'uploaded' };
                 updatePage(items[i].page, { url: items[i].url, status: items[i].status });
             }
 
@@ -249,7 +247,7 @@ export default function ImportExamPage() {
                 } catch (e) {
                     failed++;
                     // คีย์ผิด/ไม่ได้ตั้งค่า ล้มทุกหน้าเหมือนกัน — หยุดแจ้งทันทีไม่ต้องลองต่อ
-                    if (/GOOGLE_GENAI_API_KEY|TYPHOON_API_KEY|R2_/.test((e as Error).message)) {
+                    if (/GOOGLE_GENAI_API_KEY|TYPHOON_API_KEY|FIREBASE_STORAGE/.test((e as Error).message)) {
                         toast({ title: 'OCR ใช้งานไม่ได้', description: (e as Error).message, variant: 'destructive' });
                         break;
                     }

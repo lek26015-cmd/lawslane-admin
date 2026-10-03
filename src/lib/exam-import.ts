@@ -30,7 +30,7 @@ export const MIN_MC_STEM_CHARS = 5;
 export const PLAUSIBLE_MAX_ESSAYS = 15;
 /** เพดานข้อความต่อ 1 คำขอจัดโครงสร้างด้วย AI — ให้แต่ละ request จบใน maxDuration */
 export const STRUCTURE_CHUNK_CHARS = 7000;
-/** โฟลเดอร์ใน R2 ที่เก็บภาพหน้าข้อสอบจากการนำเข้า — route OCR รับเฉพาะ URL ใต้โฟลเดอร์นี้ */
+/** โฟลเดอร์ใน Firebase Storage ที่เก็บภาพหน้าข้อสอบจากการนำเข้า — route OCR รับเฉพาะ URL ใต้โฟลเดอร์นี้ */
 export const EXAM_PAGE_PREFIX = 'exam-pages';
 
 export interface ImportPageText {

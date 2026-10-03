@@ -134,10 +134,16 @@ export async function prepareImage(file: File): Promise<PreparedPage> {
     return { sourceName: file.name, sourcePage: 1, blob, previewUrl: URL.createObjectURL(blob), textLayer: '' };
 }
 
-/** อัปโหลดภาพหน้าไปยัง presigned URL ของ R2 */
-export async function uploadToPresignedUrl(uploadUrl: string, blob: Blob): Promise<void> {
-    const res = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
-    if (!res.ok) {
-        throw new Error(`อัปโหลดภาพไม่สำเร็จ (${res.status}) — ตรวจ CORS ของ bucket R2 ว่าอนุญาต PUT จากโดเมนแอดมิน`);
+/** อัปโหลดภาพหน้าขึ้น Firebase Storage ผ่าน server ทีละหน้า — คืน URL ภาพ */
+export async function uploadExamPage(blob: Blob, batchId: string, page: number): Promise<string> {
+    const form = new FormData();
+    form.append('file', blob, `p${page}.jpg`);
+    form.append('batchId', batchId);
+    form.append('page', String(page));
+    const res = await fetch('/api/education/exams/upload-page', { method: 'POST', body: form });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.url) {
+        throw new Error(body.error || `อัปโหลดภาพหน้า ${page} ไม่สำเร็จ (${res.status})`);
     }
+    return body.url as string;
 }
