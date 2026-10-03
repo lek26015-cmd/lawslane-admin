@@ -211,10 +211,25 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     }, [areServicesAvailable, auth, firestore, router, pathname]);
 
     useEffect(() => {
-        if (isAdmin && pathname === '/login') {
-            router.push('/');
-        }
-    }, [isAdmin, pathname, router]);
+        if (!isAdmin || pathname !== '/login' || !auth) return;
+        // Firebase ฝั่ง client จำการล็อกอินไว้นานกว่า cookie session ฝั่ง server (5 วัน)
+        // ถ้า cookie หมดอายุแล้ว หน้า server จะเด้งกลับมา /login แล้วตรงนี้ก็ดันไป / อีก
+        // วนไม่จบ — เช็ค session กับ server ก่อน ถ้าไม่ผ่านให้ออกจากระบบแล้วล็อกอินใหม่
+        let cancelled = false;
+        fetch('/api/auth/session')
+            .then(res => res.ok ? res.json() : { authenticated: false })
+            .catch(() => ({ authenticated: false }))
+            .then(async (data) => {
+                if (cancelled) return;
+                if (data?.authenticated) {
+                    router.push('/');
+                    return;
+                }
+                await fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+                await signOut(auth);
+            });
+        return () => { cancelled = true; };
+    }, [isAdmin, pathname, router, auth]);
 
     const handleLogout = async () => {
         if (auth) {
