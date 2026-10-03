@@ -29,39 +29,42 @@ export const OCR_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 /** ภาพหน้าละไม่ควรเกินนี้ (หน้าเว็บบีบเป็น JPEG ~2000px ได้ราว 0.3-1.5MB) */
 export const MAX_OCR_IMAGE_BYTES = 12 * 1024 * 1024;
 
-function r2PublicBase(): string | null {
-    const base = process.env.R2_PUBLIC_URL?.trim();
-    if (!base) return null;
-    return base.replace(/\/+$/, '');
+/** bucket ของ Firebase Storage ที่เก็บภาพหน้าข้อสอบ (โปรเจกต์ Firebase เดียวกับทุกเว็บ) */
+export function examPageBucket(): string | null {
+    return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || null;
+}
+
+/** path ใน bucket ต้องอยู่ใต้ exam-pages/ และห้ามมี ".." */
+export function isExamPagePath(path: unknown): path is string {
+    return typeof path === 'string' && path.startsWith(`${EXAM_PAGE_PREFIX}/`) && !path.includes('..') && !path.includes('//');
+}
+
+/** URL ดาวน์โหลดแบบ Firebase (มี token) — ใช้แสดงภาพในหน้า review และเก็บใน pageImages */
+export function examPageDownloadUrl(path: string, token: string): string {
+    return `https://firebasestorage.googleapis.com/v0/b/${examPageBucket()}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 }
 
 /**
- * ตรวจว่า URL เป็นภาพหน้าข้อสอบใน R2 สาธารณะของเราจริง (กัน SSRF — ห้ามให้ server
- * ไปดึง URL อะไรก็ได้ตามที่ผู้เรียกส่งมา) ต้องเป็น origin เดียวกับ R2_PUBLIC_URL
- * และอยู่ใต้โฟลเดอร์ exam-pages/ เท่านั้น
+ * แยก path ออกจาก URL ภาพหน้าข้อสอบ — คืน null ถ้าไม่ใช่ไฟล์ใน bucket ของเราใต้ exam-pages/
+ * (เดิมใช้ R2 แต่บัญชี R2 ถูกระงับ 2026-10-03 จึงย้ายมา Firebase Storage)
  */
-export function isExamPageImageUrl(raw: string): boolean {
-    const base = r2PublicBase();
-    if (!base || typeof raw !== 'string') return false;
+export function examPagePathFromUrl(raw: string): string | null {
+    const bucket = examPageBucket();
+    if (!bucket || typeof raw !== 'string') return null;
     try {
         const url = new URL(raw);
-        const baseUrl = new URL(base);
-        if (url.protocol !== 'https:' && url.protocol !== baseUrl.protocol) return false;
-        if (url.origin !== baseUrl.origin) return false;
-        if (url.username || url.password) return false;
-        const basePath = baseUrl.pathname.replace(/\/+$/, '');
-        const prefix = `${basePath}/${EXAM_PAGE_PREFIX}/`;
-        // decode แล้วเช็ค ".." กันการเดิน path ออกนอกโฟลเดอร์
-        const path = decodeURIComponent(url.pathname);
-        return path.startsWith(prefix) && !path.includes('..');
+        if (url.protocol !== 'https:' || url.hostname !== 'firebasestorage.googleapis.com') return null;
+        const m = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/);
+        if (!m || m[1] !== bucket) return null;
+        const path = decodeURIComponent(m[2]);
+        return isExamPagePath(path) ? path : null;
     } catch {
-        return false;
+        return null;
     }
 }
 
-export function examPagePublicUrl(key: string): string | null {
-    const base = r2PublicBase();
-    return base ? `${base}/${key}` : null;
+export function isExamPageImageUrl(raw: string): boolean {
+    return examPagePathFromUrl(raw) !== null;
 }
 
 /** แปลง error ของ Gemini เป็นข้อความไทยที่แอดมินเข้าใจและแก้ได้ */

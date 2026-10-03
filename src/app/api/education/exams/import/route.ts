@@ -26,7 +26,7 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
  * POST /api/education/exams/import
  * Body: {
  *   meta: { title, subjectCode?, session?, description?, timeLimitMinutes?, passingScore?, examLevel?, sourceFile? },
- *   pages: [{ page, url }],          // ภาพหน้าข้อสอบใน R2 (ใช้ในหน้า review แบบแบ่งจอ)
+ *   pages: [{ page, url }],          // ภาพหน้าข้อสอบใน Firebase Storage (ใช้ในหน้า review แบบแบ่งจอ)
  *   questions: ImportQuestion[],     // ผลจัดโครงสร้างที่แอดมินตรวจ/แก้ในหน้า preview แล้ว
  * }
  *
