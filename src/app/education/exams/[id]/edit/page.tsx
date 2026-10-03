@@ -152,13 +152,15 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
             });
 
             if (response.ok) {
-                toast({ title: "บันทึกการแก้ไขสำเร็จ" });
+                toast({ title: status === 'published' ? "เผยแพร่แล้ว" : "บันทึกการแก้ไขสำเร็จ" });
                 router.push('/education/exams');
             } else {
-                throw new Error('Failed');
+                // เช่น 409 = ยังมีข้อที่ภาษาผิดปกติ/ปรนัยไม่มีเฉลย (จากระบบนำเข้า OCR) — เผยแพร่ไม่ได้
+                const err = await response.json().catch(() => null);
+                throw new Error(err?.error || 'บันทึกไม่สำเร็จ');
             }
         } catch (error) {
-            toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+            toast({ title: "เกิดข้อผิดพลาด", description: (error as Error).message, variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }

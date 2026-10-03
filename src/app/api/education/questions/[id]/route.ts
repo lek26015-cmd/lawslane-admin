@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
+import { recomputeOcrIssues } from '@/lib/exam-import';
 
 // Helper: find question, given its parent exam id directly when known
 // (avoids scanning every examSets doc — see LAWSLANE-PLAN-01 2.1).
@@ -93,9 +94,31 @@ export async function PUT(
             if (body[key] !== undefined) updates[key] = body[key];
         }
 
+        // หน้าแก้ไขส่งฟิลด์ชื่อฝั่ง UI (text/options/correctOptionIndex/correctAnswerText/ESSAY)
+        // แต่ทุกตัวอ่าน (เว็บนักศึกษา, หน้า review) ใช้ questionText/choices/correctAnswer/modelAnswer
+        // จึงเขียนฟิลด์ชื่อจริงคู่กันไปด้วย ไม่งั้นแก้แล้วไม่มีผลกับข้อสอบที่นักศึกษาเห็น
+        if (typeof body.text === 'string' && body.questionText === undefined) updates.questionText = body.text;
+        if (body.type === 'ESSAY') updates.type = 'essay';
+        if (body.type === 'MULTIPLE_CHOICE') updates.type = 'multiple_choice';
+        if (Array.isArray(body.options) && body.choices === undefined) {
+            updates.choices = updates.type === 'essay' ? [] : body.options;
+        }
+        if (Number.isInteger(body.correctOptionIndex) && body.correctAnswer === undefined && updates.type !== 'essay') {
+            updates.correctAnswer = `(${body.correctOptionIndex + 1})`;
+        }
+        if (typeof body.correctAnswerText === 'string' && body.modelAnswer === undefined && updates.type !== 'multiple_choice') {
+            updates.modelAnswer = body.correctAnswerText;
+        }
+
+        // ข้อจากระบบนำเข้า OCR: ตรวจภาษา/ความครบใหม่ (ใช้ตัดสินว่าเผยแพร่ได้หรือยัง)
+        const existing = (await result.ref.get()).data() || {};
+        const ocrIssues = recomputeOcrIssues(existing, updates);
+        if (ocrIssues) updates.ocrIssues = ocrIssues;
+
         await result.ref.update(updates);
 
-        return NextResponse.json({ id, ...updates });
+        // หน้าแก้ไขเอาผลนี้ไปแสดงแทนข้อเดิม จึงคืน type ในรูปแบบที่หน้านั้นส่งมา (ESSAY / MULTIPLE_CHOICE)
+        return NextResponse.json({ id, ...updates, ...(body.type !== undefined ? { type: body.type } : {}) });
     } catch (error) {
         console.error('Error updating question:', error);
         return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Eye, ScanText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,10 +63,11 @@ export default function CreateExamPage() {
                 });
                 router.push(`/education/exams/${exam.id}/edit`);
             } else {
-                throw new Error('Failed to create');
+                const err = await response.json().catch(() => null);
+                throw new Error(err?.error || 'สร้างข้อสอบไม่สำเร็จ');
             }
         } catch (error) {
-            toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+            toast({ title: "เกิดข้อผิดพลาด", description: (error as Error).message, variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -93,6 +94,11 @@ export default function CreateExamPage() {
                     </Button>
                 </div>
             </div>
+
+            <Link href="/education/exams/import" className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800 hover:bg-indigo-100">
+                <ScanText className="w-5 h-5 shrink-0" />
+                <span>มีไฟล์ข้อสอบอยู่แล้ว (PDF / ภาพสแกน)? <strong>นำเข้าข้อสอบ (OCR)</strong> — ระบบอ่านข้อความและแยกข้อให้</span>
+            </Link>
 
             <div className="bg-white rounded-xl border shadow-sm p-6 space-y-6">
                 <div className="space-y-2">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
+import { recomputeOcrIssues } from '@/lib/exam-import';
 
 /**
  * Get comprehensive review data for an exam (raw OCR text + page images + answer status)
@@ -51,6 +52,11 @@ export async function GET(
                 aiGeneratedAt: q.aiGeneratedAt?.toDate?.() || null,
                 // Page mapping — which scanned page this question is from
                 sourcePage: q.sourcePage || null,
+                // จากระบบนำเข้า OCR: ปัญหาที่ต้องแก้ก่อนเผยแพร่ / ข้อที่ต้องใช้แบบฟอร์มเอกสาร
+                ocrIssues: Array.isArray(q.ocrIssues) ? q.ocrIssues : [],
+                importNotes: Array.isArray(q.importNotes) ? q.importNotes : [],
+                requiresForm: !!q.requiresForm,
+                formType: q.formType || '',
             };
         });
 
@@ -112,7 +118,7 @@ export async function PATCH(
         }
 
         // Only allow specific fields to be updated
-        const allowedFields = ['questionText', 'modelAnswer', 'explanation', 'correctAnswer', 'choices', 'type'];
+        const allowedFields = ['questionText', 'modelAnswer', 'explanation', 'correctAnswer', 'choices', 'type', 'requiresForm', 'formType'];
         const safeUpdates: Record<string, any> = {};
         for (const key of allowedFields) {
             if (updates[key] !== undefined) {
@@ -120,11 +126,15 @@ export async function PATCH(
             }
         }
 
+        // ข้อจากระบบนำเข้า: ตรวจภาษา/ความครบใหม่ทุกครั้งที่แก้ (ใช้ตัดสินว่าเผยแพร่ได้หรือยัง)
+        const ocrIssues = recomputeOcrIssues(qDoc.data() || {}, safeUpdates);
+        if (ocrIssues) safeUpdates.ocrIssues = ocrIssues;
+
         safeUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
         await qRef.update(safeUpdates);
 
-        return NextResponse.json({ success: true, updated: Object.keys(safeUpdates) });
+        return NextResponse.json({ success: true, updated: Object.keys(safeUpdates), ocrIssues: ocrIssues ?? [] });
     } catch (error) {
         console.error('Error updating question:', error);
         return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });

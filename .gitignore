@@ -46,3 +46,6 @@ __pycache__/
 
 # node_modules ของ worker ย่อย (เคยถูก track ไว้โดยไม่ตั้งใจ)
 workers/**/node_modules/
+
+# pdfjs runtime (คัดลอกจาก node_modules ตอน predev/prebuild — scripts/copy-pdfjs-assets.mjs)
+/public/pdfjs/

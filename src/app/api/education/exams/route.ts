@@ -3,6 +3,8 @@ import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { unstable_cache } from 'next/cache';
+import { EXAM_LIST_CACHE_TAG, invalidateExamListCache } from '@/lib/education-cache';
+import { categoryFromSubjectCode } from '@/lib/exam-import';
 
 const CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
 
@@ -157,7 +159,7 @@ async function fetchExamsFromFirestore(): Promise<any[]> {
         const allDocs: admin.firestore.QueryDocumentSnapshot[] = [];
         let query = db.collection('examSets')
             .select('title', 'subjectCode', 'category', 'subjectGroup', 'session',
-                    'totalQuestions', 'essayCount', 'status', 'createdAt')
+                    'totalQuestions', 'essayCount', 'status', 'createdAt', 'source', 'sourceFile')
             .orderBy('createdAt', 'desc')
             .limit(1000);
 
@@ -168,7 +170,7 @@ async function fetchExamsFromFirestore(): Promise<any[]> {
             const lastDoc = snap.docs[snap.docs.length - 1];
             snap = await db.collection('examSets')
                 .select('title', 'subjectCode', 'category', 'subjectGroup', 'session',
-                        'totalQuestions', 'essayCount', 'status', 'createdAt')
+                        'totalQuestions', 'essayCount', 'status', 'createdAt', 'source', 'sourceFile')
                 .orderBy('createdAt', 'desc')
                 .startAfter(lastDoc)
                 .limit(1000)
@@ -200,6 +202,11 @@ async function fetchExamsFromFirestore(): Promise<any[]> {
                 subjectGroup: group,
                 subjectCode: '',
                 session: data.session || '',
+                // ชุดที่ไม่มีฟิลด์ status ถือว่าเผยแพร่แล้ว (ตรงกับเว็บนักศึกษา) — เดิมไม่ส่ง status
+                // กลับไป หน้า list จึงขึ้น "แบบร่าง" ทุกชุดทั้งที่ 2,021/2,023 ชุดเผยแพร่อยู่
+                status: data.status === 'draft' ? 'draft' : 'published',
+                source: data.source || '',
+                sourceFile: data.sourceFile || '',
             };
         });
 
@@ -212,6 +219,8 @@ async function fetchExamsFromFirestore(): Promise<any[]> {
 // calling fetchExamsFromFirestore() directly instead of going through getCachedExams.
 const getCachedExams = unstable_cache(fetchExamsFromFirestore, ['education-all-exams'], {
     revalidate: CACHE_TTL_SECONDS,
+    // route ที่เขียน examSets (สร้าง/แก้/ลบ/นำเข้า) ล้าง cache ผ่านแท็กนี้
+    tags: [EXAM_LIST_CACHE_TAG],
 });
 
 async function getAllExams(forceRefresh = false): Promise<any[]> {
@@ -254,7 +263,7 @@ export async function GET(request: NextRequest) {
             }
 
             return NextResponse.json({ yearCounts, subjectCounts }, {
-                headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
+                headers: { 'Cache-Control': 'private, no-store' },
             });
         }
 
@@ -294,7 +303,7 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit),
                 hasMore: startIdx + limit < total,
             }, {
-                headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+                headers: { 'Cache-Control': 'private, no-store' },
             });
         }
 
@@ -302,11 +311,80 @@ export async function GET(request: NextRequest) {
         const exams = await getAllExams();
 
         return NextResponse.json(exams, {
-            headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+            headers: { 'Cache-Control': 'private, no-store' },
         });
     } catch (error) {
         console.error('Error fetching exams:', error);
         if (lastGoodExams) return NextResponse.json(lastGoodExams);
         return NextResponse.json({ error: 'Failed to fetch exams' }, { status: 500 });
+    }
+}
+
+const ALLOWED_CATEGORIES = new Set(['year1', 'year2', 'year3', 'year4', 'other', 'license', 'prosecutor', 'judge', 'university']);
+const ALLOWED_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
+}
+
+/**
+ * สร้างชุดข้อสอบเปล่า (หน้า /education/exams/new) — เดิมหน้านั้นเรียก POST แต่ route มีแค่ GET จึงได้ 405
+ * POST /api/education/exams
+ * Body: { title, description?, durationMinutes?, passingScore?, category?, difficulty?, coverUrl?, status?, subjectCode?, session? }
+ */
+export async function POST(request: NextRequest) {
+    let uid: string;
+    try {
+        ({ uid } = await requireAdmin('education.exams'));
+    } catch (e) {
+        return authErrorResponse(e);
+    }
+
+    try {
+        const body = await request.json().catch(() => null);
+        const title = typeof body?.title === 'string' ? body.title.trim().slice(0, 200) : '';
+        if (!title) {
+            return NextResponse.json({ error: 'กรุณากรอกชื่อข้อสอบ' }, { status: 400 });
+        }
+
+        const app = await initAdmin();
+        if (!app) return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });
+        const db = admin.firestore();
+
+        const subjectCode = typeof body.subjectCode === 'string' ? body.subjectCode.trim().toUpperCase().slice(0, 20) : '';
+        const rawCategory = typeof body.category === 'string' ? body.category : '';
+        const category = categoryFromSubjectCode(subjectCode) || (ALLOWED_CATEGORIES.has(rawCategory) ? rawCategory : 'other');
+        const coverUrl = typeof body.coverUrl === 'string' && /^https:\/\//.test(body.coverUrl) ? body.coverUrl.slice(0, 1000) : '';
+        const now = admin.firestore.FieldValue.serverTimestamp();
+
+        const doc = {
+            title,
+            description: typeof body.description === 'string' ? body.description.slice(0, 5000) : '',
+            subjectCode,
+            session: typeof body.session === 'string' ? body.session.trim().slice(0, 100) : '',
+            category,
+            difficulty: ALLOWED_DIFFICULTIES.has(body.difficulty) ? body.difficulty : 'medium',
+            coverImage: coverUrl,
+            timeLimitMinutes: clampNumber(body.durationMinutes, 1, 600, 180),
+            passingScore: clampNumber(body.passingScore, 0, 100, 50),
+            totalQuestions: 0,
+            essayCount: 0,
+            multipleChoiceCount: 0,
+            pageImages: [],
+            hasImages: false,
+            status: body.status === 'published' ? 'published' : 'draft',
+            source: 'admin',
+            createdBy: uid,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        const ref = await db.collection('examSets').add(doc);
+        invalidateExamListCache();
+        return NextResponse.json({ id: ref.id, ...doc, createdAt: undefined, updatedAt: undefined }, { status: 201 });
+    } catch (error) {
+        console.error('Error creating exam:', error);
+        return NextResponse.json({ error: 'สร้างข้อสอบไม่สำเร็จ' }, { status: 500 });
     }
 }

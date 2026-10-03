@@ -30,6 +30,11 @@ interface ReviewQuestion {
     tags: string[];
     isAiGenerated: boolean;
     sourcePage: number | null;
+    // จากระบบนำเข้า OCR — ocrIssues ไม่ว่าง = เผยแพร่ไม่ได้จนกว่าจะแก้
+    ocrIssues?: string[];
+    importNotes?: string[];
+    requiresForm?: boolean;
+    formType?: string;
 }
 
 interface OcrCheckResult {
@@ -148,6 +153,7 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                 }),
             });
             if (res.ok) {
+                const saved = await res.json().catch(() => ({}));
                 toast({ title: "บันทึกสำเร็จ" });
                 // Update local state
                 setExam(prev => {
@@ -159,6 +165,8 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                         questionText: editedText,
                         modelAnswer: editedAnswer,
                         explanation: editedExplanation,
+                        // server ตรวจภาษาใหม่หลังแก้ — ใช้ผลนั้นแทนของเดิม
+                        ...(Array.isArray(saved?.ocrIssues) ? { ocrIssues: saved.ocrIssues } : {}),
                     };
                     return updated;
                 });
@@ -265,6 +273,7 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
     }
 
     const issueCount = ocrChecks.filter(c => c.riskLevel !== 'ok').length;
+    const blockingCount = exam.questions.filter(q => (q.ocrIssues?.length ?? 0) > 0).length;
     const noAnswerCount = exam.questions.filter(q => !q.modelAnswer && !q.correctAnswer).length;
 
     return (
@@ -290,6 +299,14 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {blockingCount > 0 && (
+                        <Badge variant="destructive" className="text-xs">
+                            {blockingCount} ข้อต้องแก้ก่อนเผยแพร่
+                        </Badge>
+                    )}
+                    <Link href={`/education/exams/${id}/edit`}>
+                        <Button size="sm" variant="outline" className="text-xs">ไปหน้าเผยแพร่</Button>
+                    </Link>
                     {issueCount > 0 && (
                         <Badge variant="destructive" className="text-xs">
                             <AlertTriangle className="w-3 h-3 mr-1" />
@@ -382,6 +399,11 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                                     ⚠ OCR ผิดปกติ
                                 </Badge>
                             )}
+                            {currentQuestion?.requiresForm && (
+                                <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">
+                                    ต้องใช้แบบฟอร์ม: {currentQuestion.formType || 'เอกสาร'}
+                                </Badge>
+                            )}
                             {currentQuestion?.isAiGenerated && (
                                 <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">
                                     🤖 AI
@@ -411,6 +433,25 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                             </Button>
                         </div>
                     </div>
+
+                    {/* ปัญหาจากระบบนำเข้า OCR — ต้องแก้ก่อนเผยแพร่ (ปรนัยที่ไม่มีเฉลย แก้ตัวเลือก/คำตอบได้ในหน้าแก้ไข) */}
+                    {((currentQuestion?.ocrIssues?.length ?? 0) > 0 || (currentQuestion?.importNotes?.length ?? 0) > 0) && (
+                        <div className="mx-5 mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                            {(currentQuestion?.ocrIssues?.length ?? 0) > 0 && (
+                                <>
+                                    <p className="text-xs font-medium text-amber-800 mb-1">ต้องแก้ก่อนเผยแพร่:</p>
+                                    <ul className="text-xs text-amber-800 space-y-0.5">
+                                        {currentQuestion?.ocrIssues?.map((issue, i) => <li key={i}>• {issue}</li>)}
+                                    </ul>
+                                </>
+                            )}
+                            {(currentQuestion?.importNotes?.length ?? 0) > 0 && (
+                                <ul className="text-xs text-slate-600 space-y-0.5 mt-1">
+                                    {currentQuestion?.importNotes?.map((n, i) => <li key={i}>หมายเหตุตอนนำเข้า: {n}</li>)}
+                                </ul>
+                            )}
+                        </div>
+                    )}
 
                     {/* OCR Issues Alert */}
                     {currentOcr && currentOcr.issues.length > 0 && (
