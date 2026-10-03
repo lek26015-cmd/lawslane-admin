@@ -3,8 +3,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
+import { getGeminiModelName } from '@/lib/gemini-model';
+import { EXAM_TRANSCRIBE_PROMPT, describeGeminiError } from '@/lib/exam-ocr';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY || '');
+export const maxDuration = 60;
 
 /**
  * Re-OCR a question using Gemini Vision
@@ -43,20 +45,11 @@ export async function POST(
         const mimeType = imageResponse.headers.get('content-type') || 'image/png';
 
         // Use Gemini Vision to re-OCR
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        // สร้าง client ตอนเรียก (อ่าน env ปัจจุบัน) และใช้โมเดลจาก GEMINI_MODEL — 2.0-flash กำลังถูกปลดระวาง
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY || '');
+        const model = genAI.getGenerativeModel({ model: getGeminiModelName() });
 
-        const prompt = `คุณเป็นผู้เชี่ยวชาญด้านกฎหมายไทย กรุณาอ่านข้อสอบกฎหมายจากภาพนี้อย่างละเอียดและแม่นยำ
-
-กฎ:
-1. ถอดความเป็นข้อความภาษาไทยที่ถูกต้อง ครบถ้วน
-2. รักษาเลขมาตรา ชื่อกฎหมาย และคำศัพท์ทางกฎหมายให้ถูกต้อง
-3. ใช้ตัวเลขไทย (๑, ๒, ๓) ตามต้นฉบับถ้าภาพใช้ตัวเลขไทย
-4. ห้ามเพิ่มข้อความที่ไม่มีในภาพ
-5. ห้ามแปลหรือสรุป — ถอดความตามต้นฉบับเท่านั้น
-6. คงรูปแบบการจัดย่อหน้าตามต้นฉบับ
-7. ถ้ามีหลายข้อในหน้าเดียว ให้แยกข้อให้ชัดเจน
-
-กรุณาถอดข้อความจากภาพ:`;
+        const prompt = EXAM_TRANSCRIBE_PROMPT;
 
         const result = await model.generateContent([
             prompt,
@@ -77,6 +70,6 @@ export async function POST(
         });
     } catch (error) {
         console.error('Error re-OCR:', error);
-        return NextResponse.json({ error: 'Re-OCR failed', details: String(error) }, { status: 500 });
+        return NextResponse.json({ error: 'Re-OCR failed', details: describeGeminiError(error) }, { status: 500 });
     }
 }

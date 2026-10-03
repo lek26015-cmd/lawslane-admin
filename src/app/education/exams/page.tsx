@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Edit, Trash2, Eye, MoreHorizontal, ClipboardList, Clock, AlertCircle, ExternalLink } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, MoreHorizontal, ClipboardList, Clock, AlertCircle, ExternalLink, ScanText } from 'lucide-react';
 import { studentExamUrl } from '@/lib/education-site';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,12 +100,13 @@ export default function AdminExamsPage() {
                 });
                 fetchExams();
             } else {
-                throw new Error('Failed to delete');
+                const err = await response.json().catch(() => null);
+                throw new Error(err?.error || 'ไม่สามารถลบข้อสอบได้');
             }
         } catch (error) {
             toast({
                 title: "เกิดข้อผิดพลาด",
-                description: "ไม่สามารถลบข้อสอบได้",
+                description: (error as Error).message || "ไม่สามารถลบข้อสอบได้",
                 variant: "destructive"
             });
         } finally {
@@ -116,7 +117,7 @@ export default function AdminExamsPage() {
 
     const filteredExams = exams.filter(exam =>
         exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        exam.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (exam.description || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -127,12 +128,20 @@ export default function AdminExamsPage() {
                     <h1 className="text-2xl font-bold text-slate-900">จัดการข้อสอบ</h1>
                     <p className="text-slate-500">สร้าง แก้ไข และจัดการชุดข้อสอบ</p>
                 </div>
-                <Link href="/education/exams/new">
-                    <Button className="bg-indigo-600 hover:bg-indigo-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        สร้างข้อสอบใหม่
-                    </Button>
-                </Link>
+                <div className="flex gap-2">
+                    <Link href="/education/exams/import">
+                        <Button variant="outline">
+                            <ScanText className="w-4 h-4 mr-2" />
+                            นำเข้าข้อสอบ (OCR)
+                        </Button>
+                    </Link>
+                    <Link href="/education/exams/new">
+                        <Button className="bg-indigo-600 hover:bg-indigo-700">
+                            <Plus className="w-4 h-4 mr-2" />
+                            สร้างข้อสอบใหม่
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Search */}
