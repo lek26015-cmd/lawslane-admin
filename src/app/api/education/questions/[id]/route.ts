@@ -3,6 +3,7 @@ import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 import { recomputeOcrIssues } from '@/lib/exam-import';
+import { invalidateExamListCache } from '@/lib/education-cache';
 
 // Helper: find question, given its parent exam id directly when known
 // (avoids scanning every examSets doc — see LAWSLANE-PLAN-01 2.1).
@@ -94,6 +95,8 @@ export async function PUT(
             if (body[key] !== undefined) updates[key] = body[key];
         }
 
+        const existing = (await result.ref.get()).data() || {};
+
         // หน้าแก้ไขส่งฟิลด์ชื่อฝั่ง UI (text/options/correctOptionIndex/correctAnswerText/ESSAY)
         // แต่ทุกตัวอ่าน (เว็บนักศึกษา, หน้า review) ใช้ questionText/choices/correctAnswer/modelAnswer
         // จึงเขียนฟิลด์ชื่อจริงคู่กันไปด้วย ไม่งั้นแก้แล้วไม่มีผลกับข้อสอบที่นักศึกษาเห็น
@@ -104,14 +107,23 @@ export async function PUT(
             updates.choices = updates.type === 'essay' ? [] : body.options;
         }
         if (Number.isInteger(body.correctOptionIndex) && body.correctAnswer === undefined && updates.type !== 'essay') {
-            updates.correctAnswer = `(${body.correctOptionIndex + 1})`;
+            // รูปแบบเดียวกับตอนสร้าง "(n) ข้อความตัวเลือก" — เดิมเขียนแค่ "(n)" ข้อความเฉลยหาย
+            const choices: unknown[] = Array.isArray(updates.choices) ? updates.choices
+                : Array.isArray(existing.choices) ? existing.choices : [];
+            const choice = choices[body.correctOptionIndex];
+            const choiceText = typeof choice === 'string' ? choice : (choice as any)?.text || '';
+            updates.correctAnswer = `(${body.correctOptionIndex + 1})${choiceText ? ` ${choiceText}` : ''}`;
         }
         if (typeof body.correctAnswerText === 'string' && body.modelAnswer === undefined && updates.type !== 'multiple_choice') {
             updates.modelAnswer = body.correctAnswerText;
         }
+        // หมวดวิชาที่ทุกตัวอ่านใช้คือ tags[0] (ฟิลด์ subject ไม่มีใครอ่าน)
+        if (typeof body.subject === 'string' && body.tags === undefined) {
+            const rest = Array.isArray(existing.tags) ? existing.tags.slice(1) : [];
+            updates.tags = body.subject.trim() ? [body.subject.trim(), ...rest] : rest;
+        }
 
         // ข้อจากระบบนำเข้า OCR: ตรวจภาษา/ความครบใหม่ (ใช้ตัดสินว่าเผยแพร่ได้หรือยัง)
-        const existing = (await result.ref.get()).data() || {};
         const ocrIssues = recomputeOcrIssues(existing, updates);
         if (ocrIssues) updates.ocrIssues = ocrIssues;
 
@@ -153,6 +165,16 @@ export async function DELETE(
         }
 
         await result.ref.delete();
+
+        // นับจำนวนจริงแล้วเขียนทับ totalQuestions เหมือนตอนเพิ่มข้อ — เดิมลบแล้วตัวเลขไม่ลด
+        const examRef = db.collection('examSets').doc(result.examId);
+        const countSnap = await examRef.collection('questions').count().get();
+        await examRef.update({
+            totalQuestions: countSnap.data().count,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        invalidateExamListCache();
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error deleting question:', error);
