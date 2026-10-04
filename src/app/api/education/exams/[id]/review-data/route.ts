@@ -57,6 +57,10 @@ export async function GET(
                 importNotes: Array.isArray(q.importNotes) ? q.importNotes : [],
                 requiresForm: !!q.requiresForm,
                 formType: q.formType || '',
+                maxScore: q.maxScore ?? null,
+                // ภาพสแกนธงคำตอบต้นฉบับรายข้อ (ข้อที่ต้องร่างตามแบบพิมพ์)
+                answerPageImages: Array.isArray(q.answerPageImages) ? q.answerPageImages : [],
+                reviewNotes: Array.isArray(q.reviewNotes) ? q.reviewNotes : [],
             };
         });
 
@@ -70,6 +74,9 @@ export async function GET(
             sourceFile: data.sourceFile || '',
             pageImages: data.pageImages || [],
             hasImages: data.hasImages || false,
+            scenarioText: data.scenarioText || '',
+            status: data.status || '',
+            reviewNotes: Array.isArray(data.reviewNotes) ? data.reviewNotes : [],
             totalQuestions: questions.length,
             questions,
         });
