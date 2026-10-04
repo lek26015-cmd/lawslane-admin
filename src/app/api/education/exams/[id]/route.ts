@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
 import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
-import { stripAnswerFromQuestion, formatExamText } from '@/lib/exam-utils';
-import { anonymizeExamTexts } from '@/lib/name-anonymizer';
 import { invalidateExamListCache } from '@/lib/education-cache';
 import { categoryFromSubjectCode } from '@/lib/exam-import';
 
@@ -79,19 +77,19 @@ export async function GET(
                 }
 
                 const finalType = (rawType && hasRealChoices) ? 'MULTIPLE_CHOICE' : 'ESSAY';
-                
-                // Strip embedded answers from question text
-                const rawText = q.questionText || '';
-                const { question: cleanText } = stripAnswerFromQuestion(rawText);
 
+                // ?questions=true ใช้จากหน้าแก้ไขข้อสอบของแอดมินเท่านั้น จึงส่งข้อความดิบ
+                // และธงคำตอบไปให้แก้ — เดิมส่งข้อความที่ตัดเฉลย/ปิดชื่อแล้ว และไม่ส่ง modelAnswer
+                // พอแก้แล้วกดบันทึก ข้อความที่ถูกตัดกับธงว่างเลยเขียนทับของจริง
+                // (การตัดเฉลย/ปิดชื่อเป็นงานของเว็บนักเรียนตอนแสดงผล ไม่ใช่ตอนเก็บ)
                 return {
                     id: qDoc.id,
                     examId: id,
-                    text: formatExamText(cleanText),
+                    text: q.questionText || '',
                     type: finalType,
                     options: finalType === 'MULTIPLE_CHOICE' ? options : undefined,
                     correctOptionIndex: finalType === 'MULTIPLE_CHOICE' ? correctOptionIndex : undefined,
-                    // Don't send answer to client during exam taking
+                    correctAnswerText: q.modelAnswer || '',
                     explanation: q.explanation || '',
                     order: q.orderIndex ?? idx + 1,
                     subject: q.tags?.[0] || '',
@@ -99,16 +97,6 @@ export async function GET(
                 };
             });
             result.totalQuestions = result.questions.length;
-        }
-
-        // Batch anonymize question texts
-        if (result.questions) {
-            const allTexts = result.questions.map((q: any) => q.text);
-            const anonymized = anonymizeExamTexts(allTexts, id);
-            result.questions = result.questions.map((q: any, i: number) => ({
-                ...q,
-                text: anonymized[i],
-            }));
         }
 
         return NextResponse.json(result);

@@ -202,16 +202,43 @@ export default function EditExamPage({ params }: { params: Promise<{ id: string 
 
         try {
             if (editingQuestion) {
+                // ส่งเฉพาะช่องที่แก้จริง — เดิมส่งทั้งฟอร์ม ช่องที่ไม่ได้แตะ (เช่นธงคำตอบที่โหลดมาไม่ครบ)
+                // เลยถูกเขียนทับด้วยค่าว่าง
+                const changes: Record<string, unknown> = {};
+                const typeChanged = newQuestion.type !== editingQuestion.type;
+                if (newQuestion.text !== editingQuestion.text) changes.text = newQuestion.text;
+                if (typeChanged) changes.type = newQuestion.type;
+                if (newQuestion.type === 'MULTIPLE_CHOICE' && (typeChanged
+                    || JSON.stringify(newQuestion.options) !== JSON.stringify(editingQuestion.options)
+                    || newQuestion.correctOptionIndex !== editingQuestion.correctOptionIndex)) {
+                    changes.options = newQuestion.options;
+                    changes.correctOptionIndex = newQuestion.correctOptionIndex;
+                }
+                if (newQuestion.type === 'ESSAY'
+                    && (typeChanged || newQuestion.correctAnswerText !== (editingQuestion.correctAnswerText || ''))) {
+                    changes.correctAnswerText = newQuestion.correctAnswerText;
+                }
+                if (newQuestion.explanation !== (editingQuestion.explanation || '')) changes.explanation = newQuestion.explanation;
+                if (newQuestion.subject !== (editingQuestion.subject || '')) changes.subject = newQuestion.subject;
+
+                if (Object.keys(changes).length === 0) {
+                    toast({ title: "ไม่มีการเปลี่ยนแปลง" });
+                    return;
+                }
+
                 const response = await fetch(`/api/education/questions/${editingQuestion.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...newQuestion, examId: id })
+                    body: JSON.stringify({ ...changes, examId: id })
                 });
 
                 if (response.ok) {
-                    const updated = await response.json();
+                    const updated = { ...editingQuestion, ...newQuestion } as Question;
                     setQuestions(prev => prev.map(q => q.id === editingQuestion.id ? updated : q));
                     toast({ title: "แก้ไขคำถามสำเร็จ" });
+                } else {
+                    const err = await response.json().catch(() => null);
+                    toast({ title: "แก้ไขคำถามไม่สำเร็จ", description: err?.error, variant: "destructive" });
                 }
             } else {
                 const response = await fetch(`/api/education/exams/${id}/questions`, {
