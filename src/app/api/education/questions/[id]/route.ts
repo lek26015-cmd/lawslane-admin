@@ -35,6 +35,13 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        // ข้อมูลดิบรวมเฉลย — เดิมไม่มีด่าน ใครรู้ id ก็อ่านได้ (middleware ไม่ครอบ /api)
+        try {
+            await requireAdmin('education.exams');
+        } catch (e) {
+            return authErrorResponse(e);
+        }
+
         const { id } = await params;
         const app = await initAdmin();
         if (!app) return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });
