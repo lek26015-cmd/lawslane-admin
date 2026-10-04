@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use, useCallback } from 'react';
+import React, { useState, useEffect, use, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -35,6 +35,33 @@ interface ReviewQuestion {
     importNotes?: string[];
     requiresForm?: boolean;
     formType?: string;
+    // ข้อสอบสภาทนายความ (นำเข้าเป็นฉบับร่าง): ภาพสแกนธงคำตอบต้นฉบับรายข้อ + จุดที่ควรตรวจ
+    answerPageImages?: PageImage[];
+    reviewNotes?: string[];
+}
+
+interface Choice {
+    label: string;
+    text: string;
+}
+
+// choices เก็บได้ทั้ง string และ { label, text } — แปลงเป็นแบบเดียวก่อนแก้
+function normalizeChoices(raw: unknown[]): Choice[] {
+    return (raw || []).map((c, i) => {
+        if (typeof c === 'string') return { label: `(${i + 1})`, text: c };
+        const o = c as { label?: string; text?: string };
+        return { label: o.label || `(${i + 1})`, text: o.text ?? String(c ?? '') };
+    });
+}
+
+// correctAnswer เก็บแบบ "(n)" — คืน index 0-based หรือ -1
+function correctIndexOf(correctAnswer: string): number {
+    const m = (correctAnswer || '').match(/\((\d+)\)/);
+    return m ? parseInt(m[1], 10) - 1 : -1;
+}
+
+function isMultipleChoice(q?: ReviewQuestion): boolean {
+    return q?.type === 'multiple_choice' || q?.type === 'MULTIPLE_CHOICE';
 }
 
 interface OcrCheckResult {
@@ -73,7 +100,12 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
     const [editedText, setEditedText] = useState('');
     const [editedAnswer, setEditedAnswer] = useState('');
     const [editedExplanation, setEditedExplanation] = useState('');
+    const [editedChoices, setEditedChoices] = useState<Choice[]>([]);
+    const [editedCorrect, setEditedCorrect] = useState(-1);
     const [hasChanges, setHasChanges] = useState(false);
+    // แผงภาพซ้าย: หน้าโจทย์ของชุด หรือ ภาพธงคำตอบต้นฉบับของข้อที่เลือก
+    const [imageSource, setImageSource] = useState<'question' | 'answer'>('question');
+    const contentScrollRef = useRef<HTMLDivElement>(null);
 
     // Image viewer
     const [zoom, setZoom] = useState(1);
@@ -95,9 +127,12 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                     const reviewData = await reviewRes.json();
                     setExam(reviewData);
                     if (reviewData.questions.length > 0) {
-                        setEditedText(reviewData.questions[0].questionText);
-                        setEditedAnswer(reviewData.questions[0].modelAnswer);
-                        setEditedExplanation(reviewData.questions[0].explanation);
+                        const q0 = reviewData.questions[0];
+                        setEditedText(q0.questionText);
+                        setEditedAnswer(q0.modelAnswer);
+                        setEditedExplanation(q0.explanation);
+                        setEditedChoices(normalizeChoices(q0.choices));
+                        setEditedCorrect(correctIndexOf(q0.correctAnswer));
                     }
                 }
 
@@ -124,7 +159,10 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
         setEditedText(q.questionText);
         setEditedAnswer(q.modelAnswer);
         setEditedExplanation(q.explanation);
+        setEditedChoices(normalizeChoices(q.choices));
+        setEditedCorrect(correctIndexOf(q.correctAnswer));
         setHasChanges(false);
+        if (!q.answerPageImages?.length) setImageSource('question');
 
         // Try to sync image viewer to question's page
         if (q.sourcePage && exam.pageImages.length > 0) {
@@ -150,6 +188,10 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                     questionText: editedText,
                     modelAnswer: editedAnswer,
                     explanation: editedExplanation,
+                    ...(isMultipleChoice(currentQuestion) ? {
+                        choices: editedChoices,
+                        correctAnswer: editedCorrect >= 0 ? `(${editedCorrect + 1})` : '',
+                    } : {}),
                 }),
             });
             if (res.ok) {
@@ -165,6 +207,10 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                         questionText: editedText,
                         modelAnswer: editedAnswer,
                         explanation: editedExplanation,
+                        ...(isMultipleChoice(updated.questions[selectedQuestionIdx]) ? {
+                            choices: editedChoices,
+                            correctAnswer: editedCorrect >= 0 ? `(${editedCorrect + 1})` : '',
+                        } : {}),
                         // server ตรวจภาษาใหม่หลังแก้ — ใช้ผลนั้นแทนของเดิม
                         ...(Array.isArray(saved?.ocrIssues) ? { ocrIssues: saved.ocrIssues } : {}),
                     };
@@ -243,6 +289,19 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
         }
     };
 
+    // เปลี่ยนข้อ/แท็บแล้วเลื่อนกลับบนสุด — เดิมค้างตำแหน่งเลื่อนเก่า จนช่องโจทย์ดูว่างทั้งที่มีข้อความ
+    useEffect(() => {
+        contentScrollRef.current?.scrollTo({ top: 0 });
+    }, [selectedQuestionIdx, activeTab]);
+
+    // อยู่แท็บธงคำตอบ + ข้อนี้มีภาพธงต้นฉบับ → แผงซ้ายเปิดภาพธงให้เลย
+    useEffect(() => {
+        if (activeTab === 'answer' && currentQuestion?.answerPageImages?.length) {
+            setImageSource('answer');
+            setCurrentPage(0);
+        }
+    }, [activeTab, currentQuestion]);
+
     // Status icon for question tabs
     const getStatusIcon = (qId: string, q: ReviewQuestion) => {
         const ocr = ocrChecks.find(c => c.questionId === qId);
@@ -272,6 +331,9 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
         );
     }
 
+    const answerImages = currentQuestion?.answerPageImages || [];
+    const viewerImages = imageSource === 'answer' && answerImages.length > 0 ? answerImages : exam.pageImages;
+    const switchImages = (src: 'question' | 'answer') => { setImageSource(src); setCurrentPage(0); };
     const issueCount = ocrChecks.filter(c => c.riskLevel !== 'ok').length;
     const blockingCount = exam.questions.filter(q => (q.ocrIssues?.length ?? 0) > 0).length;
     const noAnswerCount = exam.questions.filter(q => !q.modelAnswer && !q.correctAnswer).length;
@@ -326,6 +388,17 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
             <div className="flex-1 flex overflow-hidden">
                 {/* Left — Image Viewer */}
                 <div className="w-1/2 border-r bg-slate-50 flex flex-col">
+                    {/* สลับหน้าโจทย์ / ภาพธงคำตอบต้นฉบับของข้อนี้ */}
+                    {answerImages.length > 0 && (
+                        <div className="border-b bg-white px-4 py-2 flex gap-1">
+                            <Button size="sm" variant={imageSource === 'question' ? 'default' : 'outline'} className="text-xs" onClick={() => switchImages('question')}>
+                                หน้าโจทย์ ({exam.pageImages.length})
+                            </Button>
+                            <Button size="sm" variant={imageSource === 'answer' ? 'default' : 'outline'} className="text-xs" onClick={() => switchImages('answer')}>
+                                ธงคำตอบข้อ {currentQuestion?.order} ({answerImages.length})
+                            </Button>
+                        </div>
+                    )}
                     {/* Image toolbar */}
                     <div className="border-b bg-white px-4 py-2 flex items-center justify-between">
                         <div className="flex items-center gap-1">
@@ -337,12 +410,12 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                                 <ChevronLeft className="w-4 h-4" />
                             </Button>
                             <span className="text-xs text-slate-600 min-w-[80px] text-center">
-                                หน้า {currentPage + 1} / {exam.pageImages.length || 0}
+                                หน้า {currentPage + 1} / {viewerImages.length || 0}
                             </span>
                             <Button
                                 variant="ghost" size="sm"
-                                onClick={() => setCurrentPage(Math.min(exam.pageImages.length - 1, currentPage + 1))}
-                                disabled={currentPage >= exam.pageImages.length - 1}
+                                onClick={() => setCurrentPage(Math.min(viewerImages.length - 1, currentPage + 1))}
+                                disabled={currentPage >= viewerImages.length - 1}
                             >
                                 <ChevronRight className="w-4 h-4" />
                             </Button>
@@ -363,11 +436,11 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
 
                     {/* Image display */}
                     <div className="flex-1 overflow-auto p-4">
-                        {exam.pageImages.length > 0 && exam.pageImages[currentPage] ? (
+                        {viewerImages.length > 0 && viewerImages[currentPage] ? (
                             <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
                                 <img
-                                    src={exam.pageImages[currentPage].url}
-                                    alt={`หน้า ${exam.pageImages[currentPage].page}`}
+                                    src={viewerImages[currentPage].url}
+                                    alt={`หน้า ${viewerImages[currentPage].page}`}
                                     className="max-w-full rounded shadow-md"
                                     style={{ imageRendering: zoom > 1.5 ? 'pixelated' : 'auto' }}
                                 />
@@ -400,7 +473,10 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                                 </Badge>
                             )}
                             {currentQuestion?.requiresForm && (
-                                <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">
+                                <Badge
+                                    className="text-[10px] bg-purple-100 text-purple-700 border-purple-200 max-w-[220px] truncate inline-block"
+                                    title={currentQuestion.formType || 'เอกสาร'}
+                                >
                                     ต้องใช้แบบฟอร์ม: {currentQuestion.formType || 'เอกสาร'}
                                 </Badge>
                             )}
@@ -435,7 +511,7 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                     </div>
 
                     {/* ปัญหาจากระบบนำเข้า OCR — ต้องแก้ก่อนเผยแพร่ (ปรนัยที่ไม่มีเฉลย แก้ตัวเลือก/คำตอบได้ในหน้าแก้ไข) */}
-                    {((currentQuestion?.ocrIssues?.length ?? 0) > 0 || (currentQuestion?.importNotes?.length ?? 0) > 0) && (
+                    {((currentQuestion?.ocrIssues?.length ?? 0) > 0 || (currentQuestion?.importNotes?.length ?? 0) > 0 || (currentQuestion?.reviewNotes?.length ?? 0) > 0) && (
                         <div className="mx-5 mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
                             {(currentQuestion?.ocrIssues?.length ?? 0) > 0 && (
                                 <>
@@ -449,6 +525,14 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                                 <ul className="text-xs text-slate-600 space-y-0.5 mt-1">
                                     {currentQuestion?.importNotes?.map((n, i) => <li key={i}>หมายเหตุตอนนำเข้า: {n}</li>)}
                                 </ul>
+                            )}
+                            {(currentQuestion?.reviewNotes?.length ?? 0) > 0 && (
+                                <>
+                                    <p className="text-xs font-medium text-amber-800 mt-1 mb-1">จุดที่ควรตรวจเทียบต้นฉบับ:</p>
+                                    <ul className="text-xs text-amber-800 space-y-0.5">
+                                        {currentQuestion?.reviewNotes?.map((n, i) => <li key={i}>• {n}</li>)}
+                                    </ul>
+                                </>
                             )}
                         </div>
                     )}
@@ -495,25 +579,47 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                     </div>
 
                     {/* Tab Content */}
-                    <div className="flex-1 overflow-auto px-5 pb-4">
+                    <div ref={contentScrollRef} className="flex-1 overflow-auto px-5 pb-4">
                         {activeTab === 'content' ? (
                             <div className="space-y-3 pt-3">
                                 <Textarea
                                     value={editedText}
                                     onChange={(e) => { setEditedText(e.target.value); setHasChanges(true); }}
-                                    className="min-h-[300px] font-mono text-sm leading-relaxed resize-none"
+                                    className={`${isMultipleChoice(currentQuestion) ? 'min-h-[120px]' : 'min-h-[300px]'} font-mono text-sm leading-relaxed resize-y`}
                                     placeholder="เนื้อหาข้อสอบ..."
                                 />
 
-                                {/* Choices (read-only for now) */}
-                                {currentQuestion?.choices && currentQuestion.choices.length > 0 && (
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-medium text-slate-500">ตัวเลือก:</p>
-                                        {currentQuestion.choices.map((c: any, i: number) => (
-                                            <div key={i} className="text-xs text-slate-700 bg-slate-50 rounded px-3 py-1.5">
-                                                ({i + 1}) {typeof c === 'string' ? c : c.text || c}
+                                {/* ตัวเลือกปรนัย — แก้ข้อความและเลือกข้อที่ถูกได้ (บันทึกพร้อมกันด้วยปุ่มบันทึก) */}
+                                {isMultipleChoice(currentQuestion) && editedChoices.length > 0 && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-medium text-slate-500">ตัวเลือก (กดวงกลมเพื่อเลือกข้อที่ถูก):</p>
+                                        {editedChoices.map((c, i) => (
+                                            <div key={i} className={`flex items-start gap-2 rounded-lg border p-2 ${i === editedCorrect ? 'border-green-400 bg-green-50' : 'border-slate-200'}`}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setEditedCorrect(i); setHasChanges(true); }}
+                                                    className="mt-1 flex-shrink-0"
+                                                    aria-label={`ตั้งตัวเลือก ${i + 1} เป็นคำตอบที่ถูก`}
+                                                >
+                                                    {i === editedCorrect
+                                                        ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                        : <Circle className="w-4 h-4 text-slate-300" />}
+                                                </button>
+                                                <span className="mt-1 text-xs text-slate-500 w-6 flex-shrink-0">({i + 1})</span>
+                                                <Textarea
+                                                    value={c.text}
+                                                    onChange={(e) => {
+                                                        const text = e.target.value;
+                                                        setEditedChoices(prev => prev.map((x, k) => k === i ? { ...x, text } : x));
+                                                        setHasChanges(true);
+                                                    }}
+                                                    className="min-h-[56px] text-sm leading-relaxed resize-y"
+                                                />
                                             </div>
                                         ))}
+                                        {editedCorrect < 0 && (
+                                            <p className="text-xs text-amber-700">ยังไม่ได้เลือกข้อที่ถูก</p>
+                                        )}
                                     </div>
                                 )}
                             </div>
