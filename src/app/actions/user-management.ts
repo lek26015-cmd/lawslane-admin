@@ -27,6 +27,11 @@ export async function setUserRoleAction(uid: string, role: string): Promise<Resu
         const { adminApp } = await requireSuperAdmin();
 
         if (!uid || !role) return { ok: false, error: 'ต้องระบุ uid และ role' };
+        // claim role='admin' ทำให้เข้าหลังบ้านได้ทันทีโดยไม่ผ่านการกำหนดสิทธิ์รายเมนู
+        // (ดู admin-client-layout / auth-guard) — ตั้งแอดมินต้องผ่านหน้าจัดการผู้ดูแลระบบเท่านั้น
+        if (role !== 'customer' && role !== 'lawyer') {
+            return { ok: false, error: 'ตั้งได้เฉพาะลูกค้าหรือทนายความ — เพิ่มแอดมินที่หน้าจัดการผู้ดูแลระบบ' };
+        }
 
         const auth = adminApp.auth();
         const user = await auth.getUser(uid);
