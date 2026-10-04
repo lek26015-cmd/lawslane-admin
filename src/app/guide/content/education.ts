@@ -119,7 +119,6 @@ export const educationGroup: GuideGroup = {
                     },
                 ],
                 warnings: [
-                    'อย่าแก้ข้ออัตนัยที่มีธงคำตอบอยู่แล้วในหน้าแก้ไข เพราะช่อง "ธงคำตอบ" จะเปิดมาว่างและบันทึกทับธงเดิม ให้แก้ในหน้าตรวจ OCR แทน',
                     '"สร้างด้วย AI" บันทึกคำถามทันทีโดยไม่มีตัวอย่างให้ดูก่อน ตรวจทุกข้อหลังสร้าง',
                     'ลบชุดข้อสอบจะลบคำถามทั้งหมดด้วย กู้คืนไม่ได้ ถ้าชุดผูกกับคอร์สอยู่ต้องถอดออกจากคอร์สก่อน',
                     'ในรายการ คอลัมน์ระดับและเวลาอาจว่าง ดูค่าจริงในหน้าแก้ไข',
@@ -147,7 +146,6 @@ export const educationGroup: GuideGroup = {
                     },
                 ],
                 warnings: [
-                    'Do not edit an essay question that already has a model answer on the edit page: the answer box opens empty and saving overwrites the existing answer. Edit it on the OCR review page instead.',
                     '"Generate with AI" saves questions immediately with no preview. Check every question afterwards.',
                     'Deleting a set deletes all its questions and cannot be undone. A set linked to a course must be unlinked first.',
                     'Difficulty and time may appear blank in the list; see the real values on the edit page.',

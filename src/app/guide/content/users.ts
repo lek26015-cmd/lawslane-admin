@@ -38,7 +38,7 @@ export const usersGroup: GuideGroup = {
                 ],
                 warnings: [
                     '"เพิ่มลูกค้า" สร้างแค่ระเบียนข้อมูล ไม่ได้สร้างบัญชีล็อกอิน รหัสผ่านที่กรอกไม่ถูกใช้ ให้ลูกค้าสมัครเองที่เว็บหลัก',
-                    'ห้ามใช้ "ตั้งสิทธิ์ → แอดมิน" เพื่อเพิ่มแอดมิน เพราะจะได้สิทธิ์เข้าหลังบ้านโดยไม่ผ่านการกำหนดสิทธิ์ ให้ใช้หน้า "จัดการผู้ดูแลระบบ" แทน',
+                    'ตัวเลือก "แอดมิน" ในเมนู "ตั้งสิทธิ์" ใช้ไม่ได้ ระบบจะปฏิเสธ — เพิ่มแอดมินที่หน้า "จัดการผู้ดูแลระบบ" เท่านั้น',
                     'กล่อง "หมายเหตุสำหรับแอดมิน" ยังไม่บันทึกจริง และ "ยอดใช้จ่ายรวม" เป็นค่าประมาณ ไม่ใช่ยอดจริง',
                     'การระงับบัญชีเปลี่ยนสถานะในระบบ แต่ไม่ได้ปิดบัญชีล็อกอินโดยตรง',
                 ],
@@ -73,7 +73,7 @@ export const usersGroup: GuideGroup = {
                 ],
                 warnings: [
                     '"Add customer" only creates a data record, not a login account. The password field is ignored; customers should sign up on the main site.',
-                    'Do not use "Set role → Admin" to add admins: it grants back-office access without per-menu permissions. Use "Administrators" instead.',
+                    'The "Admin" option under "Set role" does not work; the system refuses it. Add admins only under "Administrators".',
                     'The "Admin notes" box does not save yet, and "Total spent" is an estimate, not real payment data.',
                     'Suspending changes the status in the system but does not directly disable the login account.',
                 ],

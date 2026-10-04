@@ -70,7 +70,6 @@ export const contentGroup: GuideGroup = {
                     },
                 ],
                 warnings: [
-                    'ถ้าขึ้นกล่องแดง "Access Denied" พร้อมปุ่ม "Fix Admin Role (Dev Only)" ห้ามกดปุ่มนั้น ให้แจ้งทีมพัฒนาแทน',
                     'ตอนแก้ไข ระบบไม่ตรวจ Slug ซ้ำ อย่าเปลี่ยน Slug ให้ชนเพจอื่น',
                     'ลบแล้วกู้คืนไม่ได้',
                 ],
@@ -90,7 +89,6 @@ export const contentGroup: GuideGroup = {
                     },
                 ],
                 warnings: [
-                    'If a red "Access Denied" box appears with a "Fix Admin Role (Dev Only)" button, do not press it. Tell the dev team.',
                     'Editing does not check for duplicate slugs. Do not change a slug to one another page uses.',
                     'Deleting cannot be undone.',
                 ],
