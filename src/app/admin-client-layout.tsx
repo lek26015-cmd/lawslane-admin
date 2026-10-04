@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
     ArrowLeftCircle,
+    BookOpen,
     ChevronDown,
     ChevronRight,
     ExternalLink,
@@ -355,6 +356,15 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
 
                             <div className="my-2 border-t border-slate-700" />
                             <Link
+                                href="/guide"
+                                className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-slate-300 transition-all hover:bg-slate-800 hover:text-white",
+                                    pathname.startsWith('/guide') && "bg-slate-800 text-white"
+                                )}
+                            >
+                                <BookOpen className="h-4 w-4" />
+                                {tx('คู่มือแอดมิน', 'Admin guide')}
+                            </Link>
+                            <Link
                                 href={getMainLink()}
                                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-all hover:bg-slate-800 hover:text-white"
                             >
@@ -501,6 +511,16 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                 ))}
 
                                 <div className="border-t border-slate-700 my-3" />
+                                <Link
+                                    href="/guide"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-slate-300 transition-all hover:bg-slate-800 hover:text-white",
+                                        pathname.startsWith('/guide') && "bg-slate-800 text-white"
+                                    )}
+                                >
+                                    <BookOpen className="h-5 w-5" />
+                                    {tx('คู่มือแอดมิน', 'Admin guide')}
+                                </Link>
                                 <Link
                                     href={getMainLink()}
                                     onClick={() => setIsMobileMenuOpen(false)}
