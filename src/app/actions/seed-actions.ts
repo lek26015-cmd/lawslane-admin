@@ -2,8 +2,22 @@
 
 import { initAdmin } from '@/lib/firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
+import { requireAdmin, requireSuperAdmin, AuthError } from '@/lib/auth-guard';
+
+/*
+ * ⚠️ เดิมทั้งสอง action ในไฟล์นี้ไม่มีด่านตรวจสิทธิ์ — ใครก็ลบโปรไฟล์ทนายคนไหนก็ได้
+ * ด้วย id เดียว (deleteLawyerById) หรือสั่งกวาดลบแชท/ทนายทั้งระบบ (deleteTestData)
+ * บน Firestore production ที่ใช้ร่วมกันทุกแอป
+ */
 
 export async function deleteTestData() {
+    // ลบข้อมูลเป็นชุดทั่วทั้งฐาน — super admin เท่านั้น
+    try {
+        await requireSuperAdmin();
+    } catch (e) {
+        if (e instanceof AuthError) return { success: false, error: e.message };
+        throw e;
+    }
     const app = await initAdmin();
     if (!app) {
         return { success: false, error: 'Firebase Admin not initialized' };
@@ -68,6 +82,12 @@ export async function deleteTestData() {
 }
 
 export async function deleteLawyerById(lawyerId: string) {
+    try {
+        await requireAdmin('users.lawyers');
+    } catch (e) {
+        if (e instanceof AuthError) return { success: false, error: e.message };
+        throw e;
+    }
     const app = await initAdmin();
     if (!app) {
         return { success: false, error: 'Firebase Admin not initialized' };

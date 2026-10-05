@@ -23,10 +23,10 @@ import {
   BookOpen, 
   Search,
   Package,
-  DollarSign,
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAdminLocale } from '@/lib/admin-i18n';
 
 export default function AdminBooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -36,6 +36,7 @@ export default function AdminBooksPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { toast } = useToast();
+  const { tx } = useAdminLocale();
 
   const [formData, setFormData] = useState<{
     title: string; author: string; description: string;
@@ -64,9 +65,9 @@ export default function AdminBooksPage() {
       fd.append('file', file);
       const url = await uploadToCloudflareImages(fd);
       setFormData(prev => ({ ...prev, imageUrl: url }));
-      toast({ title: 'อัปโหลดปกสำเร็จ' });
+      toast({ title: tx('อัปโหลดปกสำเร็จ', 'Cover uploaded') });
     } catch (e) {
-      toast({ variant: 'destructive', title: 'อัปโหลดปกไม่สำเร็จ', description: String(e) });
+      toast({ variant: 'destructive', title: tx('อัปโหลดปกไม่สำเร็จ', 'Cover upload failed'), description: String(e) });
     } finally {
       setIsUploadingCover(false);
     }
@@ -78,7 +79,7 @@ export default function AdminBooksPage() {
       const data = await getBooksAction();
       setBooks(data);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to fetch books", variant: "destructive" });
+      toast({ title: tx('เกิดข้อผิดพลาด', 'Error'), description: tx('โหลดรายการหนังสือไม่สำเร็จ', 'Failed to fetch books'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +96,7 @@ export default function AdminBooksPage() {
       if (editingBook) {
         const res = await updateBookAction(editingBook.id, formData);
         if (res.success) {
-          toast({ title: "Updated", description: "Book updated successfully" });
+          toast({ title: tx('อัปเดตแล้ว', 'Updated'), description: tx('แก้ไขหนังสือเรียบร้อย', 'Book updated successfully') });
           setEditingBook(null);
           setShowAddForm(false);
         }
@@ -105,26 +106,26 @@ export default function AdminBooksPage() {
           publishedAt: new Date().toISOString() 
         } as Omit<Book, 'id'>);
         if (res.success) {
-          toast({ title: "Created", description: "Book added successfully" });
+          toast({ title: tx('เพิ่มแล้ว', 'Created'), description: tx('เพิ่มหนังสือเรียบร้อย', 'Book added successfully') });
           setShowAddForm(false);
         }
       }
       fetchBooks();
     } catch (error) {
-      toast({ title: "Error", description: "Action failed", variant: "destructive" });
+      toast({ title: tx('เกิดข้อผิดพลาด', 'Error'), description: tx('ดำเนินการไม่สำเร็จ', 'Action failed'), variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this book?')) return;
+    if (!confirm(tx('ยืนยันลบหนังสือเล่มนี้?', 'Are you sure you want to delete this book?'))) return;
     try {
       await deleteBookAction(id);
-      toast({ title: "Deleted", description: "Book removed" });
+      toast({ title: tx('ลบแล้ว', 'Deleted'), description: tx('ลบหนังสือแล้ว', 'Book removed') });
       fetchBooks();
     } catch (error) {
-      toast({ title: "Error", description: "Delete failed", variant: "destructive" });
+      toast({ title: tx('เกิดข้อผิดพลาด', 'Error'), description: tx('ลบไม่สำเร็จ', 'Delete failed'), variant: 'destructive' });
     }
   };
 
@@ -139,9 +140,9 @@ export default function AdminBooksPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <BookOpen className="w-8 h-8 text-blue-600" />
-            Bookstore Inventory
+            {tx('คลังหนังสือ', 'Bookstore Inventory')}
           </h1>
-          <p className="text-slate-500">Manage Lawslane bookstore inventory and pricing</p>
+          <p className="text-slate-500">{tx('จัดการสต็อกและราคาหนังสือของร้าน Lawslane', 'Manage Lawslane bookstore inventory and pricing')}</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => {
@@ -149,7 +150,7 @@ export default function AdminBooksPage() {
             setFormData({ title: '', author: '', description: '', price: 0, originalPrice: 0, pageCount: 0, type: 'physical' as const, stock: 0, category: 'business', imageUrl: '/images/lawslane-cover-book.png' });
             setShowAddForm(true);
           }}>
-            <Plus className="w-4 h-4 mr-2" /> Add New Book
+            <Plus className="w-4 h-4 mr-2" /> {tx('เพิ่มหนังสือใหม่', 'Add New Book')}
           </Button>
         </div>
       </div>
@@ -157,20 +158,20 @@ export default function AdminBooksPage() {
       {showAddForm && (
         <Card className="border-blue-200 bg-blue-50/30 rounded-3xl">
           <CardHeader>
-            <CardTitle>{editingBook ? 'Edit Book' : 'Add New Book'}</CardTitle>
+            <CardTitle>{editingBook ? tx('แก้ไขหนังสือ', 'Edit Book') : tx('เพิ่มหนังสือใหม่', 'Add New Book')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateOrUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label>{tx('ชื่อหนังสือ', 'Title')}</Label>
                 <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required />
               </div>
               <div className="space-y-2">
-                <Label>Author</Label>
+                <Label>{tx('ผู้เขียน', 'Author')}</Label>
                 <Input value={formData.author} onChange={e => setFormData({...formData, author: e.target.value})} required />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Description</Label>
+                <Label>{tx('รายละเอียด', 'Description')}</Label>
                 <textarea 
                   className="w-full min-h-[100px] bg-white border border-slate-200 rounded-xl p-3 text-sm"
                   value={formData.description} 
@@ -179,40 +180,40 @@ export default function AdminBooksPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Price (THB)</Label>
+                <Label>{tx('ราคา (บาท)', 'Price (THB)')}</Label>
                 <Input type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} required />
               </div>
               <div className="space-y-2">
-                <Label>Stock</Label>
+                <Label>{tx('สต็อก', 'Stock')}</Label>
                 <Input type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: Number(e.target.value)})} required />
               </div>
               <div className="space-y-2">
-                <Label>ราคาเต็ม (ก่อนลด)</Label>
+                <Label>{tx('ราคาเต็ม (ก่อนลด)', 'Original price (before discount)')}</Label>
                 <Input type="number" value={formData.originalPrice} onChange={e => setFormData({...formData, originalPrice: Number(e.target.value)})} />
               </div>
               <div className="space-y-2">
-                <Label>จำนวนหน้า</Label>
+                <Label>{tx('จำนวนหน้า', 'Page count')}</Label>
                 <Input type="number" value={formData.pageCount} onChange={e => setFormData({...formData, pageCount: Number(e.target.value)})} />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>รูปแบบ</Label>
+                <Label>{tx('รูปแบบ', 'Format')}</Label>
                 <select
                   className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-sm"
                   value={formData.type}
                   onChange={e => setFormData({...formData, type: e.target.value as 'ebook' | 'physical' | 'both'})}
                 >
-                  <option value="physical">หนังสือเล่ม</option>
+                  <option value="physical">{tx('หนังสือเล่ม', 'Physical book')}</option>
                   <option value="ebook">E-Book</option>
-                  <option value="both">ทั้ง E-Book และเล่ม</option>
+                  <option value="both">{tx('ทั้ง E-Book และเล่ม', 'Both E-Book and physical')}</option>
                 </select>
-                <p className="text-xs text-slate-500">ใช้ตัดสินว่าออเดอร์ต้องขอที่อยู่จัดส่งไหม</p>
+                <p className="text-xs text-slate-500">{tx('ใช้ตัดสินว่าออเดอร์ต้องขอที่อยู่จัดส่งไหม', 'Determines whether orders require a shipping address')}</p>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>ปกหนังสือ</Label>
+                <Label>{tx('ปกหนังสือ', 'Book cover')}</Label>
                 <div className="flex items-center gap-3">
                   {formData.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={formData.imageUrl} alt="ปกหนังสือ" className="w-16 h-24 object-cover rounded-lg border" />
+                    <img src={formData.imageUrl} alt={tx('ปกหนังสือ', 'Book cover')} className="w-16 h-24 object-cover rounded-lg border" />
                   ) : null}
                   <div className="flex-1 space-y-2">
                     <Input value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="/images/lawslane-cover-book.png" />
@@ -226,15 +227,15 @@ export default function AdminBooksPage() {
                       />
                       {isUploadingCover && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
                     </div>
-                    <p className="text-xs text-slate-500">อัปโหลดขึ้น Cloudflare Images — วาง URL เองก็ได้</p>
+                    <p className="text-xs text-slate-500">{tx('อัปโหลดขึ้น Cloudflare Images — วาง URL เองก็ได้', 'Uploads to Cloudflare Images — or paste a URL')}</p>
                   </div>
                 </div>
               </div>
               <div className="md:col-span-2 flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>{tx('ยกเลิก', 'Cancel')}</Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {editingBook ? 'Save Changes' : 'Create Book'}
+                  {editingBook ? tx('บันทึกการเปลี่ยนแปลง', 'Save Changes') : tx('สร้างหนังสือ', 'Create Book')}
                 </Button>
               </div>
             </form>
@@ -247,32 +248,32 @@ export default function AdminBooksPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <Input 
-              placeholder="Search books..." 
+              placeholder={tx('ค้นหาหนังสือ...', 'Search books...')} 
               className="pl-10 h-10 rounded-full bg-slate-50 border-none" 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="text-sm font-bold text-slate-400 font-mono">
-            COUNT: {books.length}
+            {tx('ทั้งหมด', 'COUNT')}: {books.length}
           </div>
         </div>
 
         {isLoading ? (
           <div className="p-20 text-center">
             <Loader2 className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4" />
-            <p className="text-slate-500">Loading bookstore inventory...</p>
+            <p className="text-slate-500">{tx('กำลังโหลดคลังหนังสือ...', 'Loading bookstore inventory...')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
                 <tr>
-                  <th className="px-6 py-4">Book Info</th>
-                  <th className="px-6 py-4">Price</th>
-                  <th className="px-6 py-4">Stock</th>
-                  <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-6 py-4">{tx('ข้อมูลหนังสือ', 'Book Info')}</th>
+                  <th className="px-6 py-4">{tx('ราคา', 'Price')}</th>
+                  <th className="px-6 py-4">{tx('สต็อก', 'Stock')}</th>
+                  <th className="px-6 py-4">{tx('หมวดหมู่', 'Category')}</th>
+                  <th className="px-6 py-4 text-right">{tx('จัดการ', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -291,7 +292,7 @@ export default function AdminBooksPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1 font-bold text-slate-900">
-                        <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-slate-400">฿</span>
                         {book.price.toLocaleString()}
                       </div>
                     </td>
@@ -311,7 +312,7 @@ export default function AdminBooksPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => {
+                        <Button variant="ghost" size="icon" className="rounded-xl" aria-label={tx('แก้ไข', 'Edit')} title={tx('แก้ไข', 'Edit')} onClick={() => {
                           setEditingBook(book);
                           setFormData({
                             title: book.title ?? '', author: book.author ?? '', description: book.description ?? '',
@@ -323,7 +324,7 @@ export default function AdminBooksPage() {
                         }}>
                           <Pencil className="w-4 h-4 text-slate-600" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 rounded-xl" onClick={() => handleDelete(book.id)}>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 rounded-xl" aria-label={tx('ลบ', 'Delete')} title={tx('ลบ', 'Delete')} onClick={() => handleDelete(book.id)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>

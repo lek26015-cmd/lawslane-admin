@@ -20,6 +20,12 @@ export interface AdminDashboardStats {
   capdealContractsCount: number;
   /** ดีลที่อัปสลิปแล้วรอแอดมินตรวจ — เดิมต้องเปิด console ของ capdeal ถึงจะเห็น */
   capdealPendingSlipsCount: number;
+  /** บริการล่าม — ใบสมัครรออนุมัติ */
+  pendingInterpretersCount: number;
+  /** บริการล่าม — สลิปที่ SlipOK ตรวจไม่ผ่าน + งานรอคืนเงิน */
+  interpreterBookingsNeedingActionCount: number;
+  /** บริการล่าม — งานปิดแล้ว รอโอนให้ล่าม */
+  interpreterPayoutsDueCount: number;
 }
 
 export interface PendingLawyerPreview {
@@ -53,6 +59,9 @@ const EMPTY_DASHBOARD_DATA: AdminDashboardData = {
     pendingRequestsCount: 0,
     capdealContractsCount: 0,
     capdealPendingSlipsCount: 0,
+    pendingInterpretersCount: 0,
+    interpreterBookingsNeedingActionCount: 0,
+    interpreterPayoutsDueCount: 0,
   },
   pendingLawyers: [],
   tickets: [],
@@ -79,6 +88,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       ticketsPreviewSnap,
       capdealContractsSnap,
       capdealPendingSlipsSnap,
+      pendingInterpretersSnap,
+      interpreterSlipSnap,
+      interpreterRefundSnap,
+      interpreterPayoutDueSnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('registeredAt', '>=', sevenDaysAgo).count().get(),
@@ -94,6 +107,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       db.collection('tickets').where('status', '==', 'pending').limit(5).get(),
       db.collection('contracts').count().get(),
       db.collection('cap-deals').where('hasNewPayment', '==', true).count().get(),
+      db.collection('interpreterProfiles').where('status', '==', 'pending').count().get(),
+      db.collection('interpreterBookings').where('hasNewPayment', '==', true).count().get(),
+      db.collection('interpreterBookings').where('status', '==', 'refund_pending').count().get(),
+      db.collection('interpreterBookings').where('payoutStatus', '==', 'due').count().get(),
     ]);
 
     const pendingLawyers: PendingLawyerPreview[] = pendingLawyersPreviewSnap.docs.map((doc) => {
@@ -130,6 +147,9 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
           newSmeSnap.data().count,
         capdealContractsCount: capdealContractsSnap.data().count,
         capdealPendingSlipsCount: capdealPendingSlipsSnap.data().count,
+        pendingInterpretersCount: pendingInterpretersSnap.data().count,
+        interpreterBookingsNeedingActionCount: interpreterSlipSnap.data().count + interpreterRefundSnap.data().count,
+        interpreterPayoutsDueCount: interpreterPayoutDueSnap.data().count,
       },
       pendingLawyers,
       tickets,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initAdmin } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { requireAdmin, authErrorResponse } from '@/lib/auth-guard';
+import { recomputeOcrIssues } from '@/lib/exam-import';
+import { invalidateExamListCache } from '@/lib/education-cache';
 
 // Helper: find question, given its parent exam id directly when known
 // (avoids scanning every examSets doc — see LAWSLANE-PLAN-01 2.1).
@@ -33,6 +35,13 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        // ข้อมูลดิบรวมเฉลย — เดิมไม่มีด่าน ใครรู้ id ก็อ่านได้ (middleware ไม่ครอบ /api)
+        try {
+            await requireAdmin('education.exams');
+        } catch (e) {
+            return authErrorResponse(e);
+        }
+
         const { id } = await params;
         const app = await initAdmin();
         if (!app) return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });
@@ -93,9 +102,42 @@ export async function PUT(
             if (body[key] !== undefined) updates[key] = body[key];
         }
 
+        const existing = (await result.ref.get()).data() || {};
+
+        // หน้าแก้ไขส่งฟิลด์ชื่อฝั่ง UI (text/options/correctOptionIndex/correctAnswerText/ESSAY)
+        // แต่ทุกตัวอ่าน (เว็บนักศึกษา, หน้า review) ใช้ questionText/choices/correctAnswer/modelAnswer
+        // จึงเขียนฟิลด์ชื่อจริงคู่กันไปด้วย ไม่งั้นแก้แล้วไม่มีผลกับข้อสอบที่นักศึกษาเห็น
+        if (typeof body.text === 'string' && body.questionText === undefined) updates.questionText = body.text;
+        if (body.type === 'ESSAY') updates.type = 'essay';
+        if (body.type === 'MULTIPLE_CHOICE') updates.type = 'multiple_choice';
+        if (Array.isArray(body.options) && body.choices === undefined) {
+            updates.choices = updates.type === 'essay' ? [] : body.options;
+        }
+        if (Number.isInteger(body.correctOptionIndex) && body.correctAnswer === undefined && updates.type !== 'essay') {
+            // รูปแบบเดียวกับตอนสร้าง "(n) ข้อความตัวเลือก" — เดิมเขียนแค่ "(n)" ข้อความเฉลยหาย
+            const choices: unknown[] = Array.isArray(updates.choices) ? updates.choices
+                : Array.isArray(existing.choices) ? existing.choices : [];
+            const choice = choices[body.correctOptionIndex];
+            const choiceText = typeof choice === 'string' ? choice : (choice as any)?.text || '';
+            updates.correctAnswer = `(${body.correctOptionIndex + 1})${choiceText ? ` ${choiceText}` : ''}`;
+        }
+        if (typeof body.correctAnswerText === 'string' && body.modelAnswer === undefined && updates.type !== 'multiple_choice') {
+            updates.modelAnswer = body.correctAnswerText;
+        }
+        // หมวดวิชาที่ทุกตัวอ่านใช้คือ tags[0] (ฟิลด์ subject ไม่มีใครอ่าน)
+        if (typeof body.subject === 'string' && body.tags === undefined) {
+            const rest = Array.isArray(existing.tags) ? existing.tags.slice(1) : [];
+            updates.tags = body.subject.trim() ? [body.subject.trim(), ...rest] : rest;
+        }
+
+        // ข้อจากระบบนำเข้า OCR: ตรวจภาษา/ความครบใหม่ (ใช้ตัดสินว่าเผยแพร่ได้หรือยัง)
+        const ocrIssues = recomputeOcrIssues(existing, updates);
+        if (ocrIssues) updates.ocrIssues = ocrIssues;
+
         await result.ref.update(updates);
 
-        return NextResponse.json({ id, ...updates });
+        // หน้าแก้ไขเอาผลนี้ไปแสดงแทนข้อเดิม จึงคืน type ในรูปแบบที่หน้านั้นส่งมา (ESSAY / MULTIPLE_CHOICE)
+        return NextResponse.json({ id, ...updates, ...(body.type !== undefined ? { type: body.type } : {}) });
     } catch (error) {
         console.error('Error updating question:', error);
         return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });
@@ -130,6 +172,16 @@ export async function DELETE(
         }
 
         await result.ref.delete();
+
+        // นับจำนวนจริงแล้วเขียนทับ totalQuestions เหมือนตอนเพิ่มข้อ — เดิมลบแล้วตัวเลขไม่ลด
+        const examRef = db.collection('examSets').doc(result.examId);
+        const countSnap = await examRef.collection('questions').count().get();
+        await examRef.update({
+            totalQuestions: countSnap.data().count,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        invalidateExamListCache();
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error deleting question:', error);

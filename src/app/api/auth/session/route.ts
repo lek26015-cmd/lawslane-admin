@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         }
 
         const cookieOptions: any = {
-            maxAge: expiresIn,
+            maxAge: expiresIn / 1000, // cookies().set ใช้หน่วยวินาที ส่วน createSessionCookie ใช้มิลลิวินาที
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             path: '/',

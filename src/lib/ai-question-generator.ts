@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGeminiModelName } from './gemini-model';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY || '');
 
@@ -24,7 +25,7 @@ interface GenerateQuestionsInput {
  * Generate exam questions using Gemini AI
  */
 export async function generateQuestions(input: GenerateQuestionsInput): Promise<GeneratedQuestion[]> {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModelName() });
 
     const count = input.count || 5;
     const type = input.questionType || 'MIXED';

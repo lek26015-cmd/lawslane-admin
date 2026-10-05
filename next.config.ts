@@ -6,6 +6,16 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
+// โดเมนสาธารณะของ R2 (ภาพหน้าข้อสอบจากระบบนำเข้า OCR) — ถ้าเป็นโดเมนตัวเองที่ไม่ใช่ *.r2.dev
+// ต้องเพิ่มใน img-src ไม่งั้นหน้า review แสดงภาพไม่ได้ อ่านจาก env ตอน build
+const r2PublicOrigin = (() => {
+  try {
+    return process.env.R2_PUBLIC_URL ? new URL(process.env.R2_PUBLIC_URL).origin : '';
+  } catch {
+    return '';
+  }
+})();
+
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
@@ -103,9 +113,10 @@ const nextConfig: NextConfig = {
               default-src 'self';
               script-src 'self' 'unsafe-eval' 'unsafe-inline' https://challenges.cloudflare.com https://apis.google.com;
               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-              img-src 'self' blob: data: https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pravatar.cc https://*.googleusercontent.com https://imagedelivery.net https://firebasestorage.googleapis.com https://*.googleapis.com;
+              img-src 'self' blob: data: https://placehold.co https://images.unsplash.com https://picsum.photos https://i.pravatar.cc https://*.googleusercontent.com https://imagedelivery.net https://firebasestorage.googleapis.com https://*.googleapis.com https://profile.line-scdn.net https://*.r2.dev ${r2PublicOrigin};
               font-src 'self' https://fonts.gstatic.com;
-              connect-src 'self' https://challenges.cloudflare.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://firestore.googleapis.com https://*.firebaseapp.com;
+              connect-src 'self' https://challenges.cloudflare.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://firestore.googleapis.com https://*.firebaseapp.com https://*.r2.cloudflarestorage.com;
+              worker-src 'self' blob:;
               frame-src 'self' https://challenges.cloudflare.com https://*.firebaseapp.com https://*.googleapis.com https://auth.lawslane.com;
             `.replace(/\s{2,}/g, ' ').trim(),
           },
@@ -131,6 +142,19 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // หน้าการเงินทนายในเว็บนี้เป็นสำเนาเก่าของเว็บหลัก — ยังคิดรายได้แบบหัก GP 15% และอ่าน
+      // withdrawals จาก browser ซึ่งไม่ตรงกับโมเดลปัจจุบัน (ลูกความโอนให้ทนายตรง ไม่มีถอนเงิน)
+      // จึงพาไปหน้าเดียวของเว็บหลักแทน (ดู LAWSLANE-PLAN-06)
+      {
+        source: '/lawyer-dashboard/financials',
+        destination: 'https://www.lawslane.com/lawyer-dashboard/financials',
+        permanent: false,
+      },
+      {
+        source: '/:locale(th|en|zh)/lawyer-dashboard/financials',
+        destination: 'https://www.lawslane.com/:locale/lawyer-dashboard/financials',
+        permanent: false,
+      },
       {
         source: '/b2b-surveys',
         destination: '/surveys',

@@ -74,6 +74,7 @@ import { getMainLink } from '@/lib/domain-utils';
 import { isDesignatedSuperAdmin } from '@/lib/super-admin';
 import { useSearchParams } from 'next/navigation';
 import { SlipVerifier } from '@/components/admin/slip-verifier';
+import { listWithdrawalRequests, processWithdrawal, type WithdrawalRow } from '@/app/actions/withdrawal-actions';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
@@ -101,17 +102,9 @@ type Transaction = {
   receiptUrl?: string;
 };
 
-type WithdrawalRequest = {
-  id: string;
-  lawyerId: string;
-  lawyerName: string;
-  amount: number;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: Date;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
-};
+// ยอดคงเหลือของทนายต้องมาจาก server (listWithdrawalRequests) ไม่ใช่จากเอกสารคำร้อง
+// ที่ผู้ขอพิมพ์ยอดมาเอง — ดู src/app/actions/withdrawal-actions.ts
+type WithdrawalRequest = WithdrawalRow & { requestedAtDate: Date };
 
 type SlipVerificationItem = {
   id: string;
@@ -126,6 +119,8 @@ type SlipVerificationItem = {
   userId: string;
   lawyerId?: string;
   rawData?: any;
+  /** ใช้แสดงป้ายเท่านั้น — ฝั่ง server แยกประเภทเองจากเอกสารตอนอนุมัติ */
+  paymentKind?: 'initial' | 'additional' | 'installment';
 };
 
 function FinancialsContent() {
@@ -193,7 +188,7 @@ function FinancialsContent() {
     setIsLoading(true);
 
     try {
-      const [appointmentSnapshot, chatSnapshot, invoiceSnapshot] = await Promise.all([
+      const [appointmentSnapshot, pendingChatSnapshot, newPaymentChatSnapshot, additionalFeeChatSnapshot, invoiceSnapshot] = await Promise.all([
         getDocs(query(
           collection(firestore, 'appointments'), 
           where('status', '==', 'pending_payment'),
@@ -206,6 +201,26 @@ function FinancialsContent() {
           orderBy('lastMessageAt', 'desc'),
           limit(100)
         )),
+        // ค่าบริการเพิ่มเติม / งวดผ่อนของเคสที่ active อยู่แล้ว — เว็บหลักและ capdeal
+        // เขียนแค่ hasNewPayment: true + pendingPaymentDetails โดยไม่เปลี่ยน status
+        // ถ้าดึงแค่ status == 'pending_payment' รายการพวกนี้จะไม่โผล่ในคิวตรวจเลย
+        // (ลูกความโอนแล้วแต่ไม่มีใครอนุมัติ) — จงใจไม่ใส่ orderBy เพื่อใช้ index
+        // ฟิลด์เดี่ยวอัตโนมัติ ไม่ต้องสร้าง composite index ใหม่ (เรียงเองด้านล่าง)
+        getDocs(query(
+          collection(firestore, 'chats'),
+          where('hasNewPayment', '==', true),
+          limit(100)
+        )),
+        // ค่าบริการเพิ่มเติมแยก query ของตัวเอง — หน้าจ่ายเงินของ capdeal รุ่นเก่าตั้ง
+        // hasNewPayment: true ให้เคส active โดยไม่มี pendingPaymentDetails และไม่เคยมีใคร
+        // ล้าง ถ้าของค้างพวกนี้เกิน 100 ใบ query ด้านบนจะเต็มก่อนถึงสลิปจริง
+        // (equality 2 ฟิลด์ใช้ index merge ได้ ไม่ต้องสร้าง composite index)
+        getDocs(query(
+          collection(firestore, 'chats'),
+          where('hasNewPayment', '==', true),
+          where('pendingPaymentDetails.type', '==', 'additional'),
+          limit(100)
+        )),
         getDocs(query(
           collection(firestore, 'invoices'), 
           where('status', '==', 'pending_verification'),
@@ -213,6 +228,11 @@ function FinancialsContent() {
           limit(100)
         )),
       ]);
+
+      // ห้องเดียวกันอาจติดทั้งสอง query (pending_payment + hasNewPayment) — ตัดซ้ำ
+      const chatDocMap = new Map<string, (typeof pendingChatSnapshot.docs)[number]>();
+      [...pendingChatSnapshot.docs, ...newPaymentChatSnapshot.docs, ...additionalFeeChatSnapshot.docs].forEach(d => chatDocMap.set(d.id, d));
+      const chatSnapshot = { docs: Array.from(chatDocMap.values()) };
 
       const pending: SlipVerificationItem[] = [];
       const userIds = new Set<string>();
@@ -270,13 +290,23 @@ function FinancialsContent() {
         const uId = data.userId || data.participants?.[0];
         const attachments = data.attachments;
         
-        // 1. Check top-level/pendingPaymentDetails slip
-        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
-        
         // 2. Check installments for pending_verification
         const pendingInst = Array.isArray(data.installments) 
           ? data.installments.find((inst: any) => inst.status === 'pending_verification')
           : null;
+
+        // ต้องตรงกับ classifyChatPayment() ใน admin-actions.ts — เคส active ที่ติด
+        // hasNewPayment แต่ไม่มีอะไรให้อนุมัติ (ข้อมูลเก่า) ไม่ต้องขึ้นคิว เพราะกดไปก็ถูกปฏิเสธ
+        const isAdditional = data.pendingPaymentDetails?.type === 'additional' && data.hasNewPayment === true;
+        const paymentKind: SlipVerificationItem['paymentKind'] = isAdditional
+          ? 'additional'
+          : pendingInst ? 'installment'
+          : data.status === 'pending_payment' ? 'initial'
+          : undefined;
+        if (!paymentKind) return;
+
+        // 1. Check top-level/pendingPaymentDetails slip
+        let slipUrl = data.pendingPaymentDetails?.slipUrl || data.slipUrl;
         
         if (pendingInst && !slipUrl) {
           slipUrl = pendingInst.slipUrl;
@@ -294,13 +324,17 @@ function FinancialsContent() {
             type: 'Chat',
             userName: userProfiles[uId] || 'Unknown User',
             lawyerName: lawyerProfiles[data.lawyerId] || 'Unknown Lawyer',
-            amount: pendingInst?.amount || data.pendingPaymentDetails?.amount || data.amount || 0,
+            // ค่าบริการเพิ่มเติม = ยอดที่แจ้งโอนครั้งนี้ ห้าม fallback ไป chat.amount (ยอดทั้งเคส)
+            amount: isAdditional
+              ? Number(data.pendingPaymentDetails?.amount) || 0
+              : Number(pendingInst?.amount || data.pendingPaymentDetails?.amount || data.amount) || 0,
             submittedAt: ensureDate(pendingInst?.submittedAt || data.pendingPaymentDetails?.submittedAt || data.createdAt),
             collectionName: 'chats',
             slipUrl: slipUrl,
             userId: uId,
             lawyerId: data.lawyerId,
-            rawData: data
+            rawData: data,
+            paymentKind,
           });
         }
       });
@@ -480,75 +514,49 @@ function FinancialsContent() {
   // ทนายสร้างคำร้องได้จากหน้า lawyer-dashboard/financials (เขียนลง `withdrawals`) แต่ไม่มีทางอนุมัติ
   // ผ่านหน้าเว็บเลย ต้องเข้า Firestore console มือ — เพิ่มการ fetch/อนุมัติ/ปฏิเสธจริงตรงนี้
   const fetchWithdrawals = React.useCallback(async () => {
-    if (!firestore || !isAuthorized) return;
+    if (!isAuthorized) return;
     setIsLoading(true);
 
     try {
-      const snap = await getDocs(query(
-        collection(firestore, 'withdrawals'),
-        orderBy('requestedAt', 'desc'),
-        limit(200)
-      ));
-
-      const lawyerIds = new Set<string>();
-      snap.docs.forEach(d => { if (d.data().lawyerId) lawyerIds.add(d.data().lawyerId); });
-
-      const lawyerNames: Record<string, string> = {};
-      if (lawyerIds.size > 0) {
-        const ids = Array.from(lawyerIds);
-        for (let i = 0; i < ids.length; i += 30) {
-          const chunk = ids.slice(i, i + 30);
-          const snaps = await getDocs(query(collection(firestore, 'lawyerProfiles'), where('__name__', 'in', chunk)));
-          snaps.forEach(snapDoc => { lawyerNames[snapDoc.id] = snapDoc.data().name || 'Unknown Lawyer'; });
-        }
+      const result = await listWithdrawalRequests();
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: result.error });
+        return;
       }
-
-      const requests: WithdrawalRequest[] = snap.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          lawyerId: data.lawyerId || '',
-          lawyerName: lawyerNames[data.lawyerId] || 'Unknown Lawyer',
-          amount: data.amount || 0,
-          status: data.status || 'pending',
-          requestedAt: ensureDate(data.requestedAt),
-          bankName: data.bankName,
-          accountNumber: data.accountNumber,
-          accountName: data.accountName,
-        };
-      });
-
-      setWithdrawalRequests(requests);
+      setWithdrawalRequests(result.rows.map(r => ({
+        ...r,
+        requestedAtDate: r.requestedAt ? new Date(r.requestedAt) : new Date(0),
+      })));
     } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsLoading(false);
     }
-  }, [firestore, isAuthorized, toast]);
+  }, [isAuthorized, toast]);
 
   const handleProcessWithdrawal = async (item: WithdrawalRequest, newStatus: 'approved' | 'rejected') => {
-    if (!firestore) return;
     const actionLabel = newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ';
-    const confirmProcess = window.confirm(`ยืนยันการ${actionLabel}คำร้องถอนเงิน ฿${item.amount.toLocaleString()} ของ ${item.lawyerName}?`);
+    // ยอดคงเหลือต้องอยู่ในคำถามด้วย — เดิม confirm ถามแค่ยอดที่ผู้ขอพิมพ์มาเอง
+    const confirmProcess = window.confirm(
+      `ยืนยันการ${actionLabel}คำร้องถอนเงิน ฿${item.amount.toLocaleString()} ของ ${item.lawyerName}?\n` +
+      `ยอดที่ถอนได้จริงของทนายคนนี้: ฿${item.availableBalance.toLocaleString()}` +
+      (item.exceedsBalance ? '\n\n⚠️ คำร้องนี้เกินยอดคงเหลือ — ระบบจะปฏิเสธการอนุมัติ' : '')
+    );
     if (!confirmProcess) return;
 
     setProcessingWithdrawalId(item.id);
     try {
-      await updateDoc(doc(firestore, 'withdrawals', item.id), {
-        status: newStatus,
-        processedAt: serverTimestamp(),
-      });
+      // คิดยอดซ้ำฝั่ง server ก่อนเปลี่ยนสถานะเสมอ — ของเดิม updateDoc จากเบราว์เซอร์ตรงๆ
+      const result = await processWithdrawal({ withdrawalId: item.id, decision: newStatus });
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: `${actionLabel}ไม่สำเร็จ`, description: result.error });
+        return;
+      }
       toast({ title: 'สำเร็จ', description: `${actionLabel}คำร้องถอนเงินเรียบร้อยแล้ว` });
       fetchWithdrawals();
     } catch (e: any) {
       console.error(e);
-      const permissionError = new FirestorePermissionError({
-        path: `withdrawals/${item.id}`,
-        operation: 'update',
-        requestResourceData: { status: newStatus },
-      });
-      errorEmitter.emit('permission-error', permissionError);
       toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
     } finally {
       setProcessingWithdrawalId(null);
@@ -564,13 +572,10 @@ function FinancialsContent() {
     setIsLoading(true);
     try {
       const { approvePaymentSlipAction } = await import('@/app/actions/admin-actions');
+      // ส่งแค่ประเภท + id — ยอด/ทนาย/ผู้จ่าย server อ่านจากเอกสารเอง (เดิมส่งยอดจากหน้าจอไป)
       const result = await approvePaymentSlipAction({
         type: item.type.toLowerCase() as 'chat' | 'appointment',
         id: item.id,
-        lawyerId: item.lawyerId || '',
-        amount: item.amount,
-        caseTitle: item.type === 'Chat' ? item.userName : undefined,
-        payerName: item.userName
       });
 
       if (result.success) {
@@ -580,6 +585,28 @@ function FinancialsContent() {
       } else {
         throw new Error(result.error);
       }
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRejectSlip = async (item: SlipVerificationItem) => {
+    const reason = window.prompt(
+      `ปฏิเสธสลิปค่าบริการเพิ่มเติม ฿${item.amount.toLocaleString()}?\n` +
+      `คำขอของทนายจะยังอยู่ ลูกความแนบสลิปใหม่ได้\n\nเหตุผล (แจ้งลูกความ):`
+    );
+    if (reason === null) return;
+
+    setIsLoading(true);
+    try {
+      const { rejectPaymentSlipAction } = await import('@/app/actions/admin-actions');
+      const result = await rejectPaymentSlipAction({ type: 'chat', id: item.id, reason });
+      if (!result.success) throw new Error(result.error);
+      toast({ title: 'สำเร็จ', description: 'ปฏิเสธสลิปแล้ว — แจ้งลูกความให้แนบใหม่' });
+      fetchPendingPayments();
     } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'เกิดข้อผิดพลาด', description: e.message });
@@ -654,6 +681,12 @@ function FinancialsContent() {
                       {item.userName}<br/>
                       <div className="flex gap-1 mt-1">
                         <Badge variant="outline" className="text-[10px]">{item.type}</Badge>
+                        {item.paymentKind === 'additional' && (
+                          <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">ค่าบริการเพิ่มเติม</Badge>
+                        )}
+                        {item.paymentKind === 'installment' && (
+                          <Badge variant="outline" className="text-[10px]">งวดผ่อน</Badge>
+                        )}
                         {item.collectionName === 'chats' && (
                           <a href={getMainLink(`/chat/${item.id}?view=admin`, 'admin')} target="_blank" rel="noopener noreferrer">
                             <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-slate-200">ดูเคส</Badge>
@@ -680,6 +713,17 @@ function FinancialsContent() {
                       >
                         อนุมัติ
                       </Button>
+                      {item.paymentKind === 'additional' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleRejectSlip(item)}
+                          disabled={isLoading}
+                        >
+                          ปฏิเสธ
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -750,18 +794,30 @@ function FinancialsContent() {
 
         <TabsContent value="withdrawals" className="mt-4">
           <Card><Table>
-            <TableHeader><TableRow><TableHead>วันที่ขอ</TableHead><TableHead>ทนาย</TableHead><TableHead>บัญชีรับเงิน</TableHead><TableHead className="text-right">ยอด</TableHead><TableHead>สถานะ</TableHead><TableHead className="text-right">จัดการ</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>วันที่ขอ</TableHead><TableHead>ทนาย</TableHead><TableHead>บัญชีรับเงิน</TableHead><TableHead className="text-right">ยอดที่ขอ</TableHead><TableHead className="text-right">ยอดคงเหลือจริง</TableHead><TableHead>สถานะ</TableHead><TableHead className="text-right">จัดการ</TableHead></TableRow></TableHeader>
             <TableBody>
-              {withdrawalRequests.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">ไม่มีคำร้องถอนเงิน</TableCell></TableRow> :
+              {withdrawalRequests.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8">ไม่มีคำร้องถอนเงิน</TableCell></TableRow> :
                 withdrawalRequests.map(w => (
-                  <TableRow key={w.id}>
-                    <TableCell>{format(w.requestedAt, 'd MMM yyyy HH:mm', { locale: th })}</TableCell>
+                  <TableRow key={w.id} className={w.exceedsBalance ? 'bg-red-50/60' : undefined}>
+                    <TableCell>{format(w.requestedAtDate, 'd MMM yyyy HH:mm', { locale: th })}</TableCell>
                     <TableCell className="font-bold">{w.lawyerName}</TableCell>
                     <TableCell>
                       <div className="text-sm">{w.bankName || '-'}</div>
                       <div className="text-[10px] text-muted-foreground font-mono">{w.accountNumber || '-'} {w.accountName ? `(${w.accountName})` : ''}</div>
                     </TableCell>
-                    <TableCell className="text-right font-bold">฿{w.amount.toLocaleString()}</TableCell>
+                    <TableCell className={`text-right font-bold ${w.exceedsBalance ? 'text-red-600' : ''}`}>฿{w.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      {/* ยอดนี้คิดใหม่ฝั่ง server ทุกครั้ง ไม่ใช่ตัวเลขที่ผู้ขอพิมพ์มา */}
+                      <div className="font-bold">฿{w.availableBalance.toLocaleString()}</div>
+                      {w.exceedsBalance && (
+                        <Badge variant="outline" className="mt-1 bg-red-100 text-red-700 border-red-300">
+                          <ShieldAlert className="w-3 h-3 mr-1" /> เกินยอดคงเหลือ
+                        </Badge>
+                      )}
+                      {w.balanceAtRequest !== null && w.balanceAtRequest !== w.availableBalance && (
+                        <div className="text-[10px] text-muted-foreground">ตอนยื่น: ฿{w.balanceAtRequest.toLocaleString()}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {w.status === 'pending' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">รอดำเนินการ</Badge>}
                       {w.status === 'approved' && <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">อนุมัติแล้ว</Badge>}
@@ -773,7 +829,8 @@ function FinancialsContent() {
                           <Button
                             size="sm"
                             className="bg-green-600 hover:bg-green-700"
-                            disabled={processingWithdrawalId === w.id}
+                            disabled={processingWithdrawalId === w.id || w.exceedsBalance}
+                            title={w.exceedsBalance ? 'ยอดขอเกินยอดคงเหลือจริง — อนุมัติไม่ได้' : undefined}
                             onClick={() => handleProcessWithdrawal(w, 'approved')}
                           >
                             <CheckCircle className="w-3 h-3 mr-1" /> อนุมัติ

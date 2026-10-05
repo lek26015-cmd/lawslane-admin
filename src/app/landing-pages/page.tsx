@@ -34,52 +34,9 @@ export default function AdminLandingPagesList() {
     const { firestore, user } = useFirebase();
     const [pages, setPages] = useState<LandingPage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isAdmin, setIsAdmin] = useState(true);
     const { toast } = useToast();
 
-    useEffect(() => {
-        const checkUserRole = async () => {
-            if (user && firestore) {
-                try {
-                    const userDocRef = doc(firestore, 'users', user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        if (userData.role !== 'admin') {
-                            setIsAdmin(false);
-                        } else {
-                            setIsAdmin(true);
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error checking role:", e);
-                }
-            }
-        };
-        checkUserRole();
-    }, [user, firestore]);
 
-    const handleFixAdminRole = async () => {
-        if (!user || !firestore) return;
-        try {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            await import('firebase/firestore').then(({ setDoc }) =>
-                setDoc(userDocRef, { role: 'admin' }, { merge: true })
-            );
-            setIsAdmin(true);
-            toast({
-                title: "Success",
-                description: "You are now an Admin!",
-            });
-        } catch (error: any) {
-            console.error("Error fixing admin role:", error);
-            toast({
-                variant: "destructive",
-                title: "Failed",
-                description: error.message,
-            });
-        }
-    };
 
     const fetchPages = async () => {
         if (!firestore) return;
@@ -135,17 +92,6 @@ export default function AdminLandingPagesList() {
 
     return (
         <div className="p-6">
-            {!isAdmin && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between text-red-800">
-                    <div>
-                        <h3 className="font-bold">Access Denied: You are not an Admin</h3>
-                        <p className="text-sm">You need admin permissions to manage landing pages.</p>
-                    </div>
-                    <Button variant="destructive" onClick={handleFixAdminRole}>
-                        Fix Admin Role (Dev Only)
-                    </Button>
-                </div>
-            )}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">จัดการ Landing Pages</h1>
                 <Link href="/landing-pages/new">

@@ -4,8 +4,12 @@ import { initAdmin } from '@/lib/firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Case, UpcomingAppointment, ReportedTicket } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
+import { requireAdmin } from '@/lib/auth-guard';
 
 export async function getUserDashboardData(userId: string) {
+    // เดิมไม่มีด่าน — รับ userId แล้วคืนเคส/นัดหมาย/ticket ของผู้ใช้คนนั้น (IDOR)
+    // ในหลังบ้านไม่มีหน้าไหนเรียกใช้แล้ว จึงล็อกให้แอดมินที่ดูข้อมูลลูกค้าได้เท่านั้น
+    await requireAdmin('users.customers');
     const app = await initAdmin();
     if (!app) {
         throw new Error('Firebase Admin not initialized');

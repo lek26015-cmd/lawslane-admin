@@ -1,6 +1,13 @@
 'use server';
 
 import { Resend } from 'resend';
+import { requireAdmin } from '@/lib/auth-guard';
+
+/*
+ * ⚠️ ทุก action ในไฟล์นี้รับอีเมลปลายทาง/ชื่อ/ลิงก์จากผู้เรียกแล้วส่งอีเมลในนาม
+ * Lawslane — ถ้าไม่มีด่าน ใครก็ใช้ส่งอีเมล "ชำระเงินสำเร็จ/ถูกปฏิเสธ" ปลอมได้
+ * ตอนนี้ยังไม่มีหน้าไหนในหลังบ้านเรียกใช้ จึงล็อกให้แอดมินที่ถือสิทธิ์ของเรื่องนั้นเท่านั้น
+ */
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -11,6 +18,7 @@ export async function sendLawyerNewCaseEmail(
   caseTitle: string,
   caseLink: string
 ) {
+  await requireAdmin('chat');
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY is not set. Skipping email notification.');
     return { success: false, error: 'Missing API Key' };
@@ -67,6 +75,7 @@ export async function sendClientPaymentApprovedEmail(
   serviceType: string,
   dashboardLink: string
 ) {
+  await requireAdmin('financials.verification');
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY is not set. Skipping email.');
     return { success: false, error: 'Missing API Key' };
@@ -117,6 +126,7 @@ export async function sendClientPaymentRejectedEmail(
   rejectReason: string,
   retryLink: string
 ) {
+  await requireAdmin('financials.verification');
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY is not set. Skipping email.');
     return { success: false, error: 'Missing API Key' };

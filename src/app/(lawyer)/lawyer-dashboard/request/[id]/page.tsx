@@ -30,9 +30,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { v4 as uuidv4 } from 'uuid';
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,45 +71,15 @@ function RequestDetailPageContent() {
     fetchRequestData();
   }, [id, firestore]);
 
+  // การรับเคสสร้างห้องแชทใหม่ ซึ่งเดิมทำด้วย addDoc(chats, { status: 'active', ... })
+  // ฝั่ง client — ต้องพึ่งกฎ `chats: allow create` ที่เปิดให้ client สร้างเคสพร้อม
+  // สถานะ/ยอดเงินเองได้ กฎนั้นปิดแล้ว (สร้างห้องผ่าน Admin SDK เท่านั้น) หน้านี้เป็น
+  // สำเนาแดชบอร์ดทนายจากเว็บหลัก จึงส่งต่อไปรับเคสที่เว็บหลักซึ่งทำฝั่ง server แล้ว
+  // (Lawslane: respondToAppointmentRequestAction)
   const handleAcceptCase = async () => {
-    if (!request || !firestore) return;
-
-    try {
-      // 1. Update appointment status to 'confirmed'
-      const appointmentRef = doc(firestore, 'appointments', id);
-      await updateDoc(appointmentRef, {
-        status: 'confirmed',
-        updatedAt: serverTimestamp()
-      });
-
-      // 2. Create a new chat room
-      const chatsCollection = collection(firestore, 'chats');
-
-      const newChatRef = await addDoc(chatsCollection, {
-        participants: [user?.uid, request.userId],
-        caseTitle: request.caseTitle,
-        status: 'active',
-        createdAt: serverTimestamp(),
-        lastMessageAt: serverTimestamp(),
-        lastMessage: 'Case accepted'
-      });
-
-      toast({
-        title: 'รับเคสสำเร็จ!',
-        description: `เคส "${request.caseTitle}" ได้ถูกเพิ่มในรายการเคสที่กำลังดำเนินการ`,
-      });
-
-      const { getMainLink } = await import('@/lib/domain-utils');
-      const chatUrl = getMainLink(`/chat/${newChatRef.id}`, 'admin');
-      router.push(chatUrl);
-    } catch (error) {
-      console.error("Error accepting case:", error);
-      toast({
-        variant: "destructive",
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถรับเคสได้ กรุณาลองใหม่อีกครั้ง"
-      });
-    }
+    if (!request) return;
+    const { getMainLink } = await import('@/lib/domain-utils');
+    window.location.href = getMainLink(`/lawyer-dashboard/request/${id}`, 'lawyer');
   };
 
   const handleRejectCase = async () => {

@@ -35,6 +35,8 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   { id: 'requests', label: 'คำขอที่รอดำเนินการ', defaultSize: 's', allowedSizes: STAT_SIZES },
   { id: 'capdealContracts', label: 'สัญญา CapDeal', defaultSize: 's', allowedSizes: STAT_SIZES },
   { id: 'capdealSlips', label: 'สลิป CapDeal รอตรวจ', defaultSize: 's', allowedSizes: STAT_SIZES },
+  { id: 'pendingInterpreters', label: 'ล่ามรออนุมัติ', defaultSize: 's', allowedSizes: STAT_SIZES },
+  { id: 'interpreterBookings', label: 'งานล่ามรอดำเนินการ', defaultSize: 's', allowedSizes: STAT_SIZES },
   { id: 'pendingLawyersTable', label: 'ทนายความรอการอนุมัติ (ตาราง)', defaultSize: 'l', allowedSizes: LIST_SIZES },
   { id: 'recentTickets', label: 'Ticket ช่วยเหลือล่าสุด', defaultSize: 'l', allowedSizes: LIST_SIZES },
 ];

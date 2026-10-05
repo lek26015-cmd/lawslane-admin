@@ -41,58 +41,8 @@ export default function AdminAdCreatePage() {
   const { toast } = useToast()
   const { firestore, storage, user } = useFirebase();
 
-  const [isAdmin, setIsAdmin] = React.useState(true); // Default to true to avoid flash
 
-  React.useEffect(() => {
-    const checkUserRole = async () => {
-      if (user && firestore) {
-        try {
-          const userDocRef = doc(firestore, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (userData.role !== 'admin') {
-              setIsAdmin(false);
-              toast({
-                variant: "destructive",
-                title: "Warning: Not an Admin",
-                description: `Current role is '${userData.role}'. You need 'admin' role to create ads.`,
-              });
-            } else {
-              setIsAdmin(true);
-            }
-          }
-        } catch (e) {
-          console.error("Error checking role:", e);
-        }
-      }
-    };
-    checkUserRole();
-  }, [user, firestore]);
 
-  const handleFixAdminRole = async () => {
-    if (!user || !firestore) return;
-    try {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      // Update the user's role to admin (allowed by rules for own doc)
-      await import('firebase/firestore').then(({ setDoc }) =>
-        setDoc(userDocRef, { role: 'admin' }, { merge: true })
-      );
-
-      setIsAdmin(true);
-      toast({
-        title: "Success",
-        description: "You are now an Admin! You can create ads.",
-      });
-    } catch (error: any) {
-      console.error("Error fixing admin role:", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to update role",
-        description: error.message,
-      });
-    }
-  };
 
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -213,17 +163,6 @@ export default function AdminAdCreatePage() {
 
   return (
     <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
-      {!isAdmin && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between text-red-800">
-          <div>
-            <h3 className="font-bold">Access Denied: You are not an Admin</h3>
-            <p className="text-sm">You need admin permissions to create ads.</p>
-          </div>
-          <Button variant="destructive" onClick={handleFixAdminRole}>
-            Fix Admin Role (Dev Only)
-          </Button>
-        </div>
-      )}
       <div className="mx-auto grid max-w-2xl flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
           <Link href={adminAdsPath}>

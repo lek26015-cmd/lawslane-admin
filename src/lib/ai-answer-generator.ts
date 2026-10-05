@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGeminiModelName } from './gemini-model';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY || '');
 
@@ -24,7 +25,7 @@ export interface GeneratedAnswer {
  * Generate a model answer for a law exam question using Gemini AI
  */
 export async function generateAnswer(input: AnswerGenerationInput): Promise<GeneratedAnswer> {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModelName() });
 
     // Build few-shot examples
     let examplesText = '';

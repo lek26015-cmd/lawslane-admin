@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import Link from 'next/link';
+import { useAdminLocale } from '@/lib/admin-i18n';
 
 interface RagStats {
     vectorCount?: number;
@@ -23,6 +24,18 @@ interface IngestionStatus {
 }
 
 export default function RagStatusPage() {
+    const { tx, locale } = useAdminLocale();
+    const dateLocale = locale === 'en' ? 'en-US' : 'th-TH';
+    const statusLabel = (status: IngestionStatus['status']) => {
+        switch (status) {
+            case 'active': return tx('กำลังทำงาน', 'Active');
+            case 'cooling_down': return tx('พักเครื่อง', 'Cooling down');
+            case 'idle': return tx('ว่าง', 'Idle');
+            case 'error': return tx('ผิดพลาด', 'Error');
+            case 'paused': return tx('หยุดชั่วคราว', 'Paused');
+            default: return status;
+        }
+    };
     const [stats, setStats] = useState<RagStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -186,9 +199,9 @@ export default function RagStatusPage() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-2">
                         <Database className="w-8 h-8 text-blue-600" />
-                        Lawslane RAG Status
+                        {tx('สถานะ RAG ของ Lawslane', 'Lawslane RAG Status')}
                     </h1>
-                    <p className="text-slate-500">Monitoring real-time vector ingestion for Legal Data</p>
+                    <p className="text-slate-500">{tx('มอนิเตอร์การนำเข้า vector ข้อมูลกฎหมายแบบเรียลไทม์', 'Monitoring real-time vector ingestion for Legal Data')}</p>
                 </div>
                 <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                     <Button 
@@ -199,7 +212,7 @@ export default function RagStatusPage() {
                         disabled={systemPaused || controlLoading}
                     >
                         {controlLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
-                        Pause System
+                        {tx('หยุดระบบชั่วคราว', 'Pause System')}
                     </Button>
                     <Button 
                         variant={!systemPaused ? "secondary" : "ghost"} 
@@ -209,7 +222,7 @@ export default function RagStatusPage() {
                         disabled={!systemPaused || controlLoading}
                     >
                         {controlLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                        Resume System
+                        {tx('เริ่มระบบต่อ', 'Resume System')}
                     </Button>
                 </div>
             </div>
@@ -218,16 +231,16 @@ export default function RagStatusPage() {
                 <Card className="border-none shadow-md bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-3xl overflow-hidden">
                     <CardHeader className="pb-2 pt-6">
                         <CardDescription className="text-blue-100 flex items-center gap-2 font-medium">
-                            <Activity className="w-4 h-4" /> Total Vectors
+                            <Activity className="w-4 h-4" /> {tx('จำนวน vector ทั้งหมด', 'Total Vectors')}
                         </CardDescription>
                         <CardTitle className="text-4xl font-black">
-                            {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : displayCount.toLocaleString()}
+                            {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : displayCount.toLocaleString(dateLocale)}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pb-6">
                         <div className="flex flex-col gap-1">
                             <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
-                                <span>Progress to Goal</span>
+                                <span>{tx('ความคืบหน้าสู่เป้าหมาย', 'Progress to Goal')}</span>
                                 <span>{progressPercent.toFixed(1)}%</span>
                             </div>
                             <Progress value={progressPercent} className="h-1.5 bg-blue-400/30" />
@@ -238,15 +251,15 @@ export default function RagStatusPage() {
                 <Card className="border-none shadow-md bg-white rounded-3xl">
                     <CardHeader className="pb-2">
                         <CardDescription className="flex items-center gap-2 font-medium">
-                            <Zap className="w-4 h-4 text-amber-500" /> Ingestion Rate
+                            <Zap className="w-4 h-4 text-amber-500" /> {tx('อัตราการนำเข้า', 'Ingestion Rate')}
                         </CardDescription>
                         <CardTitle className="text-3xl font-bold">
-                            {rate.toFixed(1)} <span className="text-sm font-normal text-slate-400">vec/sec</span>
+                            {rate.toFixed(1)} <span className="text-sm font-normal text-slate-400">{tx('vec/วินาที', 'vec/sec')}</span>
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-slate-400 flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Updated {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : 'Never'}
+                            <Clock className="w-3 h-3" /> {tx('อัปเดต', 'Updated')} {lastUpdated ? new Date(lastUpdated).toLocaleTimeString(dateLocale) : tx('ยังไม่เคย', 'Never')}
                         </p>
                     </CardContent>
                 </Card>
@@ -254,15 +267,15 @@ export default function RagStatusPage() {
                 <Card className="border-none shadow-md bg-white rounded-3xl">
                     <CardHeader className="pb-2">
                         <CardDescription className="flex items-center gap-2 font-medium">
-                            <Clock className="w-4 h-4 text-blue-500" /> Estimated ETA
+                            <Clock className="w-4 h-4 text-blue-500" /> {tx('เวลาที่คาดว่าจะเสร็จ', 'Estimated ETA')}
                         </CardDescription>
                         <CardTitle className="text-3xl font-bold">
-                            {eta || 'Calculating...'}
+                            {eta || tx('กำลังคำนวณ...', 'Calculating...')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className={cn("text-xs font-bold uppercase tracking-widest", isStalled ? "text-red-500" : "text-green-500")}>
-                            {isStalled ? '● System Stalled' : '● System Healthy'}
+                            {isStalled ? `● ${tx('ระบบหยุดชะงัก', 'System Stalled')}` : `● ${tx('ระบบปกติ', 'System Healthy')}`}
                         </p>
                     </CardContent>
                 </Card>
@@ -270,7 +283,7 @@ export default function RagStatusPage() {
                 <Card className="border-none shadow-md bg-white rounded-3xl">
                     <CardHeader className="pb-2">
                         <CardDescription className="flex items-center gap-2 font-medium">
-                            <Layers className="w-4 h-4 text-purple-500" /> Dimensions
+                            <Layers className="w-4 h-4 text-purple-500" /> {tx('จำนวนมิติ', 'Dimensions')}
                         </CardDescription>
                         <CardTitle className="text-3xl font-bold">
                             {stats?.dimensions || '1024'}
@@ -278,7 +291,7 @@ export default function RagStatusPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-slate-400">
-                            Model: text-embedding-3-small
+                            {tx('โมเดล', 'Model')}: text-embedding-3-small
                         </p>
                     </CardContent>
                 </Card>
@@ -288,7 +301,7 @@ export default function RagStatusPage() {
                 <Card className="lg:col-span-2 border-slate-200 rounded-3xl shadow-sm bg-white overflow-hidden">
                     <CardHeader className="border-b border-slate-100 bg-slate-50/50">
                         <CardTitle className="text-lg font-bold flex items-center gap-2">
-                            <Cpu className="w-5 h-5 text-blue-600" /> Target Ingestors Status
+                            <Cpu className="w-5 h-5 text-blue-600" /> {tx('สถานะ Ingestor แต่ละแหล่ง', 'Target Ingestors Status')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -306,7 +319,7 @@ export default function RagStatusPage() {
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-900 capitalize">{name.replace(/_/g, ' ')}</p>
-                                            <p className="text-xs text-slate-500">{task.message || 'Waiting for signal...'}</p>
+                                            <p className="text-xs text-slate-500">{task.message || tx('รอสัญญาณ...', 'Waiting for signal...')}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -316,9 +329,9 @@ export default function RagStatusPage() {
                                             task.status === 'paused' ? "bg-amber-100 text-amber-700" :
                                             task.status === 'error' ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-500"
                                         )}>
-                                            {task.status}
+                                            {statusLabel(task.status)}
                                         </div>
-                                        <p className="text-[10px] text-slate-400 mt-1">Last: {new Date(task.lastUpdate).toLocaleTimeString()}</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">{tx('ล่าสุด', 'Last')}: {new Date(task.lastUpdate).toLocaleTimeString(dateLocale)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -328,7 +341,7 @@ export default function RagStatusPage() {
                         <div className="bg-slate-900 p-4 border-t border-slate-800">
                             <div className="flex items-center gap-2 mb-3">
                                 <Terminal className="w-4 h-4 text-emerald-500" />
-                                <span className="text-xs font-mono text-emerald-500 font-bold tracking-widest uppercase">Live System Logs</span>
+                                <span className="text-xs font-mono text-emerald-500 font-bold tracking-widest uppercase">{tx('Log ระบบสด', 'Live System Logs')}</span>
                                 <div className="ml-auto flex gap-1">
                                     <div className="w-2 h-2 rounded-full bg-slate-700" />
                                     <div className="w-2 h-2 rounded-full bg-slate-700" />
@@ -337,7 +350,7 @@ export default function RagStatusPage() {
                             </div>
                             <div className="space-y-1.5 h-[140px] overflow-y-auto font-mono text-[11px] scrollbar-thin scrollbar-thumb-slate-700 pr-2">
                                 {liveLogs.length === 0 ? (
-                                    <div className="text-slate-600 italic">Waiting for incoming logs...</div>
+                                    <div className="text-slate-600 italic">{tx('กำลังรอ log เข้ามา...', 'Waiting for incoming logs...')}</div>
                                 ) : (
                                     <AnimatePresence initial={false}>
                                         {liveLogs.map(log => (
@@ -362,23 +375,23 @@ export default function RagStatusPage() {
 
                 <Card className="border-slate-200 rounded-3xl shadow-sm bg-white overflow-hidden">
                     <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-                        <CardTitle className="text-lg font-bold">Session Overview</CardTitle>
+                        <CardTitle className="text-lg font-bold">{tx('ภาพรวมรอบการทำงาน', 'Session Overview')}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-6">
                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-500">Start Time</span>
-                            <span className="text-sm font-medium">{new Date(TASK_START_TIME).toLocaleString()}</span>
+                            <span className="text-sm text-slate-500">{tx('เวลาเริ่ม', 'Start Time')}</span>
+                            <span className="text-sm font-medium">{new Date(TASK_START_TIME).toLocaleString(dateLocale)}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-500">Time Elapsed</span>
+                            <span className="text-sm text-slate-500">{tx('เวลาที่ผ่านไป', 'Time Elapsed')}</span>
                             <span className="text-sm font-bold text-blue-600">{elapsed}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-500">Estimated Total</span>
-                            <span className="text-sm font-medium">{ESTIMATED_TOTAL_VECTORS.toLocaleString()}</span>
+                            <span className="text-sm text-slate-500">{tx('เป้าหมายทั้งหมด (โดยประมาณ)', 'Estimated Total')}</span>
+                            <span className="text-sm font-medium">{ESTIMATED_TOTAL_VECTORS.toLocaleString(dateLocale)}</span>
                         </div>
                         <div className="pt-4 border-t border-slate-100">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Platform Connection</p>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{tx('การเชื่อมต่อแพลตฟอร์ม', 'Platform Connection')}</p>
                             <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                 Cloudflare Vectorize (v2)
@@ -386,7 +399,7 @@ export default function RagStatusPage() {
                         </div>
                         <Button variant="outline" className="w-full rounded-xl border-slate-200 hover:bg-slate-50 h-10 gap-2" asChild>
                             <Link href="/">
-                                Return to Main Dashboard
+                                {tx('กลับไปแดชบอร์ดหลัก', 'Return to Main Dashboard')}
                             </Link>
                         </Button>
                     </CardContent>

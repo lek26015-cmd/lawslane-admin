@@ -6,6 +6,15 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin, AuthError } from '@/lib/auth-guard';
 import { FieldPath } from 'firebase-admin/firestore';
 
+function toPlain(data: FirebaseFirestore.DocumentData): Record<string, unknown> {
+    return Object.fromEntries(Object.entries(data).map(([k, v]) => [
+        k,
+        v && typeof v === 'object' && typeof (v as { toDate?: unknown }).toDate === 'function'
+            ? (v as { toDate: () => Date }).toDate().toISOString()
+            : v,
+    ]));
+}
+
 const ALLOWED_ORDER_STATUSES: StoreOrder['status'][] = ['PENDING', 'PAID', 'REJECTED', 'SHIPPING', 'COMPLETED', 'DELIVERED'];
 
 /**
@@ -19,10 +28,11 @@ export async function getBooksAction(): Promise<Book[]> {
 
     try {
         const snap = await db.collection('books').orderBy('publishedAt', 'desc').get();
+        // แปลง Timestamp ทุกฟิลด์เป็น ISO — เดิมแปลงแค่ publishedAt หนังสือที่มี createdAt/updatedAt
+        // (Timestamp) ทำให้ server action ส่งผลลัพธ์ไม่ได้ทั้งรายการ → หน้าแสดง "Failed to fetch books"
         return snap.docs.map(doc => ({
             id: doc.id,
-            ...doc.data(),
-            publishedAt: doc.data().publishedAt?.toDate ? doc.data().publishedAt.toDate().toISOString() : doc.data().publishedAt
+            ...toPlain(doc.data()),
         } as Book));
     } catch (error) {
         console.error("Error fetching books:", error);

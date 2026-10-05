@@ -15,10 +15,14 @@
 
 export const PERMISSIONS = {
     'users.customers': 'ลูกค้า',
+    'customers.plans': 'แพ็กเกจ Lawslane AI ของลูกค้า',
     'users.lawyers': 'ทนายความ',
+    'lawyers.plans': 'แพลนและสิทธิ์ทนาย',
     'users.registry': 'ฐานข้อมูลทนาย',
+    'users.interpreters': 'ล่าม',
     'chat': 'แชททั้งหมด',
     'requests': 'คำขอใช้บริการ',
+    'requests.interpreters': 'งานล่าม (ตรวจสลิป/ยกเลิก)',
     'surveys': 'แบบสำรวจ',
     'content': 'เนื้อหาและการตลาด',
     // 4 รหัสนี้มีใช้อยู่แล้วใน adminPermissions ของเดิม — ห้ามเปลี่ยนชื่อ
@@ -26,6 +30,7 @@ export const PERMISSIONS = {
     'financials.verification': 'ตรวจสอบสลิป',
     'financials.transactions': 'รายการธุรกรรม',
     'financials.withdrawals': 'คำร้องถอนเงิน',
+    'financials.interpreterPayouts': 'จ่ายเงินล่าม / คืนเงิน / ตั้ง GP ล่าม',
     'coupons': 'คูปองส่วนลด',
     'gp_coupons': 'คูปอง GP ทนาย',
     'support': 'Ticket และอีเมล',
@@ -36,9 +41,11 @@ export const PERMISSIONS = {
     'education.courses': 'คอร์สเรียน',
     'education.exams': 'ข้อสอบ',
     'education.settings': 'ตั้งค่า Education',
+    'education.plans': 'แพ็กเกจและสิทธิ์ลูกค้า Wittaya',
     // ใหม่ — ยกมาจาก lawslane-capdeal
     'capdeal.contracts': 'สัญญา CapDeal',
     'capdeal.finance': 'การเงิน CapDeal',
+    'capdeal.plans': 'แพ็กเกจและสิทธิ์ลูกค้า CapDeal',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

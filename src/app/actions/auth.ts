@@ -3,6 +3,12 @@
 import { getAuth } from 'firebase-admin/auth';
 import { Resend } from 'resend';
 import { initAdmin } from '@/lib/firebase-admin';
+import { requireUser, AuthError } from '@/lib/auth-guard';
+import { getMainLink } from '@/lib/domain-utils';
+
+function escapeHtml(v: string) {
+  return v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 // Initialize Firebase Admin
 initAdmin();
@@ -63,6 +69,16 @@ function generateEmailHtml(title: string, content: string, buttonText: string, l
 
 export async function sendCustomVerificationEmail(email: string, name: string) {
   try {
+    // เดิมไม่มีด่านเลย และรับทั้ง email และ name จากผู้เรียก → ใครก็ยิงให้ระบบส่งอีเมล
+    // หน้าตาเป็นทางการจาก noreply@lawslane.com ไปหาใครก็ได้ พร้อมแทรก HTML ผ่าน name
+    // (ใช้ทำ phishing ในนาม Lawslane) — ตอนนี้ต้องล็อกอินอยู่ และส่งได้เฉพาะอีเมลของบัญชีตัวเอง
+    const { token } = await requireUser();
+    if (!token.email || token.email.toLowerCase() !== String(email || '').trim().toLowerCase()) {
+      return { success: false, error: 'ส่งอีเมลยืนยันได้เฉพาะอีเมลของบัญชีที่ล็อกอินอยู่' };
+    }
+    email = token.email;
+    name = escapeHtml(String(name || '').slice(0, 100));
+
     const auth = getAuth();
 
     // Generate the email verification link
@@ -94,8 +110,9 @@ export async function sendCustomVerificationEmail(email: string, name: string) {
 
     return { success: true };
   } catch (error: any) {
+    if (error instanceof AuthError) return { success: false, error: error.message };
     console.error('Error sending verification email:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: 'ส่งอีเมลยืนยันไม่สำเร็จ' };
   }
 }
 
@@ -103,8 +120,15 @@ export async function sendCustomPasswordResetEmailV2(email: string) {
   try {
     const auth = getAuth();
 
-    // Generate the password reset link (default Firebase link)
-    const firebaseLink = await auth.generatePasswordResetLink(email);
+    // action นี้เปิดสาธารณะโดยตั้งใจ (หน้าลืมรหัสผ่านยังไม่ได้ล็อกอิน) — จึงห้ามบอกว่า
+    // อีเมลไหนมีบัญชี ไม่งั้นใช้ไล่เดารายชื่อผู้ใช้ได้
+    let firebaseLink: string;
+    try {
+      firebaseLink = await auth.generatePasswordResetLink(email);
+    } catch (e: any) {
+      if (e?.code === 'auth/user-not-found' || e?.code === 'auth/email-not-found') return { success: true };
+      throw e;
+    }
 
     // Extract the oobCode from the Firebase link
     const url = new URL(firebaseLink);
@@ -114,14 +138,11 @@ export async function sendCustomPasswordResetEmailV2(email: string) {
       throw new Error('Could not extract reset code');
     }
 
-    // Construct the custom link
-    // Dynamically determine the base URL from the request headers
-    const headersList = await import('next/headers').then(mod => mod.headers());
-    const host = headersList.get('host') || 'lawslane.com';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
-
-    const link = `${baseUrl}/reset-password?oobCode=${oobCode}`;
+    // เดิมสร้างลิงก์จาก header `host` ของ request — ผู้โจมตีตั้ง Host เป็นโดเมนตัวเอง
+    // แล้วกด "ลืมรหัสผ่าน" ให้เหยื่อ ลิงก์ในอีเมล (ส่งจาก lawslane.com จริง) จะพา
+    // oobCode ของเหยื่อไปที่เว็บผู้โจมตี = ยึดบัญชีได้ (password reset poisoning)
+    // ต้องใช้โดเมนจาก config เท่านั้น — หน้า reset-password อยู่ที่เว็บหลัก
+    const link = getMainLink(`/reset-password?oobCode=${encodeURIComponent(oobCode)}`, 'admin', true);
 
     if (!process.env.RESEND_API_KEY) {
       console.error('RESEND_API_KEY is missing');
@@ -150,6 +171,6 @@ export async function sendCustomPasswordResetEmailV2(email: string) {
     return { success: true };
   } catch (error: any) {
     console.error('Error sending password reset email:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: 'ส่งอีเมลรีเซ็ตรหัสผ่านไม่สำเร็จ' };
   }
 }

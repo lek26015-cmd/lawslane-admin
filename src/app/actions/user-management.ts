@@ -27,6 +27,11 @@ export async function setUserRoleAction(uid: string, role: string): Promise<Resu
         const { adminApp } = await requireSuperAdmin();
 
         if (!uid || !role) return { ok: false, error: 'ต้องระบุ uid และ role' };
+        // claim role='admin' ทำให้เข้าหลังบ้านได้ทันทีโดยไม่ผ่านการกำหนดสิทธิ์รายเมนู
+        // (ดู admin-client-layout / auth-guard) — ตั้งแอดมินต้องผ่านหน้าจัดการผู้ดูแลระบบเท่านั้น
+        if (role !== 'customer' && role !== 'lawyer') {
+            return { ok: false, error: 'ตั้งได้เฉพาะลูกค้าหรือทนายความ — เพิ่มแอดมินที่หน้าจัดการผู้ดูแลระบบ' };
+        }
 
         const auth = adminApp.auth();
         const user = await auth.getUser(uid);
@@ -77,5 +82,26 @@ export async function canManageUsersAction(): Promise<boolean> {
             await requireAdmin('users.customers');
         } catch { /* ไม่ใช่แอดมินเลย */ }
         return false;
+    }
+}
+
+/**
+ * รูปโปรไฟล์จาก Firebase Auth (Google/LINE) ของลูกค้าที่ไม่ได้อัปโหลด `users.avatar` เอง
+ * — ผู้ใช้ส่วนใหญ่ไม่มี avatar ใน Firestore แต่มี photoURL จากการล็อกอิน
+ * คืนเฉพาะ URL https · สูงสุด 100 uid ต่อครั้ง (ขีดจำกัดของ getUsers)
+ */
+export async function getAuthPhotoUrlsAction(uids: string[]): Promise<Record<string, string>> {
+    try {
+        const { adminApp } = await requireAdmin('users.customers');
+        const ids = [...new Set((Array.isArray(uids) ? uids : []).filter(u => typeof u === 'string' && u && !u.includes('/')))].slice(0, 100);
+        if (ids.length === 0) return {};
+        const res = await adminApp.auth().getUsers(ids.map(uid => ({ uid })));
+        const out: Record<string, string> = {};
+        for (const u of res.users) {
+            if (u.photoURL?.startsWith('https://')) out[u.uid] = u.photoURL;
+        }
+        return out;
+    } catch {
+        return {};
     }
 }

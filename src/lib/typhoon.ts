@@ -49,7 +49,17 @@ export async function callTyphoonAI(prompt: string, languageInstruction: string 
 const TYPHOON_OCR_URL = 'https://api.opentyphoon.ai/v1/chat/completions'; // OCR uses the same chat endpoint but with image input
 const TYPHOON_OCR_MODEL = 'typhoon-ocr';
 
-export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
+/**
+ * ส่งไฟล์ให้ Typhoon OCR อ่าน — ค่าเริ่มต้นเป็น PDF (pdf-loader เรียกแบบนี้)
+ * หน้านำเข้าข้อสอบส่งเป็นภาพทีละหน้า จึงรับ mimeType ของภาพได้ด้วย
+ * timeoutMs ให้ผู้เรียกกำหนดเวลาที่เหลือของ function เองได้ (route ที่ลอง Gemini ก่อน)
+ */
+export async function callTyphoonOCR(
+    fileBuffer: Buffer,
+    options: { mimeType?: string; timeoutMs?: number } = {},
+): Promise<string> {
+    const mimeType = options.mimeType || 'application/pdf';
+    const timeoutMs = options.timeoutMs ?? 60000;
     const apiKey = process.env.TYPHOON_API_KEY;
 
     if (!apiKey) {
@@ -60,7 +70,7 @@ export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
     // OCR ช้ากว่า chat มาก แต่ต้องมีเพดาน ไม่งั้น serverless function ค้างจนถูก kill
     // โดยไม่มี log อะไรเลย
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
         console.log(`Calling Typhoon OCR with buffer size: ${fileBuffer.length} bytes`);
@@ -83,7 +93,7 @@ export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
                             {
                                 type: "image_url",
                                 image_url: {
-                                    url: `data:application/pdf;base64,${base64File}`
+                                    url: `data:${mimeType};base64,${base64File}`
                                 }
                             }
                         ]
@@ -110,7 +120,7 @@ export async function callTyphoonOCR(fileBuffer: Buffer): Promise<string> {
 
     } catch (error) {
         if ((error as Error)?.name === 'AbortError') {
-            console.error("Typhoon OCR Timeout: เกิน 60 วินาที");
+            console.error(`Typhoon OCR Timeout: เกิน ${Math.round(timeoutMs / 1000)} วินาที`);
         } else {
             console.error("Typhoon OCR Exception:", error);
         }

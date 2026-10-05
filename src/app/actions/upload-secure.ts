@@ -2,6 +2,14 @@
 
 import { initAdmin } from '@/lib/firebase-admin';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAdmin } from '@/lib/auth-guard';
+
+/*
+ * ⚠️ เดิมทุก action ในไฟล์นี้ไม่มีด่าน — ใครก็อัปไฟล์ลงโฟลเดอร์ไหนก็ได้ของ bucket
+ * production (uploadToFirebaseSecure / uploadToFirebasePublic ที่ตั้ง public: true =
+ * ใช้เราเป็นที่ฝากไฟล์สาธารณะได้) และยัด base64 ไม่จำกัดลง slipImages ได้
+ * ในหลังบ้านมีแต่หน้า tickets (แอดมิน) ที่เรียกใช้ จึงล็อกให้แอดมินเท่านั้น
+ */
 
 /**
  * Uploads a file to Firebase Storage securely.
@@ -12,6 +20,7 @@ import { v4 as uuidv4 } from 'uuid';
  * @returns The storage path (not a public URL)
  */
 export async function uploadToFirebaseSecure(formData: FormData, folder: string = 'uploads') {
+    await requireAdmin();
     const file = formData.get('file') as File;
     if (!file) {
         throw new Error('No file provided');
@@ -61,6 +70,7 @@ export async function uploadToFirebaseSecure(formData: FormData, folder: string 
  * This avoids using Firebase Storage completely.
  */
 export async function saveBase64SlipAction(base64Data: string): Promise<string> {
+    await requireAdmin();
     const app = await initAdmin();
     if (!app) {
         throw new Error('Firebase Admin initialization failed');
@@ -89,6 +99,7 @@ export async function saveBase64SlipAction(base64Data: string): Promise<string> 
  * @returns The public HTTPS URL
  */
 export async function uploadToFirebasePublic(formData: FormData, folder: string = 'public'): Promise<string> {
+    await requireAdmin();
     const file = formData.get('file') as File;
     if (!file) {
         throw new Error('No file provided');

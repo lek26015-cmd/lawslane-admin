@@ -1,12 +1,10 @@
 'use server';
 
 import { initAdmin } from '@/lib/firebase-admin';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-import { Resend } from 'resend';
-import { DESIGNATED_SUPER_ADMIN_EMAILS } from '@/lib/super-admin';
-
-
+import { getFirestore } from 'firebase-admin/firestore';
+import { requireAdmin, requireUser, AuthError } from '@/lib/auth-guard';
+import { sendAdminNotification, type AdminNotificationType } from '@/lib/admin-notify';
+import { checkRateLimit } from '@/lib/security/rate-limiter';
 
 export interface NotificationPreferences {
     email: string;
@@ -16,20 +14,36 @@ export interface NotificationPreferences {
     notifyOnNewLawyer?: boolean;
 }
 
+/**
+ * ⚠️ เดิมสอง action ด้านล่างรับ `uid` จากผู้เรียกแล้วอ่าน/เขียน users/{uid} ตรงๆ
+ * โดยไม่มีด่าน → ใครก็เปลี่ยน notificationPreferences.email ของแอดมินเป็นอีเมล
+ * ตัวเองได้ แล้วรับอีเมลแจ้งเตือนของแอดมินแทน (รวมคำร้องถอนเงินที่มีเลขบัญชีธนาคาร)
+ * ตอนนี้ต้องเป็นแอดมิน และแก้ได้เฉพาะของตัวเอง — `uid` ที่ส่งมาต้องตรงกับผู้ล็อกอิน
+ */
 export async function saveNotificationPreferences(uid: string, preferences: NotificationPreferences) {
     try {
+        const { uid: callerUid } = await requireAdmin();
+        if (uid !== callerUid) return { success: false, error: 'แก้ได้เฉพาะการตั้งค่าของตัวเอง' };
         const app = await initAdmin();
         if (!app) {
             return { success: false, error: 'Firebase Admin initialization failed' };
         }
         const db = getFirestore();
 
-        await db.collection('users').doc(uid).update({
-            notificationPreferences: preferences
+        // เก็บเฉพาะฟิลด์ที่รู้จัก — ไม่เชื่อ object ทั้งก้อนจากผู้เรียก
+        await db.collection('users').doc(callerUid).update({
+            notificationPreferences: {
+                email: String(preferences?.email ?? '').trim().slice(0, 254),
+                notifyOnNewUser: preferences?.notifyOnNewUser === true,
+                notifyOnNewTicket: preferences?.notifyOnNewTicket === true,
+                notifyOnPayment: preferences?.notifyOnPayment === true,
+                notifyOnNewLawyer: preferences?.notifyOnNewLawyer !== false,
+            }
         });
 
         return { success: true };
     } catch (error: any) {
+        if (error instanceof AuthError) return { success: false, error: error.message };
         console.error('Error saving notification preferences:', error);
         return { success: false, error: error.message };
     }
@@ -37,6 +51,8 @@ export async function saveNotificationPreferences(uid: string, preferences: Noti
 
 export async function getNotificationPreferences(uid: string): Promise<{ success: boolean, preferences?: NotificationPreferences, error?: string }> {
     try {
+        const { uid: callerUid } = await requireAdmin();
+        if (uid !== callerUid) return { success: false, error: 'ดูได้เฉพาะการตั้งค่าของตัวเอง' };
         const app = await initAdmin();
         if (!app) {
             return { success: false, error: 'Firebase Admin initialization failed' };
@@ -51,227 +67,50 @@ export async function getNotificationPreferences(uid: string): Promise<{ success
         const data = doc.data();
         return { success: true, preferences: data?.notificationPreferences };
     } catch (error: any) {
+        if (error instanceof AuthError) return { success: false, error: error.message };
         console.error('Error fetching notification preferences:', error);
         return { success: false, error: error.message };
     }
 }
 
-export async function notifyAdmins(type: 'new_user' | 'new_ticket' | 'payment' | 'withdrawal' | 'slip_limit_warning' | 'new_lawyer', data: any) {
-    if (!process.env.RESEND_API_KEY) {
-        console.warn('RESEND_API_KEY is not set. Skipping admin notifications.');
-        return;
-    }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
+/**
+ * แจ้งแอดมินจากหน้าเว็บ
+ *
+ * เดิมเป็น action เปิดที่รับทั้ง type และ data จากผู้เรียก (ดู lib/admin-notify.ts)
+ * ตอนนี้:
+ *   - แอดมิน: ส่งได้ทุกประเภทเหมือนเดิม
+ *   - ผู้ใช้ทั่วไป: ส่งได้แค่ 'new_lawyer' (หน้า lawyer-signup) และข้อมูลในอีเมล
+ *     อ่านจาก lawyerProfiles/{uid ของตัวเอง} ฝั่ง server — ไม่ใช้ data ที่ส่งมา
+ *     พร้อมจำกัดความถี่ กันยิงวนให้กล่องอีเมลแอดมินท่วม
+ */
+export async function notifyAdmins(type: AdminNotificationType, data: any) {
     try {
-        const app = await initAdmin();
-        if (!app) return;
-        const db = getFirestore();
+        const { uid, token, adminApp } = await requireUser();
+        const isAdmin = await requireAdmin().then(() => true, () => false);
+        if (isAdmin) {
+            return await sendAdminNotification(type, data);
+        }
 
-        // 1. Get all admins
-        const adminsSnapshot = await db.collection('users').where('role', '==', 'admin').get();
+        if (type !== 'new_lawyer') {
+            console.warn(`[notifyAdmins] non-admin ${uid} tried to send "${type}"`);
+            return;
+        }
 
-        if (adminsSnapshot.empty) return;
+        const rate = await checkRateLimit(`notify-new-lawyer:${uid}`, 1, 10 * 60 * 1000);
+        if (!rate.success) return;
 
-        // 2. Filter admins who want this notification
-        const recipients: string[] = [];
-
-        adminsSnapshot.docs.forEach(doc => {
-            const userData = doc.data();
-            const prefs = userData.notificationPreferences as NotificationPreferences | undefined;
-
-            // Special case for slip_limit_warning: Send ONLY to specific email
-            if (type === 'slip_limit_warning') {
-                return; // Skip normal admin loop
-            }
-
-            // Default to true if no prefs set (or handle as you see fit - maybe default false?)
-            // Let's assume if no prefs, they get everything to be safe, or nothing?
-            // Based on user request "want to configure", implies current default is "everyone gets it" or "hardcoded".
-            // Let's default to: if prefs exist, check them. If not, maybe send to account email?
-            // For now, let's say if no prefs, we DON'T send to avoid spam, OR we send to account email.
-            // Let's try: If prefs exist, use them. If not, use account email (legacy behavior).
-
-            let shouldNotify = true;
-            let emailToSend = userData.email;
-
-            if (prefs) {
-                emailToSend = prefs.email || userData.email;
-                if (type === 'new_user' && !prefs.notifyOnNewUser) shouldNotify = false;
-                if (type === 'new_ticket' && !prefs.notifyOnNewTicket) shouldNotify = false;
-                if (type === 'payment' && !prefs.notifyOnPayment) shouldNotify = false;
-                if (type === 'new_lawyer' && (prefs.notifyOnNewLawyer === false)) shouldNotify = false;
-            }
-
-            if (shouldNotify && emailToSend) {
-                recipients.push(emailToSend);
-            }
+        const profile = await adminApp.firestore().collection('lawyerProfiles').doc(uid).get();
+        if (!profile.exists) return;
+        const p = profile.data() || {};
+        await sendAdminNotification('new_lawyer', {
+            name: String(p.name || ''),
+            email: token.email || '',
+            licenseNumber: String(p.licenseNumber || ''),
+            uid,
         });
-
-
-        // Special case injection for slip limit warning
-        if (type === 'slip_limit_warning') {
-            recipients.push(DESIGNATED_SUPER_ADMIN_EMAILS[0]);
-        }
-
-        // FORCE ADD SUPER ADMIN
-        recipients.push(DESIGNATED_SUPER_ADMIN_EMAILS[0]);
-
-        if (recipients.length === 0) return;
-
-        // 3. Prepare Email Content
-        let subject = '';
-        let html = '';
-
-        if (type === 'new_user') {
-            subject = `[Lawslane Admin] มีผู้ใช้งานใหม่ลงทะเบียน: ${data.name}`;
-            html = `
-        <h1>มีผู้ใช้งานใหม่ลงทะเบียน</h1>
-        <p><strong>ชื่อ:</strong> ${data.name}</p>
-        <p><strong>อีเมล:</strong> ${data.email}</p>
-        <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
-      `;
-        } else if (type === 'new_ticket') {
-            subject = `[Lawslane Admin] Ticket ใหม่: ${data.problemType}`;
-            html = `
-        <h1>มีการแจ้งปัญหาใหม่ (Ticket)</h1>
-        <p><strong>หัวข้อ:</strong> ${data.problemType}</p>
-        <p><strong>รายละเอียด:</strong> ${data.description}</p>
-        <p><strong>จาก:</strong> ${data.clientName} (${data.email})</p>
-        <p><a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://lawslane.com'}/admin/tickets/${data.ticketId}">ดูรายละเอียด</a></p>
-      `;
-        } else if (type === 'payment') {
-            subject = `[Lawslane Admin] การชำระเงินสำเร็จ - ${data.lawyerName || 'ทนายความ'}`;
-            html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1a365d;">มีการชำระเงินเข้ามาใหม่</h2>
-            <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #86efac;">
-                ${data.lawyerName ? `<p><strong>ทนายความ:</strong> ${data.lawyerName}</p>` : ''}
-                ${data.amount ? `<p><strong>จำนวนเงิน:</strong> <span style="color: #16a34a; font-weight: bold;">฿${data.amount.toLocaleString()}</span></p>` : ''}
-                ${data.slipUrl ? `<p><strong>สลิปการโอน:</strong> <a href="${data.slipUrl}" style="color: #2563eb;">ดูสลิป</a></p>` : ''}
-                <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
-            </div>
-            <p>กรุณาตรวจสอบและอนุมัติการชำระเงินได้ที่ระบบหลังบ้าน:</p>
-            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://lawslane.com'}/admin/financials" style="display: inline-block; background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                ไปที่หน้าตรวจสอบการชำระเงิน
-            </a>
-        </div>
-            `;
-        } else if (type === 'withdrawal') {
-            subject = `[Lawslane Admin] คำร้องขอถอนเงินใหม่: ฿${data.amount.toLocaleString()}`;
-            html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1a365d;">มีคำร้องขอถอนเงินใหม่</h2>
-            <div style="background-color: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>ทนายความ:</strong> ${data.lawyerName}</p>
-                <p><strong>จำนวนเงิน:</strong> <span style="color: #2563eb; font-weight: bold;">฿${data.amount.toLocaleString()}</span></p>
-                <p><strong>ธนาคาร:</strong> ${data.bankName}</p>
-                <p><strong>เลขที่บัญชี:</strong> ${data.accountNumber}</p>
-                <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
-            </div>
-            <p>กรุณาตรวจสอบและดำเนินการโอนเงินได้ที่ระบบหลังบ้าน:</p>
-            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://lawslane.com'}/admin/financials" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                ไปที่หน้าการเงิน (Admin)
-            </a>
-        </div>
-            `;
-        } else if (type === 'slip_limit_warning') {
-            subject = `[Lawslane Admin] แจ้งเตือน: การใช้งาน SlipOK ใกล้เต็มโควต้า (${data.count}/100)`;
-            html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #c53030;">แจ้งเตือนโควต้า SlipOK</h2>
-            <div style="background-color: #fff5f5; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #feb2b2;">
-                <p>ขณะนี้มีการใช้งานตรวจสอบสลิปไปแล้ว</p>
-                <p style="font-size: 24px; font-weight: bold; color: #c53030; text-align: center; margin: 20px 0;">
-                    ${data.count} / 100 ครั้ง
-                </p>
-                <p>ประจำเดือน: <strong>${data.month}</strong></p>
-            </div>
-            <p>กรุณาตรวจสอบแพ็คเกจของคุณ หรือเติมเครดิตหากจำเป็น เพื่อให้ระบบตรวจสอบสลิปทำงานได้อย่างต่อเนื่อง</p>
-        </div>
-            `;
-        } else if (type === 'new_lawyer') {
-            subject = `[Lawslane Admin] มีทนายความใหม่สมัครสมาชิก: ${data.name}`;
-            html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1a365d;">มีทนายความใหม่สมัครสมาชิก</h2>
-            <div style="background-color: #f7fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>ชื่อ:</strong> ${data.name}</p>
-                <p><strong>อีเมล:</strong> ${data.email}</p>
-                <p><strong>เลขใบอนุญาต:</strong> ${data.licenseNumber}</p>
-                <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
-            </div>
-            <p>กรุณาตรวจสอบข้อมูลและอนุมัติการใช้งานได้ที่ระบบหลังบ้าน:</p>
-            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://lawslane.com'}/admin/lawyers/${data.uid}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                ตรวจสอบข้อมูลทนายความ
-            </a>
-        </div>
-            `;
-        }
-
-        // 4. Send Emails (Batch or Loop)
-        // Resend supports multiple 'to' addresses, but they see each other? 
-        // Better to send individually or use BCC if supported, or loop.
-        // Resend 'to' array sends to all. To hide, use bcc.
-        // But let's just loop for now to personalize if needed, or just send one batch.
-        // Batch is safer for quota.
-
-        // Remove duplicates
-        const uniqueRecipients = [...new Set(recipients)];
-
-        await resend.emails.send({
-            from: 'Lawslane Admin <noreply@lawslane.com>',
-            to: uniqueRecipients, // This puts everyone in TO. If privacy matters between admins, use bcc.
-            // bcc: uniqueRecipients, 
-            // to: 'admin@lawslane.com', // Dummy TO
-            subject: subject,
-            html: html,
-        });
-
-        // 5. Create In-System Notifications for Admin
-        // We link these to the 'admin' recipient which NotificationBell listens to
-        try {
-            let notificationTitle = subject.replace(/\[Lawslane Admin\] /g, '');
-            let notificationMessage = '';
-            let notificationLink = '/';
-
-            if (type === 'new_user') {
-                notificationMessage = `มีผู้ใช้งานใหม่: ${data.name} (${data.email})`;
-                notificationLink = '/customers';
-            } else if (type === 'new_ticket') {
-                notificationMessage = `หัวข้อ: ${data.problemType} จาก ${data.clientName}`;
-                notificationLink = `/tickets/${data.ticketId}`;
-            } else if (type === 'payment') {
-                notificationMessage = `มีการชำระเงินใหม่ ฿${data.amount?.toLocaleString()} ${data.lawyerName ? `สำหรับ ${data.lawyerName}` : ''}`;
-                notificationLink = '/financials';
-            } else if (type === 'withdrawal') {
-                notificationMessage = `คำร้องขอถอนเงินใหม่ ฿${data.amount?.toLocaleString()} จาก ${data.lawyerName}`;
-                notificationLink = '/financials';
-            } else if (type === 'new_lawyer') {
-                notificationMessage = `ทนายความใหม่สมัครสมาชิก: ${data.name}`;
-                notificationLink = `/lawyers/${data.uid}`;
-            }
-
-            if (notificationMessage) {
-                await db.collection('notifications').add({
-                    type: type,
-                    title: notificationTitle,
-                    message: notificationMessage,
-                    link: notificationLink,
-                    recipient: 'admin',
-                    read: false,
-                    createdAt: FieldValue.serverTimestamp(),
-                    relatedId: data.ticketId || data.uid || null
-                });
-            }
-        } catch (notifError) {
-            console.error('Error creating in-system admin notification:', notifError);
-        }
-
-        console.log(`[notifyAdmins] Sent ${type} notification to ${uniqueRecipients.length} admins and created in-system notification.`);
-
     } catch (error) {
-        console.error('Error sending admin notifications:', error);
+        // ของเดิมไม่เคย throw ออกไปหาหน้าเว็บ — คงพฤติกรรมนั้นไว้ (หน้า signup ไม่ควรล้มเพราะแจ้งเตือน)
+        if (!(error instanceof AuthError)) console.error('Error in notifyAdmins action:', error);
     }
 }

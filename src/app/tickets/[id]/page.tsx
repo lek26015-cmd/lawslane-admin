@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Ticket, Upload, ChevronLeft, User, Briefcase, CheckCircle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SupportChatBox } from '@/components/chat/support-chat-box';
+import { InterpreterPaymentLinkPanel } from '@/components/tickets/interpreter-payment-link-panel';
 import { Separator } from '@/components/ui/separator';
 import { useFirebase } from '@/firebase';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot, arrayUnion } from 'firebase/firestore';
@@ -225,6 +226,10 @@ function AdminTicketDetailPageContent() {
             </div>
 
             <div className="space-y-6">
+                {/* ตั๋วขอใช้บริการล่าม (จากหน้า /interpreters) → สร้างลิงก์ชำระเงินส่งในแชท */}
+                {ticket.problemType === 'ขอใช้บริการล่าม' && (
+                    <InterpreterPaymentLinkPanel ticketId={ticket.id} request={ticket.interpreterRequest} disabled={isResolved} />
+                )}
                 <Card className="rounded-xl">
                     <CardHeader>
                         <CardTitle>สรุปข้อมูล</CardTitle>
