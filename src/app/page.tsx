@@ -2,15 +2,17 @@ import { redirect } from 'next/navigation';
 import { FileSignature, FileText, Gavel, Landmark, Languages, ShieldCheck, Ticket, Users2 } from 'lucide-react';
 import { AuthError, requireUser, isSuperAdminToken } from '@/lib/auth-guard';
 import { getAdminDashboardData } from '@/lib/dashboard-data';
+import { getDashboardLayout } from '@/lib/dashboard-layout-server';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RevenueCard } from '@/components/dashboard/RevenueCard';
 import { PendingLawyersTable } from '@/components/dashboard/PendingLawyersTable';
 import { RecentTicketsList } from '@/components/dashboard/RecentTicketsList';
+import { DashboardBento } from '@/components/dashboard/DashboardBento';
 
 export default async function AdminDashboard() {
-  let token;
+  let token, uid, adminApp;
   try {
-    ({ token } = await requireUser());
+    ({ token, uid, adminApp } = await requireUser());
   } catch (error) {
     if (error instanceof AuthError) {
       // middleware.ts เช็คแค่ว่ามี cookie ชื่อ session ไหม (ปลอมได้) — เผื่อ cookie
@@ -22,80 +24,100 @@ export default async function AdminDashboard() {
 
   const { stats, pendingLawyers, tickets } = await getAdminDashboardData();
   const isSuperAdmin = isSuperAdminToken(token);
+  const layout = await getDashboardLayout(uid, isSuperAdmin, adminApp);
+
+  // key = id ใน WIDGET_REGISTRY (src/lib/dashboard-layout.ts) — เพิ่มกล่องใหม่ต้องเพิ่มทั้งสองที่
+  const widgets: Record<string, React.ReactNode> = {
+    users: (
+      <StatCard
+        title="ผู้ใช้งานทั้งหมด"
+        value={stats.totalUsers}
+        caption={`+${stats.newUsersThisWeek} ใน 7 วันล่าสุด`}
+        icon={Users2}
+        href="/customers"
+      />
+    ),
+    tickets: (
+      <StatCard
+        title="Ticket ที่เปิดอยู่"
+        value={stats.activeTicketsCount}
+        caption={stats.activeTicketsCount > 0 ? `${stats.activeTicketsCount} เรื่องรอการแก้ไข` : 'ไม่มีเรื่องค้าง'}
+        icon={Ticket}
+        href="/tickets"
+      />
+    ),
+    pendingLawyers: (
+      <StatCard
+        title="ทนายรออนุมัติ"
+        value={stats.pendingLawyersCount}
+        caption="รอการตรวจสอบคุณสมบัติ"
+        icon={ShieldCheck}
+        href="/lawyers?tab=pending"
+      />
+    ),
+    approvedLawyers: (
+      <StatCard
+        title="ทนายที่ Active"
+        value={stats.approvedLawyersCount}
+        caption="ทนายความพร้อมให้บริการ"
+        icon={Gavel}
+        href="/lawyers?tab=active"
+      />
+    ),
+    requests: (
+      <StatCard
+        title="คำขอที่รอดำเนินการ"
+        value={stats.pendingRequestsCount}
+        caption="รวมคำขอลงทะเบียน + สัญญา + SME"
+        icon={FileText}
+        href="/registration-requests"
+      />
+    ),
+    // ยุบมาจากแดชบอร์ดของ capdeal (Module 7) — เดิมต้องเปิด console แยก
+    capdealContracts: (
+      <StatCard
+        title="สัญญา CapDeal"
+        value={stats.capdealContractsCount}
+        caption="สัญญาทั้งหมดในระบบ CapDeal"
+        icon={FileSignature}
+        href="/capdeal/contracts"
+      />
+    ),
+    capdealSlips: (
+      <StatCard
+        title="สลิป CapDeal รอตรวจ"
+        value={stats.capdealPendingSlipsCount}
+        caption={stats.capdealPendingSlipsCount > 0 ? 'มีดีลรอยืนยันการชำระเงิน' : 'ไม่มีรายการรอตรวจ'}
+        icon={Landmark}
+        href="/capdeal/finance"
+      />
+    ),
+    pendingInterpreters: (
+      <StatCard
+        title="ล่ามรออนุมัติ"
+        value={stats.pendingInterpretersCount}
+        caption="ใบสมัครล่ามรอตรวจเอกสาร"
+        icon={Languages}
+        href="/interpreters"
+      />
+    ),
+    interpreterBookings: (
+      <StatCard
+        title="งานล่ามรอดำเนินการ"
+        value={stats.interpreterBookingsNeedingActionCount}
+        caption={`สลิปรอตรวจ / รอคืนเงิน · รอโอนให้ล่าม ${stats.interpreterPayoutsDueCount} งาน`}
+        icon={Languages}
+        href="/interpreter-bookings"
+      />
+    ),
+    pendingLawyersTable: <PendingLawyersTable lawyers={pendingLawyers} />,
+    recentTickets: <RecentTicketsList tickets={tickets} />,
+  };
+  if (isSuperAdmin) widgets.revenue = <RevenueCard />;
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-8 lg:p-8">
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        {isSuperAdmin && <RevenueCard />}
-        <StatCard
-          title="ผู้ใช้งานทั้งหมด"
-          value={stats.totalUsers}
-          caption={`+${stats.newUsersThisWeek} ใน 7 วันล่าสุด`}
-          icon={Users2}
-          href="/customers"
-        />
-        <StatCard
-          title="Ticket ที่เปิดอยู่"
-          value={stats.activeTicketsCount}
-          caption={stats.activeTicketsCount > 0 ? `${stats.activeTicketsCount} เรื่องรอการแก้ไข` : 'ไม่มีเรื่องค้าง'}
-          icon={Ticket}
-          href="/tickets"
-        />
-        <StatCard
-          title="ทนายรออนุมัติ"
-          value={stats.pendingLawyersCount}
-          caption="รอการตรวจสอบคุณสมบัติ"
-          icon={ShieldCheck}
-          href="/lawyers?tab=pending"
-        />
-        <StatCard
-          title="ทนายที่ Active"
-          value={stats.approvedLawyersCount}
-          caption="ทนายความพร้อมให้บริการ"
-          icon={Gavel}
-          href="/lawyers?tab=active"
-        />
-        <StatCard
-          title="คำขอที่รอดำเนินการ"
-          value={stats.pendingRequestsCount}
-          caption="รวมคำขอลงทะเบียน + สัญญา + SME"
-          icon={FileText}
-          href="/registration-requests"
-        />
-        {/* ยุบมาจากแดชบอร์ดของ capdeal (Module 7) — เดิมต้องเปิด console แยก */}
-        <StatCard
-          title="สัญญา CapDeal"
-          value={stats.capdealContractsCount}
-          caption="สัญญาทั้งหมดในระบบ CapDeal"
-          icon={FileSignature}
-          href="/capdeal/contracts"
-        />
-        <StatCard
-          title="สลิป CapDeal รอตรวจ"
-          value={stats.capdealPendingSlipsCount}
-          caption={stats.capdealPendingSlipsCount > 0 ? 'มีดีลรอยืนยันการชำระเงิน' : 'ไม่มีรายการรอตรวจ'}
-          icon={Landmark}
-          href="/capdeal/finance"
-        />
-        <StatCard
-          title="ล่ามรออนุมัติ"
-          value={stats.pendingInterpretersCount}
-          caption="ใบสมัครล่ามรอตรวจเอกสาร"
-          icon={Languages}
-          href="/interpreters"
-        />
-        <StatCard
-          title="งานล่ามรอดำเนินการ"
-          value={stats.interpreterBookingsNeedingActionCount}
-          caption={`สลิปรอตรวจ / รอคืนเงิน · รอโอนให้ล่าม ${stats.interpreterPayoutsDueCount} งาน`}
-          icon={Languages}
-          href="/interpreter-bookings"
-        />
-      </div>
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-        <PendingLawyersTable lawyers={pendingLawyers} />
-        <RecentTicketsList tickets={tickets} />
-      </div>
+      <DashboardBento initialLayout={layout} widgets={widgets} />
     </main>
   );
 }

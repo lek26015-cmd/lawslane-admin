@@ -7,7 +7,7 @@ import type { TicketPreview } from '@/lib/dashboard-data';
 
 export function RecentTicketsList({ tickets }: { tickets: TicketPreview[] }) {
   return (
-    <Card className="rounded-xl">
+    <Card className="rounded-xl h-full">
       <CardHeader>
         <CardTitle>Ticket ช่วยเหลือล่าสุด</CardTitle>
         <CardDescription>

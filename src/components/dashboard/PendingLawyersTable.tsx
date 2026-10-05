@@ -23,7 +23,7 @@ import type { PendingLawyerPreview } from '@/lib/dashboard-data';
 
 export function PendingLawyersTable({ lawyers }: { lawyers: PendingLawyerPreview[] }) {
   return (
-    <Card className="xl:col-span-2 rounded-xl overflow-hidden">
+    <Card className="rounded-xl overflow-hidden">
       <CardHeader className="flex flex-row items-center">
         <div className="grid gap-2">
           <CardTitle>ทนายความรอการอนุมัติ</CardTitle>
