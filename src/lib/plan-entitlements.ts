@@ -102,13 +102,19 @@ export const PLAN_CATALOG: Record<PlanProduct, ProductCatalog> = {
             { key: 'weaknessAnalysis', type: 'boolean', label: ['AI วิเคราะห์จุดอ่อน', 'AI weakness analysis'] },
             { key: 'adFree', type: 'boolean', label: ['ไม่มีโฆษณา', 'No ads'] },
             { key: 'freeEbooks', type: 'boolean', label: ['ดาวน์โหลด E-Book รวมข้อสอบฟรี', 'Free exam E-Book downloads'] },
+            {
+                key: 'ebooksPerWeek', type: 'number',
+                label: ['E-Book ฟรีสูงสุด (เล่ม/สัปดาห์)', 'Free E-Books per week'],
+                help: ['ใช้เมื่อเปิดข้อบน · เล่มเดิมโหลดซ้ำไม่นับ · รีเซ็ตเที่ยงคืนเข้าวันจันทร์เวลาไทย', 'Applies when the row above is on · re-downloads of the same book are free · resets Monday 00:00 Bangkok'],
+                nullable: { label: ['ไม่จำกัด', 'Unlimited'] },
+            },
         ],
         // ค่าเริ่มต้น = พฤติกรรมเดิมก่อนมีระบบนี้ (free จำกัดแค่ 3 ชุด/วัน)
         // adFree: premium/pro ไม่เห็นโฆษณาตามที่หน้า pricing สัญญาไว้ — เว็บนักเรียนอ่านคีย์เดียวกัน
         defaults: {
-            free: { examsPerDay: 3, aiGrading: true, weaknessAnalysis: true, adFree: false, freeEbooks: false },
-            premium: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true, freeEbooks: false },
-            pro: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true, freeEbooks: true },
+            free: { examsPerDay: 3, aiGrading: true, weaknessAnalysis: true, adFree: false, freeEbooks: false, ebooksPerWeek: null },
+            premium: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true, freeEbooks: false, ebooksPerWeek: null },
+            pro: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true, freeEbooks: true, ebooksPerWeek: 3 },
         },
         basePlan: 'free',
         grantNote: [
