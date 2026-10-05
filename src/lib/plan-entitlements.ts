@@ -101,13 +101,14 @@ export const PLAN_CATALOG: Record<PlanProduct, ProductCatalog> = {
             { key: 'aiGrading', type: 'boolean', label: ['AI ตรวจข้อเขียน', 'AI essay grading'] },
             { key: 'weaknessAnalysis', type: 'boolean', label: ['AI วิเคราะห์จุดอ่อน', 'AI weakness analysis'] },
             { key: 'adFree', type: 'boolean', label: ['ไม่มีโฆษณา', 'No ads'] },
+            { key: 'freeEbooks', type: 'boolean', label: ['ดาวน์โหลด E-Book รวมข้อสอบฟรี', 'Free exam E-Book downloads'] },
         ],
         // ค่าเริ่มต้น = พฤติกรรมเดิมก่อนมีระบบนี้ (free จำกัดแค่ 3 ชุด/วัน)
         // adFree: premium/pro ไม่เห็นโฆษณาตามที่หน้า pricing สัญญาไว้ — เว็บนักเรียนอ่านคีย์เดียวกัน
         defaults: {
-            free: { examsPerDay: 3, aiGrading: true, weaknessAnalysis: true, adFree: false },
-            premium: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true },
-            pro: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true },
+            free: { examsPerDay: 3, aiGrading: true, weaknessAnalysis: true, adFree: false, freeEbooks: false },
+            premium: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true, freeEbooks: false },
+            pro: { examsPerDay: null, aiGrading: true, weaknessAnalysis: true, adFree: true, freeEbooks: true },
         },
         basePlan: 'free',
         grantNote: [
