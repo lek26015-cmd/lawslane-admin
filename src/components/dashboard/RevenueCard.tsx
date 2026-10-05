@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  */
 export function RevenueCard() {
   return (
-    <Link href="/financials" className="block transition-transform hover:scale-[1.02] active:scale-95">
+    <Link href="/financials" className="block h-full transition-transform hover:scale-[1.02] active:scale-95">
       <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">รายได้รวม</CardTitle>

@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, caption, icon: Icon, href }: StatCardProps) {
   return (
-    <Link href={href} className="block transition-transform hover:scale-[1.02] active:scale-95">
+    <Link href={href} className="block h-full transition-transform hover:scale-[1.02] active:scale-95">
       <Card className="rounded-xl h-full hover:shadow-md transition-shadow cursor-pointer">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
