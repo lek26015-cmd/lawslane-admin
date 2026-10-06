@@ -26,7 +26,7 @@ interface SiteSettings {
 const DEFAULT_SETTINGS: SiteSettings = {
     siteName: 'Lawslane Wittaya',
     siteDescription: 'แพลตฟอร์มเตรียมสอบกฎหมายและทนายความออนไลน์',
-    contactEmail: 'contact@lawslane.com',
+    contactEmail: 'lawslanelawyer@gmail.com',
     contactPhone: '',
     address: '',
     facebook: '',
