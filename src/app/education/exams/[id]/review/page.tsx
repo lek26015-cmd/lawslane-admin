@@ -246,10 +246,11 @@ export default function ExamReviewPage({ params }: { params: Promise<{ id: strin
                 setHasChanges(true);
                 toast({ title: "Re-OCR สำเร็จ — ตรวจสอบและบันทึก" });
             } else {
-                throw new Error('Re-OCR failed');
+                const err = await res.json().catch(() => null);
+                throw new Error(err?.details || err?.error || 'Re-OCR failed');
             }
-        } catch {
-            toast({ title: "Re-OCR ไม่สำเร็จ", variant: "destructive" });
+        } catch (e) {
+            toast({ title: "Re-OCR ไม่สำเร็จ", description: e instanceof Error ? e.message : undefined, variant: "destructive" });
         } finally {
             setIsReOcring(false);
         }
