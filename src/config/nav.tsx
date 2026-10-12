@@ -26,7 +26,8 @@ import {
     GraduationCap,
     Languages,
     HandCoins,
-    BadgeCheck
+    BadgeCheck,
+    Tag
 } from 'lucide-react';
 
 export type NavItem = {
@@ -39,6 +40,8 @@ export type NavItem = {
     permission?: string;
     /** ลิงก์ภายนอกที่แสดงเป็นไอคอนเล็กข้างรายการ */
     externalLink?: string;
+    /** แสดงเฉพาะ Super Admin (หน้าเองต้องเช็ค requireSuperAdmin/notFound ฝั่ง server อีกชั้น) */
+    superAdminOnly?: boolean;
 };
 
 export type NavSection = {
@@ -115,6 +118,7 @@ export const navSections: NavSection[] = [
             { href: "/interpreter-payouts", icon: <HandCoins className="h-4 w-4" />, label: "จ่ายเงินล่าม", labelEn: "Interpreter Payouts", permission: "financials.interpreterPayouts" },
             { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", labelEn: "Discount Coupons", permission: "coupons" },
             { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", labelEn: "Lawyer GP Coupons", permission: "gp_coupons" },
+            { href: "/pricing", icon: <Tag className="h-4 w-4" />, label: "ราคาแพ็กเกจ", labelEn: "Plan Pricing", superAdminOnly: true },
         ]
     },
     {

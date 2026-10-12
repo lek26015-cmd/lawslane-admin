@@ -19,6 +19,8 @@ export type GuideSection = {
     href?: string;
     /** รหัสสิทธิ์ใน src/lib/permissions.ts ที่ต้องมีจึงเห็นเมนูนี้ */
     permission?: string;
+    /** หน้านี้ Super Admin เท่านั้น (แสดงป้าย "Super Admin" แทนรหัสสิทธิ์) */
+    superAdminOnly?: boolean;
     th: GuideBody;
     en: GuideBody;
 };

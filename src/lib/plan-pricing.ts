@@ -1,0 +1,81 @@
+import 'server-only';
+import type * as admin from 'firebase-admin';
+import {
+    PricingConflictError,
+    type PlanPricingDoc,
+    type PlanPricingLog,
+    type PricingProduct,
+    type PricingStorePort,
+} from './plan-pricing-core';
+
+export * from './plan-pricing-core';
+
+/**
+ * ราคากลางแพ็กเกจ — ส่วนที่แตะ Firestore (server-only)
+ *
+ * ตรรกะล้วน (ชนิดข้อมูล ค่าเริ่มต้น validation diff ลำดับการบันทึก) อยู่ใน plan-pricing-core.ts
+ *
+ * collection มาจาก env `PLAN_PRICING_COLLECTION` (ค่าเริ่มต้น `planPricing`)
+ * ตอนใช้ Stripe test key ต้องตั้งเป็น `planPricing_test` เพราะ Firestore มีแค่ production
+ * อ่าน/เขียนผ่าน Admin SDK เท่านั้น (rules เป็น default deny)
+ */
+
+export const PLAN_PRICING_LOGS_COLLECTION = 'planPricingLogs';
+
+export function planPricingCollection(): string {
+    const v = process.env.PLAN_PRICING_COLLECTION?.trim();
+    return v && /^[A-Za-z0-9_-]+$/.test(v) ? v : 'planPricing';
+}
+
+/** ปุ่มบันทึกเปิดเมื่อ PRICING_WRITE_ENABLED === 'true' เท่านั้น (หลังตัวอ่านราคากลางขึ้นครบทุกเว็บ) */
+export function isPricingWriteEnabled(): boolean {
+    return process.env.PRICING_WRITE_ENABLED === 'true';
+}
+
+/** โหมดของ key ที่ตั้งไว้ (ไม่คืนค่า key) */
+export function stripeKeyMode(): 'test' | 'live' | 'missing' | 'invalid' {
+    const k = process.env.STRIPE_SECRET_KEY;
+    if (!k) return 'missing';
+    if (/^(sk|rk)_test_/.test(k)) return 'test';
+    if (/^(sk|rk)_live_/.test(k)) return 'live';
+    return 'invalid';
+}
+
+function toDoc(data: FirebaseFirestore.DocumentData | undefined): PlanPricingDoc | null {
+    if (!data) return null;
+    return {
+        currency: 'thb',
+        plans: data.plans ?? {},
+        portalConfigId: typeof data.portalConfigId === 'string' ? data.portalConfigId : null,
+        updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
+        updatedBy: typeof data.updatedBy === 'string' ? data.updatedBy : '',
+    };
+}
+
+/** ที่เก็บจริงบน Firestore สำหรับ executeSave */
+export function firestorePricingStore(db: admin.firestore.Firestore): PricingStorePort {
+    const col = () => db.collection(planPricingCollection());
+    return {
+        async read(product: PricingProduct) {
+            const snap = await col().doc(product).get();
+            return snap.exists ? toDoc(snap.data()) : null;
+        },
+        async commit(product, expectedUpdatedAt, build) {
+            const ref = col().doc(product);
+            const logRef = db.collection(PLAN_PRICING_LOGS_COLLECTION).doc();
+            return db.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                const current = snap.exists ? toDoc(snap.data()) : null;
+                if ((current?.updatedAt || null) !== expectedUpdatedAt) throw new PricingConflictError();
+                const { doc, log }: { doc: PlanPricingDoc; log: PlanPricingLog } = build(current);
+                tx.set(ref, doc);
+                tx.set(logRef, log);
+                return doc;
+            });
+        },
+        async setPortalConfigId(product, portalConfigId) {
+            // ไม่แตะ updatedAt: ไม่ใช่การเปลี่ยนราคา และไม่ให้แอดมินที่เปิดหน้าอยู่ชนเวอร์ชัน
+            await col().doc(product).set({ portalConfigId }, { merge: true });
+        },
+    };
+}

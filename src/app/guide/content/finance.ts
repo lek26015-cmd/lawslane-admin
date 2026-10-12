@@ -218,5 +218,68 @@ export const financeGroup: GuideGroup = {
                 ],
             },
         },
+        {
+            id: 'plan-pricing',
+            href: '/pricing',
+            superAdminOnly: true,
+            th: {
+                title: 'ราคาแพ็กเกจ (Stripe)',
+                summary: 'ตั้งราคาแพ็กเกจ CapDeal และแพลนทนายที่เก็บเงินผ่าน Stripe เห็นเฉพาะ Super Admin เปลี่ยนราคา = สร้าง Price ใหม่ใน Stripe ซึ่งใช้กับคนที่สมัครใหม่เท่านั้น',
+                blocks: [
+                    {
+                        heading: 'ขั้นตอน',
+                        items: [
+                            'แก้ราคาในช่องรายเดือน/รายปี เป็นจำนวนเต็มบาท 1–1,000,000 ปล่อยว่าง = ไม่ขายรอบนั้น',
+                            'ข้างแต่ละช่องแสดงค่าธรรมเนียม Stripe โดยประมาณ (บัตรในประเทศ 3.65% + ฿10 + Billing 0.7% รวม VAT 7%) และยอดสุทธิ',
+                            '"ตรวจการเปลี่ยนแปลง" แสดงราคาเดิม → ใหม่, Price ที่จะสร้าง/ปิดขาย และจำนวนผู้สมัครเดิมบนราคาปัจจุบัน (เกิน 100 แสดง "100+")',
+                            'ติ๊กยืนยัน แล้วกด "บันทึกราคา"',
+                        ],
+                    },
+                    {
+                        heading: 'ผลของการบันทึก',
+                        items: [
+                            'สร้าง Price ใหม่ใน Stripe → เก็บเป็นราคาปัจจุบัน → Price เดิมถูกปิดขาย (ผู้สมัครเดิมยังถูกเรียกเก็บตามปกติ) → อัปเดต Billing Portal ให้สลับได้เฉพาะราคาปัจจุบัน',
+                            'ผู้สมัครเดิมจ่ายราคาเดิมต่อไป ระบบไม่ย้ายและไม่ส่งอีเมลแจ้ง',
+                            'ถ้าขึ้น "บางขั้นยังไม่เสร็จ" ให้กด "ลองใหม่" ระบบไม่สร้าง Price ซ้ำ',
+                            'ถ้าขึ้น "มีคนแก้ไปแล้ว โหลดใหม่" แปลว่ามีแอดมินอีกคนบันทึกก่อน ให้โหลดหน้าใหม่แล้วแก้อีกครั้ง',
+                        ],
+                    },
+                ],
+                warnings: [
+                    'ถ้าขึ้นกล่อง "โหมดดูอย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ต้องรอให้ทุกเว็บอ่านราคาจากระบบกลางก่อน',
+                    'ป้าย Stripe: test ต้องคู่กับ collection planPricing_test เท่านั้น ระบบไม่ยอมบันทึกถ้าไม่ตรงกัน',
+                    'ทุกครั้งที่บันทึกจะเก็บประวัติไว้ที่ planPricingLogs (เก็บแค่ uid ของผู้แก้)',
+                ],
+            },
+            en: {
+                title: 'Plan pricing (Stripe)',
+                summary: 'Set prices for CapDeal plans and lawyer plans billed through Stripe. Super Admin only. A price change creates a new Stripe Price that applies to new sign-ups only.',
+                blocks: [
+                    {
+                        heading: 'Steps',
+                        items: [
+                            'Edit monthly/yearly prices in whole baht (1–1,000,000). Leave blank = not sold for that interval.',
+                            'Each field shows the estimated Stripe fee (domestic card 3.65% + ฿10 + Billing 0.7%, incl. 7% VAT) and the net amount.',
+                            '"ตรวจการเปลี่ยนแปลง" shows old → new prices, which Prices will be created/archived, and existing subscribers on current prices ("100+" above 100).',
+                            'Tick the confirmation, then click "บันทึกราคา".',
+                        ],
+                    },
+                    {
+                        heading: 'What saving does',
+                        items: [
+                            'Creates new Stripe Prices → stores them as current → archives the old Prices (existing subscribers keep being billed) → updates the Billing Portal so customers can switch only between current prices.',
+                            'Existing subscribers stay on their old price. No migration and no emails.',
+                            'If it says some steps did not finish, click "ลองใหม่". No duplicate Prices are created.',
+                            'If it says someone else changed prices, reload the page and edit again.',
+                        ],
+                    },
+                ],
+                warnings: [
+                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Wait until every site reads central pricing.',
+                    'Stripe "test" must pair with the planPricing_test collection; saving is refused otherwise.',
+                    'Every save is logged to planPricingLogs (editor uid only).',
+                ],
+            },
+        },
     ],
 };

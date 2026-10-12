@@ -106,6 +106,11 @@ export default function AdminGuidePage() {
                                                 <p className="text-sm text-slate-600">{body.summary}</p>
                                             </div>
                                             <div className="flex shrink-0 items-center gap-2">
+                                                {s.superAdminOnly && (
+                                                    <Badge variant="outline" className="text-[11px] text-slate-500">
+                                                        Super Admin
+                                                    </Badge>
+                                                )}
                                                 {s.permission && (
                                                     <Badge variant="outline" className="font-mono text-[11px] text-slate-500">
                                                         {s.permission}
