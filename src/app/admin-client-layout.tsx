@@ -38,7 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { NotificationBell } from '@/components/admin/notification-bell';
 import { useAdminLocale, AdminLocaleToggle } from '@/lib/admin-i18n';
-import { navSections, findSectionForPath } from '@/config/nav';
+import { navSections, findSectionForPath, type NavItem } from '@/config/nav';
 import { isDesignatedSuperAdmin } from '@/lib/super-admin';
 import { hasPermission as checkPermission } from '@/lib/permissions';
 
@@ -125,6 +125,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     setIsAdmin(true);
                                     setCurrentUser(user);
                                     setUserRole('Super Admin');
+                                    setIsSuperAdmin(true);
                                 })
                                 .catch(serverError => {
                                     const permissionError = new FirestorePermissionError({
@@ -161,6 +162,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                     setIsAdmin(true);
                                     setCurrentUser(user);
                                     setUserRole('Super Admin');
+                                    setIsSuperAdmin(true);
                                 });
                         } else if (isAdminByClaim) {
                             const isSuper = isSuperAdminUser;
@@ -244,6 +246,9 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
     // (ถือ 'financials' ต้องเห็นเมนู 'financials.withdrawals' ด้วย)
     const hasPermission = (permission?: string): boolean =>
         checkPermission(adminPermissions, permission);
+    // เมนู superAdminOnly ซ่อนจากแอดมินทั่วไป (ตัวหน้าเช็คซ้ำฝั่ง server แล้วตอบ 404)
+    const canSeeItem = (item: NavItem): boolean =>
+        (!item.superAdminOnly || isSuperAdmin) && hasPermission(item.permission);
 
     const searchParams = useSearchParams();
     const isActive = (href: string) => {
@@ -326,7 +331,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                         <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", openSection !== section.title && "-rotate-90")} />
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="space-y-1 overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                                        {section.items.filter(item => hasPermission(item.permission)).map((item) => (
+                                        {section.items.filter(item => canSeeItem(item)).map((item) => (
                                             <div key={item.label} className="flex items-center gap-1">
                                                 <Link
                                                     href={item.href}
@@ -481,7 +486,7 @@ export function AdminClientLayout({ children }: { children: React.ReactNode }) {
                                             <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", openSection === section.title && "rotate-90")} />
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="space-y-1 pl-2 pt-1">
-                                            {section.items.filter(item => hasPermission(item.permission)).map((item) => (
+                                            {section.items.filter(item => canSeeItem(item)).map((item) => (
                                                 <div key={item.label} className="flex items-center gap-1">
                                                     <Link
                                                         href={item.href}
