@@ -511,20 +511,5 @@ export async function getInterpreterGpSettingAction(): Promise<{ gpPercent: numb
     return { gpPercent: typeof d?.gpPercent === 'number' ? d.gpPercent : null, updatedAt: iso(d?.updatedAt) };
 }
 
-/** มีผลกับ booking ใหม่เท่านั้น — booking เดิมเก็บ gpPercent ไว้ใน quote แล้ว */
-export async function setInterpreterGpPercentAction(gpPercent: number): Promise<Result> {
-    try {
-        const { uid, adminApp } = await requireAdmin(PERM_PAYOUTS);
-        const v = Number(gpPercent);
-        if (!Number.isFinite(v) || v < 0 || v > 50) throw new ActionError('GP ต้องอยู่ระหว่าง 0-50%');
-        const rounded = Math.round(v * 100) / 100;
-        await adminApp.firestore().collection('settings').doc('interpreterFees').set({
-            gpPercent: rounded,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedBy: uid,
-        }, { merge: true });
-        return { ok: true };
-    } catch (e) {
-        return fail(e, 'บันทึก GP ไม่สำเร็จ');
-    }
-}
+// การตั้ง GP ย้ายไปหน้า "ราคาแพ็กเกจ" (setInterpreterGpAction ใน plan-pricing-actions.ts, Super Admin เท่านั้น)
+// หน้าจ่ายเงินล่ามแสดง GP แบบอ่านอย่างเดียว

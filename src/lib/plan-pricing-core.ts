@@ -14,8 +14,17 @@
 // ชนิดข้อมูลตามสัญญา
 // ---------------------------------------------------------------------------
 
+/** ผลิตภัณฑ์ที่เก็บเงินผ่าน Stripe แล้ว (หน้า admin สร้าง Product/Price ให้) */
 export const PRICING_PRODUCTS = ['capdeal', 'lawyer'] as const;
 export type PricingProduct = (typeof PRICING_PRODUCTS)[number];
+
+/**
+ * แพ็กเกจรายเดือนทั้งหมดในหน้า "ราคาแพ็กเกจ"
+ * wittaya / lawslane (ลูกค้า AI Plus) ยังไม่เปิดขายบนเว็บ (PLAN-08 เฟส 4) → บันทึกราคาลง Firestore อย่างเดียว ไม่สร้างของใน Stripe
+ */
+export const SUBSCRIPTION_PRODUCTS = ['capdeal', 'lawyer', 'wittaya', 'lawslane'] as const;
+export type SubscriptionProduct = (typeof SUBSCRIPTION_PRODUCTS)[number];
+export const STORED_ONLY_PRODUCTS = ['wittaya', 'lawslane'] as const;
 
 export type PricingInterval = 'monthly' | 'yearly';
 export const PRICING_INTERVALS: PricingInterval[] = ['monthly', 'yearly'];
@@ -51,15 +60,16 @@ export type PlanPricingDoc = {
 };
 
 export type PlanPricingLog = {
-    product: PricingProduct;
-    before: Record<string, PlanPricingEntry> | null;
-    after: Record<string, PlanPricingEntry>;
+    /** doc id ที่แก้: capdeal | lawyer | wittaya | lawslane | ai_credits | ebook | costModel | interpreter_gp */
+    product: string;
+    before: unknown;
+    after: unknown;
     createdPriceIds: string[];
     actorUid: string;
     at: string;
 };
 
-export const PRICING_CATALOG: Record<PricingProduct, {
+export const PRICING_CATALOG: Record<SubscriptionProduct, {
     name: [string, string];
     /** ชื่อที่ใช้ตั้ง Stripe Product (ลูกค้าเห็นในหน้า Checkout/ใบเสร็จ) */
     stripeName: string;
@@ -82,21 +92,42 @@ export const PRICING_CATALOG: Record<PricingProduct, {
             { id: 'top', name: 'บริษัท', yearlyOptional: true },
         ],
     },
+    wittaya: {
+        name: ['Wittaya', 'Wittaya'],
+        stripeName: 'Wittaya',
+        plans: [
+            { id: 'premium', name: 'Premium', yearlyOptional: true },
+            { id: 'pro', name: 'Pro', yearlyOptional: true },
+        ],
+    },
+    lawslane: {
+        name: ['ลูกค้า AI Plus', 'Customer AI Plus'],
+        stripeName: 'Lawslane AI',
+        plans: [{ id: 'plus', name: 'Plus', yearlyOptional: true }],
+    },
 };
 
 /**
  * ค่าเริ่มต้น = ราคาที่เว็บใช้อยู่วันนี้ (ใช้เมื่อยังไม่มีเอกสารใน Firestore)
- * ทนาย: ยังไม่รู้ราคา (Price อยู่ใน env ของ Lawslane) จึงเป็น null จนกว่าแอดมินจะตั้ง
+ * ทนาย: Pro 590 / บริษัท (Firm) 1,990 ต่อเดือน ตาม PRD (ผู้ใช้ยืนยัน 2026-10-12) — Price จริงยังอยู่ใน env ของ Lawslane
+ * Wittaya: ตามหน้า pricing ของ Wittaya · ลูกค้า AI Plus: ยังไม่ตั้งราคา
  */
-export const DEFAULT_PRICES: Record<PricingProduct, Record<string, { monthly: number | null; yearly: number | null }>> = {
+export const DEFAULT_PRICES: Record<SubscriptionProduct, Record<string, { monthly: number | null; yearly: number | null }>> = {
     capdeal: {
         lite: { monthly: 159, yearly: 1590 },
         pro: { monthly: 249, yearly: 2490 },
         scale: { monthly: 1049, yearly: 10490 },
     },
     lawyer: {
-        pro: { monthly: null, yearly: null },
-        top: { monthly: null, yearly: null },
+        pro: { monthly: 590, yearly: null },
+        top: { monthly: 1990, yearly: null },
+    },
+    wittaya: {
+        premium: { monthly: 199, yearly: null },
+        pro: { monthly: 399, yearly: null },
+    },
+    lawslane: {
+        plus: { monthly: null, yearly: null },
     },
 };
 
@@ -105,6 +136,10 @@ export const MAX_PRICE_BAHT = 1_000_000;
 
 export function isPricingProduct(v: unknown): v is PricingProduct {
     return typeof v === 'string' && (PRICING_PRODUCTS as readonly string[]).includes(v);
+}
+
+export function isSubscriptionProduct(v: unknown): v is SubscriptionProduct {
+    return typeof v === 'string' && (SUBSCRIPTION_PRODUCTS as readonly string[]).includes(v);
 }
 
 export function priceField(interval: PricingInterval): 'monthlyPriceId' | 'yearlyPriceId' {
@@ -140,7 +175,7 @@ function cleanStripe(v: any): PlanStripeRefs | undefined {
  * รวมเอกสาร Firestore กับค่าเริ่มต้น — แพลนที่ไม่รู้จักถูกตัดทิ้ง แพลนที่ขาดใช้ค่าเริ่มต้น
  * คืน plans ครบทุก planId ใน catalog เสมอ
  */
-export function mergeWithDefaults(product: PricingProduct, raw: any): Record<string, PlanPricingEntry> {
+export function mergeWithDefaults(product: SubscriptionProduct, raw: any): Record<string, PlanPricingEntry> {
     const out: Record<string, PlanPricingEntry> = {};
     for (const plan of PRICING_CATALOG[product].plans) {
         const def = DEFAULT_PRICES[product][plan.id];
@@ -170,8 +205,8 @@ export type ValidDraftPlans = Record<string, { monthly: number | null; yearly: n
 export function validateDraft(
     product: unknown,
     draft: unknown,
-): { ok: true; product: PricingProduct; plans: ValidDraftPlans; baseUpdatedAt: string | null } | { ok: false; errors: string[] } {
-    if (!isPricingProduct(product)) return { ok: false, errors: ['ไม่รู้จักผลิตภัณฑ์นี้'] };
+): { ok: true; product: SubscriptionProduct; plans: ValidDraftPlans; baseUpdatedAt: string | null } | { ok: false; errors: string[] } {
+    if (!isSubscriptionProduct(product)) return { ok: false, errors: ['ไม่รู้จักผลิตภัณฑ์นี้'] };
     const d = draft as any;
     if (!d || typeof d !== 'object' || !d.plans || typeof d.plans !== 'object') {
         return { ok: false, errors: ['ข้อมูลราคาไม่ถูกต้อง'] };
@@ -298,7 +333,7 @@ export class PricingConflictError extends Error {
 }
 
 export interface PricingStorePort {
-    read(product: PricingProduct): Promise<PlanPricingDoc | null>;
+    read(product: SubscriptionProduct): Promise<PlanPricingDoc | null>;
     /**
      * เขียนเอกสารใน transaction: อ่านใหม่ → ถ้า updatedAt ไม่ตรง expected ให้โยน PricingConflictError
      * → เขียน doc + log พร้อมกัน
@@ -356,7 +391,11 @@ export async function executeSave(
     const createdPriceIds: string[] = [];
     const valid = validateDraft(productInput, draftInput);
     if (!valid.ok) return { status: 'error', step: 'validate', message: valid.errors.join(' · '), createdPriceIds };
-    const { product, plans: draftPlans, baseUpdatedAt } = valid;
+    if (!isPricingProduct(valid.product)) {
+        return { status: 'error', step: 'validate', message: 'ผลิตภัณฑ์นี้ยังไม่ขายผ่าน Stripe', createdPriceIds };
+    }
+    const product: PricingProduct = valid.product;
+    const { plans: draftPlans, baseUpdatedAt } = valid;
 
     // 1) เวอร์ชันต้องตรงก่อนแตะ Stripe (transaction ตรวจซ้ำอีกรอบตอนเขียน)
     let currentDoc: PlanPricingDoc | null;
@@ -518,4 +557,185 @@ export function checkKeyCollectionPairing(secretKey: string | undefined, collect
     if (isTest && !testCollection) return `ใช้ Stripe test key อยู่ แต่ collection คือ "${collection}" (ต้องลงท้าย _test)`;
     if (isLive && testCollection) return `ใช้ Stripe live key อยู่ แต่ collection คือ "${collection}" (เป็นของโหมดทดสอบ)`;
     return null;
+}
+
+// ---------------------------------------------------------------------------
+// เอกสารที่บันทึกลง Firestore อย่างเดียว (ไม่แตะ Stripe)
+//   - wittaya / lawslane      : ราคาแพ็กเกจที่ยังไม่เปิดขาย (รูปร่างเดียวกับ PlanPricingDoc)
+//   - ai_credits              : แพ็กเครดิต AI (จ่ายครั้งเดียวผ่าน Beam)
+//   - ebook                   : ราคา E-Book มาตรฐาน + ค่าส่งหนังสือ
+//   - costModel               : สมมติฐานต้นทุน (ดู cost-model.ts)
+// ไม่ต้องรอ PRICING_WRITE_ENABLED เพราะไม่สร้างอะไรใน Stripe (PLAN-08 เฟส 3) แต่ยังต้อง Super Admin + ยืนยัน + log
+// ---------------------------------------------------------------------------
+
+export type StoredDoc = Record<string, unknown> & { updatedAt?: string; updatedBy?: string };
+
+export interface DocStorePort {
+    read(docId: string): Promise<StoredDoc | null>;
+    /** transaction: อ่านใหม่ → updatedAt ไม่ตรง expected ให้โยน PricingConflictError → เขียน doc + log */
+    commit(
+        docId: string,
+        expectedUpdatedAt: string | null,
+        build: (current: StoredDoc | null) => { doc: StoredDoc; log: PlanPricingLog },
+    ): Promise<StoredDoc>;
+}
+
+export type StoredSaveResult =
+    | { status: 'ok'; updatedAt: string; changed: boolean }
+    | { status: 'error'; step: 'validate' | 'conflict' | 'firestore'; message: string };
+
+/**
+ * บันทึกเอกสาร: ตรวจเวอร์ชัน → transaction เขียน doc + planPricingLogs
+ * @param fields ฟิลด์ที่ผ่าน validation แล้ว (ทับของเดิมทั้งก้อน ยกเว้นฟิลด์ใน keep)
+ */
+export async function saveStoredDoc(
+    deps: { store: DocStorePort; now: () => Date },
+    docId: string,
+    fields: Record<string, unknown>,
+    baseUpdatedAt: string | null,
+    actorUid: string,
+    keep: string[] = [],
+): Promise<StoredSaveResult> {
+    try {
+        const doc = await deps.store.commit(docId, baseUpdatedAt, (current) => {
+            const at = deps.now().toISOString();
+            const before = current ? stripMeta(current) : null;
+            const kept: Record<string, unknown> = {};
+            for (const k of keep) if (current && k in current) kept[k] = current[k];
+            const next: StoredDoc = { ...kept, ...fields, updatedAt: at, updatedBy: actorUid };
+            return {
+                doc: next,
+                log: { product: docId, before, after: stripMeta(next), createdPriceIds: [], actorUid, at },
+            };
+        });
+        return { status: 'ok', updatedAt: doc.updatedAt ?? '', changed: true };
+    } catch (e) {
+        if (e instanceof PricingConflictError) return { status: 'error', step: 'conflict', message: e.message };
+        return { status: 'error', step: 'firestore', message: `บันทึกไม่สำเร็จ: ${errMsg(e)}` };
+    }
+}
+
+function stripMeta(d: StoredDoc): Record<string, unknown> {
+    const { updatedAt: _a, updatedBy: _b, ...rest } = d;
+    return rest;
+}
+
+function versionOf(v: unknown): { ok: true; value: string | null } | { ok: false } {
+    if (v === null || v === undefined) return { ok: true, value: null };
+    return typeof v === 'string' ? { ok: true, value: v } : { ok: false };
+}
+
+const isInt = (v: unknown, min: number, max: number): v is number =>
+    typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+
+// --- แพ็กเครดิต AI ---------------------------------------------------------
+
+export type CreditPack = { credits: number; price: number };
+export const MAX_CREDIT_PACKS = 20;
+
+export function validateCreditPacks(draft: unknown):
+    { ok: true; packs: Record<string, CreditPack>; baseUpdatedAt: string | null } | { ok: false; errors: string[] } {
+    const d = draft as any;
+    const ver = versionOf(d?.baseUpdatedAt);
+    if (!d || typeof d !== 'object' || !d.packs || typeof d.packs !== 'object' || Array.isArray(d.packs) || !ver.ok) {
+        return { ok: false, errors: ['ข้อมูลแพ็กเครดิตไม่ถูกต้อง'] };
+    }
+    const errors: string[] = [];
+    const packs: Record<string, CreditPack> = {};
+    const ids = Object.keys(d.packs);
+    if (ids.length > MAX_CREDIT_PACKS) errors.push(`มีได้ไม่เกิน ${MAX_CREDIT_PACKS} แพ็ก`);
+    for (const id of ids) {
+        const p = d.packs[id];
+        if (!/^[a-z0-9_-]{1,32}$/.test(id)) { errors.push(`รหัสแพ็ก "${id}" ใช้ได้แค่ a-z 0-9 _ - (ไม่เกิน 32 ตัว)`); continue; }
+        if (!isInt(p?.credits, 1, MAX_PRICE_BAHT)) errors.push(`${id}: จำนวนเครดิตต้องเป็นจำนวนเต็ม 1–1,000,000`);
+        if (!isInt(p?.price, MIN_PRICE_BAHT, MAX_PRICE_BAHT)) errors.push(`${id}: ราคาต้องเป็นจำนวนเต็มบาท 1–1,000,000`);
+        if (isInt(p?.credits, 1, MAX_PRICE_BAHT) && isInt(p?.price, MIN_PRICE_BAHT, MAX_PRICE_BAHT)) {
+            packs[id] = { credits: p.credits, price: p.price };
+        }
+    }
+    return errors.length ? { ok: false, errors } : { ok: true, packs, baseUpdatedAt: ver.value };
+}
+
+export function mergeCreditPacks(raw: any): Record<string, CreditPack> {
+    const out: Record<string, CreditPack> = {};
+    if (raw?.packs && typeof raw.packs === 'object') {
+        for (const [id, p] of Object.entries<any>(raw.packs)) {
+            if (/^[a-z0-9_-]{1,32}$/.test(id) && isInt(p?.credits, 1, MAX_PRICE_BAHT) && isInt(p?.price, 1, MAX_PRICE_BAHT)) {
+                out[id] = { credits: p.credits, price: p.price };
+            }
+        }
+    }
+    return out;
+}
+
+// --- E-Book + ค่าส่ง --------------------------------------------------------
+
+export type EbookPricing = {
+    /** ราคา E-Book มาตรฐาน (บาท) */
+    standardPrice: number;
+    /** ค่าส่งหนังสือเล่ม · 0 = ไม่เก็บ/ไม่ใช้ */
+    shipping: { baseFee: number; perExtraItem: number; freeOver: number };
+};
+
+/** EBOOK_PRICE = 199 ใน lawlanes-education (ebook-pro-download.tsx) · ค่าส่งยังไม่เก็บ = 0 ทั้งหมด */
+export const DEFAULT_EBOOK: EbookPricing = { standardPrice: 199, shipping: { baseFee: 0, perExtraItem: 0, freeOver: 0 } };
+
+export function mergeEbook(raw: any): EbookPricing {
+    const n = (v: unknown, def: number, min: number) => (isInt(v, min, 100_000) ? v : def);
+    return {
+        standardPrice: n(raw?.standardPrice, DEFAULT_EBOOK.standardPrice, 1),
+        shipping: {
+            baseFee: n(raw?.shipping?.baseFee, 0, 0),
+            perExtraItem: n(raw?.shipping?.perExtraItem, 0, 0),
+            freeOver: n(raw?.shipping?.freeOver, 0, 0),
+        },
+    };
+}
+
+export function validateEbook(draft: unknown):
+    { ok: true; value: EbookPricing; baseUpdatedAt: string | null } | { ok: false; errors: string[] } {
+    const d = draft as any;
+    const ver = versionOf(d?.baseUpdatedAt);
+    if (!d || typeof d !== 'object' || !ver.ok) return { ok: false, errors: ['ข้อมูล E-Book ไม่ถูกต้อง'] };
+    const errors: string[] = [];
+    if (!isInt(d.standardPrice, 1, 100_000)) errors.push('ราคา E-Book ต้องเป็นจำนวนเต็มบาท 1–100,000');
+    for (const k of ['baseFee', 'perExtraItem', 'freeOver'] as const) {
+        if (!isInt(d.shipping?.[k], 0, 100_000)) errors.push(`ค่าส่ง ${k} ต้องเป็นจำนวนเต็มบาท 0–100,000`);
+    }
+    if (errors.length) return { ok: false, errors };
+    return {
+        ok: true,
+        value: { standardPrice: d.standardPrice, shipping: { baseFee: d.shipping.baseFee, perExtraItem: d.shipping.perExtraItem, freeOver: d.shipping.freeOver } },
+        baseUpdatedAt: ver.value,
+    };
+}
+
+// --- GP ล่าม ---------------------------------------------------------------
+
+/** ค่าเริ่มต้นต้องตรงกับ DEFAULT_GP_PERCENT ใน Lawslane/src/lib/interpreter-types.ts */
+export const DEFAULT_INTERPRETER_GP_PERCENT = 15;
+
+/** GP 0–50% ปัดทศนิยม 2 ตำแหน่ง (เงื่อนไขเดียวกับตัวตั้งค่าเดิมในหน้าจ่ายเงินล่าม) */
+export function validateGpPercent(v: unknown): { ok: true; value: number } | { ok: false; error: string } {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 50) return { ok: false, error: 'GP ต้องอยู่ระหว่าง 0–50%' };
+    return { ok: true, value: Math.round(v * 100) / 100 };
+}
+
+// --- ราคาแพ็กเกจที่ยังไม่เปิดขาย (wittaya / lawslane) -------------------------
+
+/** บันทึกราคาแพ็กเกจของผลิตภัณฑ์ที่ยังไม่ขายผ่าน Stripe — ไม่สร้าง Product/Price */
+export async function executeStoredPlanSave(
+    deps: { store: DocStorePort; now: () => Date },
+    productInput: unknown,
+    draftInput: unknown,
+    actorUid: string,
+): Promise<StoredSaveResult> {
+    const valid = validateDraft(productInput, draftInput);
+    if (!valid.ok) return { status: 'error', step: 'validate', message: valid.errors.join(' · ') };
+    if (isPricingProduct(valid.product)) {
+        return { status: 'error', step: 'validate', message: 'ผลิตภัณฑ์นี้ขายผ่าน Stripe ต้องบันทึกผ่านขั้นตอน Stripe' };
+    }
+    const plans: Record<string, PlanPricingEntry> = {};
+    for (const [planId, v] of Object.entries(valid.plans)) plans[planId] = { monthly: v.monthly, yearly: v.yearly };
+    return saveStoredDoc(deps, valid.product, { currency: 'thb', plans }, valid.baseUpdatedAt, actorUid);
 }

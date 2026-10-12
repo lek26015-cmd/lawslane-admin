@@ -85,12 +85,12 @@ export const financeGroup: GuideGroup = {
             permission: 'financials.interpreterPayouts',
             th: {
                 title: 'จ่ายเงินล่าม',
-                summary: 'ตั้งค่า GP ของล่าม และบันทึกการโอนค่าจ้างให้ล่ามสำหรับงานที่เสร็จแล้ว',
+                summary: 'ดู GP ของล่าม (อ่านอย่างเดียว) และบันทึกการโอนค่าจ้างให้ล่ามสำหรับงานที่เสร็จแล้ว',
                 blocks: [
                     {
-                        heading: 'ตั้งค่า GP',
+                        heading: 'GP',
                         items: [
-                            'กรอก "GP (%)" ระหว่าง 0–50 แล้วกด "บันทึก" ถ้ายังไม่เคยตั้ง ระบบใช้ 15%',
+                            'หน้านี้แสดง GP ปัจจุบันอย่างเดียว ถ้ายังไม่เคยตั้ง ระบบใช้ 15% · แก้ GP ได้ที่ "ราคาแพ็กเกจ" แท็บ "GP ล่าม" (Super Admin เท่านั้น)',
                             'มีผลกับการจองใหม่เท่านั้น งานเดิมใช้ GP ตอนจอง',
                         ],
                     },
@@ -111,12 +111,12 @@ export const financeGroup: GuideGroup = {
             },
             en: {
                 title: 'Interpreter payouts',
-                summary: 'Set the interpreter GP and record payouts to interpreters for completed jobs.',
+                summary: 'View the interpreter GP (read-only) and record payouts to interpreters for completed jobs.',
                 blocks: [
                     {
-                        heading: 'Set GP',
+                        heading: 'GP',
                         items: [
-                            'Enter "GP (%)" between 0 and 50 and click Save. If never set, 15% is used.',
+                            'This page only shows the current GP (15% if never set). Change it under "ราคาแพ็กเกจ" → "GP ล่าม" (Super Admin only).',
                             'It only applies to new bookings; existing jobs keep the GP from booking time.',
                         ],
                     },
@@ -223,61 +223,83 @@ export const financeGroup: GuideGroup = {
             href: '/pricing',
             superAdminOnly: true,
             th: {
-                title: 'ราคาแพ็กเกจ (Stripe)',
-                summary: 'ตั้งราคาแพ็กเกจ CapDeal และแพลนทนายที่เก็บเงินผ่าน Stripe เห็นเฉพาะ Super Admin เปลี่ยนราคา = สร้าง Price ใหม่ใน Stripe ซึ่งใช้กับคนที่สมัครใหม่เท่านั้น',
+                title: 'ราคาแพ็กเกจ และต้นทุน/กำไร',
+                summary: 'ราคาทุกอย่างในหน้าเดียว (แพ็กเกจรายเดือน, จ่ายครั้งเดียว, GP ล่าม) พร้อมต้นทุนและกำไรโดยประมาณจากสมมติฐาน เห็นเฉพาะ Super Admin',
                 blocks: [
                     {
-                        heading: 'ขั้นตอน',
+                        heading: 'แท็บ "แพ็กเกจรายเดือน"',
                         items: [
-                            'แก้ราคาในช่องรายเดือน/รายปี เป็นจำนวนเต็มบาท 1–1,000,000 ปล่อยว่าง = ไม่ขายรอบนั้น',
-                            'ข้างแต่ละช่องแสดงค่าธรรมเนียม Stripe โดยประมาณ (บัตรในประเทศ 3.65% + ฿10 + Billing 0.7% รวม VAT 7%) และยอดสุทธิ',
-                            '"ตรวจการเปลี่ยนแปลง" แสดงราคาเดิม → ใหม่, Price ที่จะสร้าง/ปิดขาย และจำนวนผู้สมัครเดิมบนราคาปัจจุบัน (เกิน 100 แสดง "100+")',
-                            'ติ๊กยืนยัน แล้วกด "บันทึกราคา"',
+                            'CapDeal และทนาย (ป้าย Stripe): เปลี่ยนราคา = สร้าง Price ใหม่ใน Stripe ใช้กับคนที่สมัครใหม่เท่านั้น ผู้สมัครเดิมจ่ายราคาเดิม',
+                            'Wittaya และลูกค้า AI Plus (ป้าย "ยังไม่เปิดขายบนเว็บ"): บันทึกราคาลงระบบไว้ก่อน ไม่สร้างอะไรใน Stripe ไม่มีผลกับลูกค้า',
+                            'ช่องว่าง = ไม่ขาย · จำนวนเต็มบาท 1–1,000,000',
+                            'ใต้ช่องราคาแสดงต่อบัญชีต่อเดือน: ต้นทุน AI ใช้เต็มโควตา/ใช้เฉลี่ย, ค่าธรรมเนียม Stripe, ค่าส่วนกลาง, กำไรและ margin และ "ราคาต่ำสุดตามเป้า" ตัวเลขสีแดง = ขาดทุน',
+                            'รายปีคิดค่าธรรมเนียมครั้งเดียวต่อปีแล้วหาร 12',
+                            '"ตรวจการเปลี่ยนแปลง" → ดูราคาเดิม → ใหม่ (Stripe แสดงจำนวนผู้สมัครเดิมด้วย) → ติ๊กยืนยัน → บันทึก',
                         ],
                     },
                     {
-                        heading: 'ผลของการบันทึก',
+                        heading: 'แท็บ "จ่ายครั้งเดียว" และ "GP ล่าม"',
                         items: [
-                            'สร้าง Price ใหม่ใน Stripe → เก็บเป็นราคาปัจจุบัน → Price เดิมถูกปิดขาย (ผู้สมัครเดิมยังถูกเรียกเก็บตามปกติ) → อัปเดต Billing Portal ให้สลับได้เฉพาะราคาปัจจุบัน',
-                            'ผู้สมัครเดิมจ่ายราคาเดิมต่อไป ระบบไม่ย้ายและไม่ส่งอีเมลแจ้ง',
-                            'ถ้าขึ้น "บางขั้นยังไม่เสร็จ" ให้กด "ลองใหม่" ระบบไม่สร้าง Price ซ้ำ',
-                            'ถ้าขึ้น "มีคนแก้ไปแล้ว โหลดใหม่" แปลว่ามีแอดมินอีกคนบันทึกก่อน ให้โหลดหน้าใหม่แล้วแก้อีกครั้ง',
+                            'แพ็กเครดิต AI: เพิ่ม/ลบแพ็กได้ (รหัส a-z 0-9 _ -) ต้นทุนคิดจากเครดิตทนายที่แพงสุด ค่าธรรมเนียมคิดแบบ Beam บัตร premium และแสดง PromptPay คู่กัน',
+                            'E-Book และค่าส่ง: ราคามาตรฐาน (เริ่มต้น ฿199) และค่าส่งหนังสือ (0 = ไม่เก็บ) เว็บยังไม่อ่านค่าสองส่วนนี้',
+                            'GP ล่าม: มีผลทันทีกับการจองใหม่บนเว็บจริง งานที่จองแล้วไม่เปลี่ยน แสดงกำไรต่องาน = GP − ค่าธรรมเนียม Beam ของยอดเต็ม',
+                        ],
+                    },
+                    {
+                        heading: '"สมมติฐานต้นทุน" (กดเพื่อกาง)',
+                        items: [
+                            'ค่าเริ่มต้นมาจากไฟล์ LAWSLANE-ต้นทุน-2026-10.xlsx: อัตราแลกเปลี่ยน, เป้า margin, โควตา, จำนวนผู้ใช้ 3 สถานการณ์, ราคาบริการ, ราคาโมเดล AI, token ต่อการเรียก',
+                            'แก้แล้วตัวเลขกำไรทุกช่องเปลี่ยนทันที (ยังไม่บันทึก) กด "บันทึกสมมติฐาน" เพื่อเก็บ',
+                            'ตัวเลือก "ปันค่าส่วนกลางตามสถานการณ์" ด้านบนเปลี่ยนค่าส่วนกลางต่อบัญชี (เริ่มต้น/เติบโต/ขยาย)',
+                            'มีบิลจริงแล้ว ให้ใส่ยอดในแถว "ใช้ยอดจริงแทน" แทนค่าที่คำนวณ',
                         ],
                     },
                 ],
                 warnings: [
-                    'ถ้าขึ้นกล่อง "โหมดดูอย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ต้องรอให้ทุกเว็บอ่านราคาจากระบบกลางก่อน',
-                    'ป้าย Stripe: test ต้องคู่กับ collection planPricing_test เท่านั้น ระบบไม่ยอมบันทึกถ้าไม่ตรงกัน',
-                    'ทุกครั้งที่บันทึกจะเก็บประวัติไว้ที่ planPricingLogs (เก็บแค่ uid ของผู้แก้)',
+                    'ถ้าขึ้น "ดูได้อย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ล็อกเฉพาะ CapDeal/ทนาย ส่วนอื่นยังบันทึกได้',
+                    'ป้าย Stripe: test ต้องคู่กับ collection planPricing_test เท่านั้น',
+                    'ต้นทุนเป็นค่าประมาณจากราคาประกาศ × สมมติฐาน ไม่ใช่ยอดบิลจริง',
+                    'ถ้าขึ้น "มีคนแก้ไปแล้ว โหลดใหม่" ให้โหลดหน้าใหม่แล้วแก้อีกครั้ง · ทุกการบันทึกเก็บประวัติที่ planPricingLogs (uid ผู้แก้เท่านั้น)',
                 ],
             },
             en: {
-                title: 'Plan pricing (Stripe)',
-                summary: 'Set prices for CapDeal plans and lawyer plans billed through Stripe. Super Admin only. A price change creates a new Stripe Price that applies to new sign-ups only.',
+                title: 'Plan pricing and cost/margin',
+                summary: 'Every price on one page (subscriptions, one-time items, interpreter GP) with estimated cost and margin from assumptions. Super Admin only.',
                 blocks: [
                     {
-                        heading: 'Steps',
+                        heading: 'Tab "Subscriptions"',
                         items: [
-                            'Edit monthly/yearly prices in whole baht (1–1,000,000). Leave blank = not sold for that interval.',
-                            'Each field shows the estimated Stripe fee (domestic card 3.65% + ฿10 + Billing 0.7%, incl. 7% VAT) and the net amount.',
-                            '"ตรวจการเปลี่ยนแปลง" shows old → new prices, which Prices will be created/archived, and existing subscribers on current prices ("100+" above 100).',
-                            'Tick the confirmation, then click "บันทึกราคา".',
+                            'CapDeal and Lawyer (Stripe badge): a price change creates a new Stripe Price for new sign-ups only; existing subscribers keep their price.',
+                            'Wittaya and Customer AI Plus ("not on sale yet" badge): the price is stored only. Nothing is created in Stripe and no customer is affected.',
+                            'Blank = not sold · whole baht 1–1,000,000.',
+                            'Under each price, per account per month: AI cost at full/average usage, Stripe fee, infra share, profit and margin, and the minimum price for the target margin. Red = loss.',
+                            'Yearly prices pay the fee once a year, divided by 12.',
+                            '"ตรวจการเปลี่ยนแปลง" → review old → new (Stripe also shows existing subscribers) → tick → save.',
                         ],
                     },
                     {
-                        heading: 'What saving does',
+                        heading: 'Tabs "One-time" and "Interpreter GP"',
                         items: [
-                            'Creates new Stripe Prices → stores them as current → archives the old Prices (existing subscribers keep being billed) → updates the Billing Portal so customers can switch only between current prices.',
-                            'Existing subscribers stay on their old price. No migration and no emails.',
-                            'If it says some steps did not finish, click "ลองใหม่". No duplicate Prices are created.',
-                            'If it says someone else changed prices, reload the page and edit again.',
+                            'AI credit packs: add/remove packs (IDs a-z 0-9 _ -). Cost uses the most expensive lawyer credit; fees use Beam premium card, with PromptPay shown alongside.',
+                            'E-Book & shipping: standard price (default ฿199) and book shipping (0 = not charged). Sites do not read these yet.',
+                            'Interpreter GP: live immediately for new bookings; existing bookings do not change. Shows profit per job = GP − Beam fee on the full amount.',
+                        ],
+                    },
+                    {
+                        heading: '"Cost assumptions" (click to expand)',
+                        items: [
+                            'Defaults come from LAWSLANE-ต้นทุน-2026-10.xlsx: FX, target margin, quotas, users in 3 scenarios, service prices, AI model prices, tokens per call.',
+                            'Edits update every margin immediately (unsaved). Click "บันทึกสมมติฐาน" to keep them.',
+                            'The scenario selector at the top changes the infra share per account (start/growth/scale).',
+                            'Once real bills exist, enter them in "override with real bill" instead of the computed total.',
                         ],
                     },
                 ],
                 warnings: [
-                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Wait until every site reads central pricing.',
-                    'Stripe "test" must pair with the planPricing_test collection; saving is refused otherwise.',
-                    'Every save is logged to planPricingLogs (editor uid only).',
+                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Only CapDeal/Lawyer are locked; other sections still save.',
+                    'Stripe "test" must pair with the planPricing_test collection.',
+                    'Costs are estimates (list price × assumptions), not real bills.',
+                    'If it says someone else changed it, reload and edit again. Every save is logged to planPricingLogs (editor uid only).',
                 ],
             },
         },

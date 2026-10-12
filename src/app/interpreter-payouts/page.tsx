@@ -11,7 +11,6 @@ import {
     getInterpreterGpSettingAction,
     listDueInterpreterPayoutsAction,
     markInterpreterPayoutPaidAction,
-    setInterpreterGpPercentAction,
 } from '@/app/actions/interpreter-admin-actions';
 import { formatSatang, type InterpreterPayoutGroup } from '@/lib/interpreter-admin-types';
 
@@ -61,26 +60,16 @@ function PayoutRow({ g, onPaid }: { g: InterpreterPayoutGroup; onPaid: () => voi
 export default function AdminInterpreterPayoutsPage() {
     const { toast } = useToast();
     const [groups, setGroups] = useState<InterpreterPayoutGroup[] | null>(null);
-    const [gp, setGp] = useState('');
     const [gpSaved, setGpSaved] = useState<number | null>(null);
-    const [savingGp, setSavingGp] = useState(false);
+    const [gpLoaded, setGpLoaded] = useState(false);
     const [error, setError] = useState('');
 
     const load = useCallback(() => {
         listDueInterpreterPayoutsAction().then(setGroups).catch(() => { setGroups([]); setError('ไม่มีสิทธิ์ หรือโหลดข้อมูลไม่สำเร็จ'); });
-        getInterpreterGpSettingAction().then(s => { setGpSaved(s.gpPercent); setGp(String(s.gpPercent ?? DEFAULT_GP_PERCENT)); }).catch(() => {});
+        getInterpreterGpSettingAction().then(s => { setGpSaved(s.gpPercent); setGpLoaded(true); }).catch(() => {});
     }, []);
     useEffect(load, [load]);
 
-    const saveGp = async () => {
-        if (!window.confirm(`เปลี่ยน GP ล่ามเป็น ${gp}%? มีผลกับการจองใหม่เท่านั้น`)) return;
-        setSavingGp(true);
-        const res = await setInterpreterGpPercentAction(Number(gp));
-        setSavingGp(false);
-        if (!res.ok) return toast({ variant: 'destructive', title: res.error });
-        toast({ title: 'บันทึก GP แล้ว' });
-        load();
-    };
 
     return (
         <div className="space-y-6 max-w-5xl">
@@ -94,14 +83,12 @@ export default function AdminInterpreterPayoutsPage() {
                         {gpSaved === null && ` · ยังไม่เคยตั้ง ระบบใช้ค่าเริ่มต้น ${DEFAULT_GP_PERCENT}%`}
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-end gap-3 max-w-sm">
-                    <div className="space-y-1 flex-1">
-                        <Label htmlFor="gp">GP (%)</Label>
-                        <Input id="gp" type="number" min={0} max={50} step={0.5} value={gp} onChange={e => setGp(e.target.value)} />
-                    </div>
-                    <Button disabled={savingGp || gp === '' || Number(gp) === gpSaved} onClick={saveGp}>
-                        {savingGp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}บันทึก
-                    </Button>
+                <CardContent className="space-y-1">
+                    {/* อ่านอย่างเดียว — แก้ได้ที่หน้า "ราคาแพ็กเกจ" (Super Admin) */}
+                    <p className="text-2xl font-bold">{gpLoaded ? `${gpSaved ?? DEFAULT_GP_PERCENT}%` : '…'}</p>
+                    <p className="text-sm text-muted-foreground">
+                        แก้ GP ได้ที่หน้า &quot;ราคาแพ็กเกจ&quot; (เฉพาะ Super Admin)
+                    </p>
                 </CardContent>
             </Card>
 

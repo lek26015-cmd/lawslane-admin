@@ -2,9 +2,11 @@ import 'server-only';
 import type * as admin from 'firebase-admin';
 import {
     PricingConflictError,
+    type DocStorePort,
+    type StoredDoc,
     type PlanPricingDoc,
     type PlanPricingLog,
-    type PricingProduct,
+    type SubscriptionProduct,
     type PricingStorePort,
 } from './plan-pricing-core';
 
@@ -56,7 +58,7 @@ function toDoc(data: FirebaseFirestore.DocumentData | undefined): PlanPricingDoc
 export function firestorePricingStore(db: admin.firestore.Firestore): PricingStorePort {
     const col = () => db.collection(planPricingCollection());
     return {
-        async read(product: PricingProduct) {
+        async read(product: SubscriptionProduct) {
             const snap = await col().doc(product).get();
             return snap.exists ? toDoc(snap.data()) : null;
         },
@@ -76,6 +78,34 @@ export function firestorePricingStore(db: admin.firestore.Firestore): PricingSto
         async setPortalConfigId(product, portalConfigId) {
             // ไม่แตะ updatedAt: ไม่ใช่การเปลี่ยนราคา และไม่ให้แอดมินที่เปิดหน้าอยู่ชนเวอร์ชัน
             await col().doc(product).set({ portalConfigId }, { merge: true });
+        },
+    };
+}
+
+/** doc id ใน collection ราคากลาง นอกจากแพ็กเกจ (capdeal/lawyer/wittaya/lawslane) */
+export const PRICING_DOC_IDS = { aiCredits: 'ai_credits', ebook: 'ebook', costModel: 'costModel' } as const;
+
+/** ที่เก็บทั่วไปสำหรับเอกสารที่ไม่แตะ Stripe (wittaya, lawslane, ai_credits, ebook, costModel) */
+export function firestoreDocStore(db: admin.firestore.Firestore): DocStorePort {
+    const col = () => db.collection(planPricingCollection());
+    return {
+        async read(docId) {
+            const snap = await col().doc(docId).get();
+            return snap.exists ? (snap.data() as StoredDoc) : null;
+        },
+        async commit(docId, expectedUpdatedAt, build) {
+            const ref = col().doc(docId);
+            const logRef = db.collection(PLAN_PRICING_LOGS_COLLECTION).doc();
+            return db.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                const current = snap.exists ? (snap.data() as StoredDoc) : null;
+                const cur = typeof current?.updatedAt === 'string' && current.updatedAt ? current.updatedAt : null;
+                if (cur !== expectedUpdatedAt) throw new PricingConflictError();
+                const { doc, log } = build(current);
+                tx.set(ref, doc);
+                tx.set(logRef, log);
+                return doc;
+            });
         },
     };
 }

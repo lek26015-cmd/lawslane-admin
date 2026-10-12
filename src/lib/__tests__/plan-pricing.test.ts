@@ -19,6 +19,14 @@ import {
     type PricingProduct,
     type PricingStorePort,
     type PricingStripePort,
+    type DocStorePort,
+    type StoredDoc,
+    executeStoredPlanSave,
+    saveStoredDoc,
+    validateCreditPacks,
+    validateEbook,
+    validateGpPercent,
+    mergeEbook,
 } from '../plan-pricing-core';
 
 // ---------------------------------------------------------------------------
@@ -81,7 +89,7 @@ function fakeStripe() {
 }
 
 function fakeStore(initial: Partial<Record<PricingProduct, PlanPricingDoc>> = {}) {
-    const docs = new Map<PricingProduct, PlanPricingDoc>(Object.entries(initial) as [PricingProduct, PlanPricingDoc][]);
+    const docs = new Map<string, PlanPricingDoc>(Object.entries(initial) as [string, PlanPricingDoc][]);
     const logs: PlanPricingLog[] = [];
     const fail: { commit?: boolean } = {};
     const store: PricingStorePort = {
@@ -165,9 +173,13 @@ test('validateDraft: ทนาย yearly เว้นได้, ขอบ 1 แ�
     assert.ok(r.ok);
 });
 
-test('mergeWithDefaults: ไม่มีเอกสาร = ราคาปัจจุบัน, ทนาย = null', () => {
+test('mergeWithDefaults: ไม่มีเอกสาร = ราคาปัจจุบัน (ทนาย 590/1,990, Wittaya 199/399, Plus ยังไม่ตั้ง)', () => {
     assert.deepEqual(mergeWithDefaults('capdeal', null).scale, { monthly: 1049, yearly: 10490 });
-    assert.deepEqual(mergeWithDefaults('lawyer', null).top, { monthly: null, yearly: null });
+    assert.deepEqual(mergeWithDefaults('lawyer', null).pro, { monthly: 590, yearly: null });
+    assert.deepEqual(mergeWithDefaults('lawyer', null).top, { monthly: 1990, yearly: null });
+    assert.deepEqual(mergeWithDefaults('wittaya', null).premium, { monthly: 199, yearly: null });
+    assert.deepEqual(mergeWithDefaults('wittaya', null).pro, { monthly: 399, yearly: null });
+    assert.deepEqual(mergeWithDefaults('lawslane', null).plus, { monthly: null, yearly: null });
 });
 
 test('diffPricing: เท่าเดิม = ไม่มีอะไรเปลี่ยน, เปลี่ยน/หยุดขาย แยกถูก', () => {
@@ -362,18 +374,103 @@ test('validation ล้ม → ไม่เรียก Stripe/Firestore', async
     assert.deepEqual(s.calls, []);
 });
 
-test('ทนาย: ตั้งราคาครั้งแรกจาก null', async () => {
+test('ทนาย: ค่าเริ่มต้น 590/1,990 ไม่สร้าง Price ซ้ำ สร้างเฉพาะช่องที่เปลี่ยน', async () => {
     const s = fakeStripe();
     const f = fakeStore();
     const r = await executeSave(
         { stripe: s.port, store: f.store, now }, 'lawyer',
-        { plans: { pro: { monthly: 590, yearly: null }, top: { monthly: 1990, yearly: 19900 } }, baseUpdatedAt: null }, 'u',
+        { plans: { pro: { monthly: 690, yearly: null }, top: { monthly: 1990, yearly: 19900 } }, baseUpdatedAt: null }, 'u',
     );
     assert.equal(r.status as string, 'ok');
     if (r.status === 'error') return;
-    assert.equal(r.createdPriceIds.length, 3);
+    assert.equal(r.createdPriceIds.length, 2);
     const doc = f.docs.get('lawyer')!;
     assert.equal(doc.plans.pro.stripe?.yearlyPriceId, null);
+    assert.ok(doc.plans.pro.stripe?.monthlyPriceId);
     assert.ok(doc.plans.top.stripe?.yearlyPriceId);
+    // รายเดือนบริษัทไม่เปลี่ยน → ยังใช้ Price ใน env ของเว็บ
+    assert.equal(doc.plans.top.stripe?.monthlyPriceId, null);
     assert.equal([...s.prices.values()].every((p) => p.product === 'lawyer'), true);
+});
+
+// ---------------------------------------------------------------------------
+// เอกสารที่บันทึกลง Firestore อย่างเดียว
+// ---------------------------------------------------------------------------
+
+function fakeDocStore() {
+    const docs = new Map<string, StoredDoc>();
+    const logs: PlanPricingLog[] = [];
+    const store: DocStorePort = {
+        async read(id) { const d = docs.get(id); return d ? structuredClone(d) : null; },
+        async commit(id, expected, build) {
+            const cur = docs.get(id) ?? null;
+            if ((cur?.updatedAt || null) !== expected) throw new PricingConflictError();
+            const { doc, log } = build(cur ? structuredClone(cur) : null);
+            docs.set(id, structuredClone(doc));
+            logs.push(structuredClone(log));
+            return doc;
+        },
+    };
+    return { store, docs, logs };
+}
+
+test('Wittaya/AI Plus: บันทึก Firestore อย่างเดียว ไม่แตะ Stripe และ executeSave ปฏิเสธ', async () => {
+    const f = fakeDocStore();
+    const r = await executeStoredPlanSave({ store: f.store, now }, 'wittaya',
+        { plans: { premium: { monthly: 249, yearly: 2490 }, pro: { monthly: 399, yearly: null } }, baseUpdatedAt: null }, 'u');
+    assert.equal(r.status, 'ok');
+    const doc = f.docs.get('wittaya') as any;
+    assert.deepEqual(doc.plans.premium, { monthly: 249, yearly: 2490 });
+    assert.equal(doc.updatedBy, 'u');
+    assert.equal(f.logs[0].product, 'wittaya');
+    assert.deepEqual(f.logs[0].createdPriceIds, []);
+    // Stripe path ต้องไม่รับ wittaya
+    const s = fakeStripe();
+    const r2 = await executeSave({ stripe: s.port, store: fakeStore().store, now }, 'wittaya',
+        { plans: { premium: { monthly: 249, yearly: null }, pro: { monthly: 399, yearly: null } }, baseUpdatedAt: null }, 'u');
+    assert.equal(r2.status, 'error');
+    assert.deepEqual(s.calls, []);
+    // และทางบันทึกแบบ Firestore ต้องไม่รับ capdeal (ต้องผ่าน Stripe)
+    const r3 = await executeStoredPlanSave({ store: f.store, now }, 'capdeal', capdealDraft(), 'u');
+    assert.equal(r3.status, 'error');
+});
+
+test('saveStoredDoc: แก้ชนกัน → conflict, เวอร์ชันตรง → ผ่าน + log', async () => {
+    const f = fakeDocStore();
+    const r1 = await saveStoredDoc({ store: f.store, now }, 'ebook', { standardPrice: 199 }, null, 'u');
+    assert.equal(r1.status, 'ok');
+    const stale = await saveStoredDoc({ store: f.store, now }, 'ebook', { standardPrice: 249 }, null, 'u');
+    assert.equal(stale.status, 'error');
+    if (stale.status === 'error') assert.equal(stale.step, 'conflict');
+    if (r1.status !== 'ok') return;
+    const r2 = await saveStoredDoc({ store: f.store, now }, 'ebook', { standardPrice: 249 }, r1.updatedAt, 'u');
+    assert.equal(r2.status, 'ok');
+    assert.equal(f.logs.length, 2);
+    assert.deepEqual(f.logs[1].before, { standardPrice: 199 });
+    assert.deepEqual(f.logs[1].after, { standardPrice: 249 });
+});
+
+test('validateCreditPacks: รหัส/เครดิต/ราคา ต้องถูกรูป, ว่างได้', () => {
+    assert.ok(validateCreditPacks({ packs: {}, baseUpdatedAt: null }).ok);
+    const ok = validateCreditPacks({ packs: { pack_100: { credits: 100, price: 99 } }, baseUpdatedAt: null });
+    assert.ok(ok.ok);
+    assert.equal(validateCreditPacks({ packs: { 'Bad ID': { credits: 1, price: 1 } }, baseUpdatedAt: null }).ok, false);
+    assert.equal(validateCreditPacks({ packs: { p: { credits: 0, price: 1 } }, baseUpdatedAt: null }).ok, false);
+    assert.equal(validateCreditPacks({ packs: { p: { credits: 10, price: 9.5 } }, baseUpdatedAt: null }).ok, false);
+    assert.equal(validateCreditPacks({ packs: [], baseUpdatedAt: null }).ok, false);
+});
+
+test('validateEbook: ราคา 1–100,000 · ค่าส่ง 0 ได้ · ค่าเริ่มต้น 199/0', () => {
+    assert.deepEqual(mergeEbook(null), { standardPrice: 199, shipping: { baseFee: 0, perExtraItem: 0, freeOver: 0 } });
+    assert.ok(validateEbook({ standardPrice: 199, shipping: { baseFee: 0, perExtraItem: 0, freeOver: 0 }, baseUpdatedAt: null }).ok);
+    assert.equal(validateEbook({ standardPrice: 0, shipping: { baseFee: 0, perExtraItem: 0, freeOver: 0 }, baseUpdatedAt: null }).ok, false);
+    assert.equal(validateEbook({ standardPrice: 199, shipping: { baseFee: -1, perExtraItem: 0, freeOver: 0 }, baseUpdatedAt: null }).ok, false);
+});
+
+test('validateGpPercent: 0–50 ปัด 2 ตำแหน่ง', () => {
+    assert.deepEqual(validateGpPercent(15), { ok: true, value: 15 });
+    assert.deepEqual(validateGpPercent(12.345), { ok: true, value: 12.35 });
+    assert.equal(validateGpPercent(51).ok, false);
+    assert.equal(validateGpPercent(-1).ok, false);
+    assert.equal(validateGpPercent('15').ok, false);
 });
