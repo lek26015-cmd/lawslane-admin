@@ -17,6 +17,8 @@ import type { CreditPack, EbookPricing, StoredSaveResult } from '@/lib/plan-pric
 import { saveCreditPacksAction, saveEbookAction, setInterpreterGpAction } from '@/app/actions/plan-pricing-actions';
 import { ConfirmSaveDialog } from './confirm-save-dialog';
 import { OneTimeLine, baht, bahtR, pct } from './economics';
+import { AffectsSummary, FieldInfo, ProductAbout } from './field-info';
+import { PRICE_FIELD_DOCS, PRODUCT_DOCS } from '@/lib/pricing-field-docs';
 
 /**
  * การ์ดส่วนที่ไม่แตะ Stripe: แพ็กเครดิต AI, E-Book + ค่าส่ง (จ่ายครั้งเดียวผ่าน Beam) และ GP ล่าม
@@ -105,11 +107,14 @@ export function CreditPacksCard({ packs, updatedAt, model, onSaved }: {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex flex-wrap items-center gap-2">{tx('แพ็กเครดิต AI', 'AI credit packs')} <NotLiveBadge /></CardTitle>
+                <CardTitle className="flex flex-wrap items-center gap-2">
+                    {tx('แพ็กเครดิต AI', 'AI credit packs')} <FieldInfo doc={PRICE_FIELD_DOCS.creditPacks} label="AI credit packs" /> <NotLiveBadge />
+                </CardTitle>
                 <CardDescription>
                     {tx(`จ่ายครั้งเดียวผ่าน Beam · ต้นทุนคิดจากเครดิตทนายที่แพงสุด (${bahtR(creditCost)}/เครดิต) · ยังไม่มีแพ็กเริ่มต้น`,
                         `One-time via Beam · cost uses the most expensive lawyer credit (${bahtR(creditCost)}/credit) · no packs by default`)}
                 </CardDescription>
+                <ProductAbout doc={PRODUCT_DOCS.aiCredits} />
             </CardHeader>
             <CardContent className="space-y-3">
                 <Table>
@@ -167,6 +172,7 @@ export function CreditPacksCard({ packs, updatedAt, model, onSaved }: {
                 open={open} onOpenChange={setOpen} busy={busy} onConfirm={save}
                 title={tx('ยืนยันแก้แพ็กเครดิต AI', 'Confirm AI credit packs')}
                 changes={changes}
+                summary={<AffectsSummary affects={PRICE_FIELD_DOCS.creditPacks.affects} live={[PRICE_FIELD_DOCS.creditPacks.live]} liveDetails={[PRICE_FIELD_DOCS.creditPacks.liveDetail]} />}
                 warning={tx('บันทึกลง Firestore เท่านั้น เว็บยังไม่อ่านค่านี้ (ยังไม่เปิดขาย) ไม่มีผลกับลูกค้าตอนนี้',
                     'Stored in Firestore only. Sites do not read it yet (not on sale), so no customer is affected now.')}
                 confirmLabel={tx('ฉันตรวจจำนวนเครดิตและราคาแล้ว', 'I have checked credits and prices')}
@@ -176,6 +182,8 @@ export function CreditPacksCard({ packs, updatedAt, model, onSaved }: {
 }
 
 // ---------------------------------------------------------------------------
+
+const ebookDoc = (k: string) => (k === 'standardPrice' ? PRICE_FIELD_DOCS['ebook.standardPrice'] : PRICE_FIELD_DOCS['ebook.shipping']);
 
 type EbookInputs = { standardPrice: string; baseFee: string; perExtraItem: string; freeOver: string };
 const toEbookInputs = (v: EbookPricing): EbookInputs => ({
@@ -205,8 +213,9 @@ export function EbookCard({ value, updatedAt, model, onSaved }: {
         perExtraItem: ['ค่าส่งเล่มถัดไป (ต่อเล่ม)', 'Shipping: each extra item'],
         freeOver: ['ส่งฟรีเมื่อยอดถึง', 'Free shipping over'],
     };
-    const changes = (Object.keys(labels) as (keyof EbookInputs)[])
-        .filter((k) => inp[k] !== base[k])
+    const changedKeys = (Object.keys(labels) as (keyof EbookInputs)[]).filter((k) => inp[k] !== base[k]);
+    const changedDocs = [...new Set(changedKeys.map(ebookDoc))];
+    const changes = changedKeys
         .map((k) => `${tx(...labels[k])}: ${baht(Number(base[k] || 0))} → ${baht(Number(inp[k] || 0))}`);
 
     const save = async () => {
@@ -231,12 +240,16 @@ export function EbookCard({ value, updatedAt, model, onSaved }: {
                     {tx('จ่ายครั้งเดียวผ่าน Beam · ค่าส่ง 0 = ไม่เก็บ · ค่าส่งไม่ใช่รายได้ แต่ค่าธรรมเนียมคิดจากยอดรวมค่าส่งด้วย · Wittaya ยังใช้ราคาในโค้ด (฿199)',
                         'One-time via Beam · shipping 0 = not charged · shipping is not revenue but fees apply to the total · Wittaya still uses the hardcoded price (฿199)')}
                 </CardDescription>
+                <ProductAbout doc={PRODUCT_DOCS.ebook} />
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                     {(Object.keys(labels) as (keyof EbookInputs)[]).map((k) => (
                         <div key={k} className="space-y-1">
-                            <Label htmlFor={`ebook-${k}`}>{tx(...labels[k])} ({tx('บาท', 'THB')})</Label>
+                            <div className="flex items-center gap-1">
+                                <Label htmlFor={`ebook-${k}`}>{tx(...labels[k])} ({tx('บาท', 'THB')})</Label>
+                                <FieldInfo doc={ebookDoc(k)} label={labels[k][1]} />
+                            </div>
                             <Input id={`ebook-${k}`} inputMode="numeric" value={inp[k]} className="w-40"
                                 onChange={(e) => setInp((p) => ({ ...p, [k]: digits(e.target.value) }))} />
                             {k === 'standardPrice' && <OneTimeLine e={oneTimeEconomics(model, price)} price={price || null} />}
@@ -252,6 +265,7 @@ export function EbookCard({ value, updatedAt, model, onSaved }: {
                 open={open} onOpenChange={setOpen} busy={busy} onConfirm={save}
                 title={tx('ยืนยันแก้ราคา E-Book / ค่าส่ง', 'Confirm E-Book / shipping')}
                 changes={changes}
+                summary={<AffectsSummary affects={changedDocs.flatMap((d) => d.affects)} live={changedDocs.map((d) => d.live)} liveDetails={changedDocs.map((d) => d.liveDetail)} />}
                 warning={tx('บันทึกลง Firestore เท่านั้น Wittaya ยังไม่อ่านค่านี้ ไม่มีผลกับลูกค้าตอนนี้',
                     'Stored in Firestore only. Wittaya does not read it yet, so no customer is affected now.')}
                 confirmLabel={tx('ฉันตรวจราคาแล้ว', 'I have checked the prices')}
@@ -293,6 +307,7 @@ export function InterpreterGpCard({ gpPercent, effective, updatedAt, model, onSa
             <CardHeader>
                 <CardTitle className="flex flex-wrap items-center gap-2">
                     {tx('GP งานล่าม', 'Interpreter GP')}
+                    <FieldInfo doc={PRICE_FIELD_DOCS['interpreter.gpPercent']} label="Interpreter GP" />
                     <Badge className="bg-red-600 font-normal">{tx('มีผลทันที', 'Live immediately')}</Badge>
                 </CardTitle>
                 <CardDescription>
@@ -301,6 +316,7 @@ export function InterpreterGpCard({ gpPercent, effective, updatedAt, model, onSa
                     {gpPercent === null && <span className="block text-xs">{tx(`ยังไม่เคยตั้ง ระบบใช้ค่าเริ่มต้น ${effective}%`, `Never set; system default ${effective}%`)}</span>}
                     {updatedAt && <span className="block text-xs">{tx('แก้ล่าสุด', 'Last updated')}: {new Date(updatedAt).toLocaleString(locale === 'th' ? 'th-TH' : 'en-GB')}</span>}
                 </CardDescription>
+                <ProductAbout doc={PRODUCT_DOCS.interpreterGp} />
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="flex items-end gap-3">
@@ -324,6 +340,7 @@ export function InterpreterGpCard({ gpPercent, effective, updatedAt, model, onSa
                 open={open} onOpenChange={setOpen} busy={busy} onConfirm={save}
                 title={tx('ยืนยันเปลี่ยน GP ล่าม', 'Confirm interpreter GP change')}
                 changes={[`GP: ${effective}% → ${valid ? value : '-'}%`]}
+                summary={<AffectsSummary affects={PRICE_FIELD_DOCS['interpreter.gpPercent'].affects} live={['live']} liveDetails={[PRICE_FIELD_DOCS['interpreter.gpPercent'].liveDetail]} />}
                 warning={tx('มีผลทันทีกับการจองล่ามใหม่ทุกงานบนเว็บจริง (ระบบจองอ่านค่านี้ตรง) งานที่จองไปแล้วไม่เปลี่ยน',
                     'Takes effect immediately for every new interpreter booking on the live site. Existing bookings do not change.')}
                 confirmLabel={tx('ฉันเข้าใจว่าค่านี้มีผลทันทีกับการจองใหม่', 'I understand this applies to new bookings immediately')}

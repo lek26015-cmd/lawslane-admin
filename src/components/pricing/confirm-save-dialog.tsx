@@ -12,15 +12,17 @@ import {
 import { useAdminLocale } from '@/lib/admin-i18n';
 
 /**
- * กล่องยืนยันก่อนบันทึก (ส่วนที่ไม่แตะ Stripe): รายการที่เปลี่ยน + คำเตือน + ติ๊กยืนยัน
+ * กล่องยืนยันก่อนบันทึก (ส่วนที่ไม่แตะ Stripe): รายการที่เปลี่ยน + สิ่งที่กระทบ (summary) + คำเตือน + ติ๊กยืนยัน
  */
 export function ConfirmSaveDialog({
-    open, onOpenChange, title, changes, warning, confirmLabel, busy, onConfirm,
+    open, onOpenChange, title, changes, summary, warning, confirmLabel, busy, onConfirm,
 }: {
     open: boolean;
     onOpenChange: (o: boolean) => void;
     title: string;
     changes: ReactNode[];
+    /** สรุปผลกระทบของช่องที่เปลี่ยน (AffectsSummary) */
+    summary?: ReactNode;
     warning: string;
     confirmLabel: string;
     busy: boolean;
@@ -31,7 +33,7 @@ export function ConfirmSaveDialog({
     useEffect(() => { if (open) setChecked(false); }, [open]);
     return (
         <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
-            <DialogContent className="max-w-xl">
+            <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{tx('ตรวจรายการก่อนบันทึก', 'Review before saving')}</DialogDescription>
@@ -42,6 +44,7 @@ export function ConfirmSaveDialog({
                     ) : (
                         <ul className="list-disc space-y-1 pl-5">{changes.map((c, i) => <li key={i}>{c}</li>)}</ul>
                     )}
+                    {changes.length > 0 && summary}
                     <Alert className="border-amber-300 bg-amber-50 text-amber-900">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>{warning}</AlertDescription>
