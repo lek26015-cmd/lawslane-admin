@@ -235,6 +235,9 @@ export const financeGroup: GuideGroup = {
                             'ใต้ช่องราคาแสดงต่อบัญชีต่อเดือน: ต้นทุน AI ใช้เต็มโควตา/ใช้เฉลี่ย, ค่าธรรมเนียม Stripe, ค่าส่วนกลาง, กำไรและ margin และ "ราคาต่ำสุดตามเป้า" ตัวเลขสีแดง = ขาดทุน',
                             'รายปีคิดค่าธรรมเนียมครั้งเดียวต่อปีแล้วหาร 12',
                             '"ตรวจการเปลี่ยนแปลง" → ดูราคาเดิม → ใหม่ (Stripe แสดงจำนวนผู้สมัครเดิมด้วย) → ติ๊กยืนยัน → บันทึก',
+                            'ระหว่างที่ CapDeal/ทนาย ยังบันทึกผ่าน Stripe ไม่ได้ ปุ่มจะเป็น "บันทึกเป็นร่าง (ยังไม่ใช้จริง)" ร่างเก็บแยกไว้ เว็บยังแสดงและเก็บเงินราคาเดิม ลูกค้าไม่เห็นร่าง',
+                            'การ์ดที่มีร่างขึ้นป้าย "ร่าง — ยังไม่ใช้จริง" ช่องราคาแสดงร่าง และใต้ช่องบอก "บนเว็บตอนนี้" ตัวเลขต้นทุน/กำไรคิดจากค่าที่พิมพ์ · กด "ล้างร่าง" เพื่อทิ้งร่าง',
+                            'พอตั้ง Stripe แล้ว (เปิด PRICING_WRITE_ENABLED) การ์ดจะบอก "มีราคาร่างค้างอยู่" และเติมช่องจากร่างให้ → ตรวจการเปลี่ยนแปลง → บันทึกตามปกติ ร่างถูกล้างอัตโนมัติเมื่อบันทึกสำเร็จ',
                         ],
                     },
                     {
@@ -256,7 +259,7 @@ export const financeGroup: GuideGroup = {
                     },
                 ],
                 warnings: [
-                    'ถ้าขึ้น "ดูได้อย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ล็อกเฉพาะ CapDeal/ทนาย ส่วนอื่นยังบันทึกได้',
+                    'ถ้าขึ้น "ดูได้อย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ล็อกเฉพาะการบันทึกจริงของ CapDeal/ทนาย (ยังบันทึกเป็นร่างได้) ส่วนอื่นยังบันทึกได้',
                     'ป้าย Stripe: test ต้องคู่กับ collection planPricing_test เท่านั้น',
                     'ต้นทุนเป็นค่าประมาณจากราคาประกาศ × สมมติฐาน ไม่ใช่ยอดบิลจริง',
                     'ถ้าขึ้น "มีคนแก้ไปแล้ว โหลดใหม่" ให้โหลดหน้าใหม่แล้วแก้อีกครั้ง · ทุกการบันทึกเก็บประวัติที่ planPricingLogs (uid ผู้แก้เท่านั้น)',
@@ -275,6 +278,9 @@ export const financeGroup: GuideGroup = {
                             'Under each price, per account per month: AI cost at full/average usage, Stripe fee, infra share, profit and margin, and the minimum price for the target margin. Red = loss.',
                             'Yearly prices pay the fee once a year, divided by 12.',
                             '"ตรวจการเปลี่ยนแปลง" → review old → new (Stripe also shows existing subscribers) → tick → save.',
+                            'While CapDeal/Lawyer cannot save through Stripe yet, the button becomes "บันทึกเป็นร่าง (ยังไม่ใช้จริง)" (save as draft). The draft is stored separately; the site keeps showing and charging the current price and customers never see it.',
+                            'A card with a draft shows the "ร่าง — ยังไม่ใช้จริง" badge, the fields show the draft and each field shows the live price below it. Cost/margin use the typed values. "ล้างร่าง" discards the draft.',
+                            'Once Stripe is set up (PRICING_WRITE_ENABLED on), the card says a draft is pending and prefills the fields from it → preview → save as usual. The draft is cleared automatically when the save succeeds.',
                         ],
                     },
                     {
@@ -296,7 +302,7 @@ export const financeGroup: GuideGroup = {
                     },
                 ],
                 warnings: [
-                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Only CapDeal/Lawyer are locked; other sections still save.',
+                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Only real CapDeal/Lawyer saves are locked (drafts still save); other sections still save.',
                     'Stripe "test" must pair with the planPricing_test collection.',
                     'Costs are estimates (list price × assumptions), not real bills.',
                     'If it says someone else changed it, reload and edit again. Every save is logged to planPricingLogs (editor uid only).',

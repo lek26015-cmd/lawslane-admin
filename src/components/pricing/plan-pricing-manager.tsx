@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Eye, Loader2, Lock, RefreshCw, RotateCcw, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FilePen, Loader2, Lock, RefreshCw, RotateCcw, Trash2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,8 +27,10 @@ import {
 import { costTierFor, planEconomics, type CostAssumptions } from '@/lib/cost-model';
 import {
     getPricingAction,
+    clearStripePlanDraftAction,
     previewPriceChangeAction,
     savePricingAction,
+    saveStripePlanDraftAction,
     saveStoredPlanPricingAction,
     type PricingOverview,
     type PricingPreview,
@@ -48,14 +50,28 @@ import { CostAssumptionsEditor } from './cost-assumptions-editor';
  *
  * Stripe: แก้ราคา → "ตรวจการเปลี่ยนแปลง" (ดู diff + จำนวนผู้สมัครเดิม) → ติ๊กยืนยัน → บันทึก
  * บันทึกส่วน Stripe ถูกล็อกด้วย env PRICING_WRITE_ENABLED และต้องมี STRIPE_SECRET_KEY (ฝั่ง server ตัดสิน)
+ * ระหว่างล็อก CapDeal/ทนาย บันทึกเป็น "ร่าง" ได้ (ฟิลด์ draft — เว็บไม่อ่าน ราคาบนเว็บยังเป็นราคาเดิม)
+ * พอเปิดบันทึกผ่าน Stripe แล้ว ช่องราคาเติมจากร่าง กดบันทึกตามปกติ ร่างถูกล้างไปพร้อมกัน
  */
 
 type DraftInputs = Record<string, Record<PricingInterval, string>>;
 
+/** ราคาจริง (ที่เว็บใช้อยู่) เป็นค่าในช่อง */
 function toInputs(view: ProductPricingView): DraftInputs {
     const out: DraftInputs = {};
     for (const [planId, e] of Object.entries(view.plans)) {
         out[planId] = { monthly: e.monthly?.toString() ?? '', yearly: e.yearly?.toString() ?? '' };
+    }
+    return out;
+}
+
+/** ค่าเริ่มในช่อง: มีร่างใช้ร่าง ไม่มีใช้ราคาจริง */
+function loadedInputs(view: ProductPricingView): DraftInputs {
+    const out = toInputs(view);
+    if (!view.draft) return out;
+    for (const planId of Object.keys(out)) {
+        const d = view.draft.plans[planId];
+        if (d) out[planId] = { monthly: d.monthly?.toString() ?? '', yearly: d.yearly?.toString() ?? '' };
     }
     return out;
 }
@@ -126,6 +142,7 @@ export function PlanPricingManager() {
                             <AlertDescription>
                                 {overview.writeBlockedReason}
                                 <span className="block">{tx('ส่วนที่ไม่แตะ Stripe (Wittaya, AI Plus, จ่ายครั้งเดียว, GP ล่าม, สมมติฐาน) ยังบันทึกได้', 'Non-Stripe sections (Wittaya, AI Plus, one-time, interpreter GP, assumptions) can still be saved.')}</span>
+                                <span className="block">{tx('CapDeal/ทนาย บันทึกเป็นร่างได้ (ยังไม่ใช้จริง เว็บยังใช้ราคาเดิม)', 'CapDeal/Lawyer can be saved as a draft (not live; the site keeps the current price).')}</span>
                             </AlertDescription>
                         </Alert>
                     )}
@@ -192,13 +209,18 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
     const stored = view.mode === 'stored';
     // บันทึกส่วนที่ไม่แตะ Stripe ได้เสมอ (ฝั่ง server ไม่ล็อกด้วย PRICING_WRITE_ENABLED)
     const canSave = stored || writeEnabled;
+    // CapDeal/ทนาย ตอนบันทึกผ่าน Stripe ยังไม่ได้ → บันทึกเป็นร่างแทน (ไม่มีผลกับเว็บ)
+    const draftMode = !stored && !writeEnabled;
+    const hasDraft = !stored && !!view.draft;
     const [storedResult, setStoredResult] = useState<StoredSaveResult | null>(null);
+    const [draftOpen, setDraftOpen] = useState(false);
+    const [draftSaved, setDraftSaved] = useState<'saved' | 'cleared' | null>(null);
     const { tx, locale } = useAdminLocale();
     const catalog = PRICING_CATALOG[view.product];
-    const [inputs, setInputs] = useState<DraftInputs>(() => toInputs(view));
+    const [inputs, setInputs] = useState<DraftInputs>(() => loadedInputs(view));
     const [preview, setPreview] = useState<PricingPreview | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
-    const [busy, setBusy] = useState<'preview' | 'save' | null>(null);
+    const [busy, setBusy] = useState<'preview' | 'save' | 'draft' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [confirmed, setConfirmed] = useState(false);
     const [result, setResult] = useState<SaveResult | null>(null);
@@ -207,11 +229,12 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
 
     // ข้อมูลจาก server เปลี่ยน (บันทึกสำเร็จ) → ล้างร่างกลับเป็นค่าที่บันทึกไว้
     // ใช้เนื้อหาเป็น key ไม่ใช่ object เพื่อไม่ให้การโหลดใหม่หลังบันทึกการ์ดอื่นล้างร่างของการ์ดนี้
-    const viewKey = JSON.stringify(view.plans) + view.updatedAt;
+    const viewKey = JSON.stringify(view.plans) + view.updatedAt + (view.draft?.updatedAt ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { setInputs(toInputs(view)); }, [viewKey]);
+    useEffect(() => { setInputs(loadedInputs(view)); }, [viewKey]);
 
-    const dirty = useMemo(() => JSON.stringify(inputs) !== JSON.stringify(toInputs(view)), [inputs, view]);
+    // dirty = ต่างจากที่โหลดมา (ร่างหรือราคาจริง)
+    const dirty = useMemo(() => JSON.stringify(inputs) !== JSON.stringify(loadedInputs(view)), [inputs, view]);
 
     const setCell = (planId: string, interval: PricingInterval, value: string) => {
         setInputs((prev) => ({ ...prev, [planId]: { ...prev[planId], [interval]: value.replace(/[^\d]/g, '') } }));
@@ -250,6 +273,35 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
         if (res.data.status !== 'error') await onSaved();
     };
 
+    const saveDraft = async () => {
+        setBusy('draft');
+        setError(null);
+        setDraftSaved(null);
+        const r = await saveStripePlanDraftAction(
+            view.product as 'capdeal' | 'lawyer', { plans: toDraft(inputs, null).plans }, view.draft?.updatedAt ?? null,
+        );
+        setBusy(null);
+        setDraftOpen(false);
+        if (!r.ok) { setError(r.error); return; }
+        if (r.data.status === 'error') { setError(r.data.message); return; }
+        setDraftSaved('saved');
+        await onSaved();
+    };
+
+    const clearDraft = async () => {
+        if (!view.draft) return;
+        if (!window.confirm(tx('ล้างราคาร่าง? ช่องจะกลับเป็นราคาที่เว็บใช้อยู่ (ไม่มีผลกับเว็บ)', 'Clear the draft? Fields go back to the live prices (no effect on the site).'))) return;
+        setBusy('draft');
+        setError(null);
+        setDraftSaved(null);
+        const r = await clearStripePlanDraftAction(view.product as 'capdeal' | 'lawyer', view.draft.updatedAt);
+        setBusy(null);
+        if (!r.ok) { setError(r.error); return; }
+        if (r.data.status === 'error') { setError(r.data.message); return; }
+        setDraftSaved('cleared');
+        await onSaved();
+    };
+
     const retry = async () => {
         if (!lastDraft || !result) return;
         // หลังเขียน Firestore แล้วเวอร์ชันเอกสารเปลี่ยน — ใช้เวอร์ชันใหม่ ร่างเดิม (ไม่สร้าง Price ซ้ำ)
@@ -266,6 +318,11 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                     {tx(catalog.name[0], catalog.name[1])}
                     {view.isDefault && <Badge variant="secondary">{tx('ค่าเริ่มต้น (ยังไม่เคยบันทึก)', 'Defaults (never saved)')}</Badge>}
                     {stored ? <NotLiveBadge /> : <Badge variant="outline" className="font-normal">Stripe</Badge>}
+                    {hasDraft && (
+                        <Badge variant="outline" className="border-violet-300 bg-violet-50 font-normal text-violet-800">
+                            {tx('ร่าง — ยังไม่ใช้จริง', 'Draft — not live')}
+                        </Badge>
+                    )}
                 </CardTitle>
                 <CardDescription>
                     {tx('ช่องว่าง = ไม่ขาย · จำนวนเต็มบาท 1–1,000,000 · ตัวเลขใต้ช่องคือต่อบัญชีต่อเดือน: ค่าธรรมเนียม Stripe (บัตรในประเทศ + Billing รวม VAT) ต้นทุน AI ค่าส่วนกลาง กำไร',
@@ -278,6 +335,21 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                     {view.updatedAt && (
                         <span className="block text-xs">
                             {tx('แก้ล่าสุด', 'Last updated')}: {new Date(view.updatedAt).toLocaleString(locale === 'th' ? 'th-TH' : 'en-GB')}
+                        </span>
+                    )}
+                    {draftMode && (
+                        <span className="block text-xs text-violet-700">
+                            {tx('ยังบันทึกผ่าน Stripe ไม่ได้ — บันทึกเป็นร่างไว้ก่อนได้ เว็บยังแสดงและเก็บเงินราคาเดิมจนกว่าจะตั้ง Stripe แล้วบันทึกจริง',
+                                'Stripe saving is locked — you can save a draft. The site keeps showing and charging the current price until Stripe is set up and you save for real.')}
+                        </span>
+                    )}
+                    {hasDraft && view.draft && (
+                        <span className="block text-xs text-violet-700">
+                            {writeEnabled
+                                ? tx('มีราคาร่างค้างอยู่ — ช่องราคาเติมจากร่างแล้ว ตรวจแล้วบันทึกตามปกติ ร่างจะถูกล้างเมื่อบันทึกสำเร็จ',
+                                    'A draft is pending — fields are prefilled from it. Review and save as usual; the draft is cleared on success.')
+                                : tx('ช่องราคาแสดงร่าง', 'Fields show the draft')}
+                            {' · '}{tx('ร่างแก้ล่าสุด', 'Draft updated')}: {new Date(view.draft.updatedAt).toLocaleString(locale === 'th' ? 'th-TH' : 'en-GB')}
                         </span>
                     )}
                 </CardDescription>
@@ -306,6 +378,7 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                                         const tier = costTierFor(view.product, plan.id);
                                         const econ = tier ? planEconomics(model, tier, amount, interval) : null;
                                         const priceId = interval === 'monthly' ? stripe?.monthlyPriceId : stripe?.yearlyPriceId;
+                                        const live = view.plans[plan.id]?.[interval] ?? null;
                                         return (
                                             <TableCell key={interval} className="align-top">
                                                 <Input
@@ -316,6 +389,11 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                                                     className="w-36"
                                                     aria-label={`${plan.name} ${interval}`}
                                                 />
+                                                {(hasDraft || draftMode) && (
+                                                    <div className="mt-0.5 text-[11px] text-slate-500">
+                                                        {tx('บนเว็บตอนนี้', 'Live now')}: {live === null ? tx('ไม่ขาย', 'Not sold') : baht(live)}
+                                                    </div>
+                                                )}
                                                 {econ && (amount !== null || interval === 'monthly') && (
                                                     <PlanEconomicsLine e={econ} price={amount} interval={interval} />
                                                 )}
@@ -348,14 +426,34 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                    <Button onClick={openPreview} disabled={!dirty || busy !== null}>
-                        {busy === 'preview' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
-                        {tx('ตรวจการเปลี่ยนแปลง', 'Preview changes')}
-                    </Button>
-                    <Button variant="outline" onClick={() => setInputs(toInputs(view))} disabled={!dirty || busy !== null}>
+                    {draftMode ? (
+                        <Button onClick={() => { setError(null); setDraftOpen(true); }} disabled={!dirty || busy !== null}>
+                            {busy === 'draft' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePen className="mr-2 h-4 w-4" />}
+                            {tx('บันทึกเป็นร่าง (ยังไม่ใช้จริง)', 'Save as draft (not live)')}
+                        </Button>
+                    ) : (
+                        // มีร่างค้าง: ช่องเติมจากร่างแล้ว จึงตรวจ/บันทึกได้โดยไม่ต้องพิมพ์เพิ่ม
+                        <Button onClick={openPreview} disabled={!(dirty || hasDraft) || busy !== null}>
+                            {busy === 'preview' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+                            {tx('ตรวจการเปลี่ยนแปลง', 'Preview changes')}
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setInputs(loadedInputs(view))} disabled={!dirty || busy !== null}>
                         <RotateCcw className="mr-2 h-4 w-4" /> {tx('คืนค่า', 'Reset')}
                     </Button>
+                    {hasDraft && (
+                        <Button variant="ghost" size="sm" className="self-center text-slate-500" onClick={clearDraft} disabled={busy !== null}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> {tx('ล้างร่าง', 'Clear draft')}
+                        </Button>
+                    )}
                 </div>
+                {draftSaved && (
+                    <p className="text-sm text-violet-700">
+                        {draftSaved === 'saved'
+                            ? tx('บันทึกร่างแล้ว — ยังไม่ใช้จริง เว็บยังใช้ราคาเดิม', 'Draft saved — not live; the site keeps the current price')
+                            : tx('ล้างร่างแล้ว', 'Draft cleared')}
+                    </p>
+                )}
 
                 {result && <ResultPanel result={result} busy={busy === 'save'} onRetry={retry} onReload={onSaved} />}
                 {storedResult?.status === 'ok' && <p className="text-sm text-emerald-700">{tx('บันทึกแล้ว (Firestore)', 'Saved (Firestore)')}</p>}
@@ -459,7 +557,7 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                         <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={busy === 'save'}>{tx('ยกเลิก', 'Cancel')}</Button>
                         <Button
                             onClick={() => runSave(toDraft(inputs, view.updatedAt))}
-                            disabled={!canSave || !confirmed || !preview || preview.changes.length === 0 || preview.stale || busy !== null}
+                            disabled={!canSave || !confirmed || !preview || (preview.changes.length === 0 && !hasDraft) || preview.stale || busy !== null}
                         >
                             {busy === 'save' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {tx('บันทึกราคา', 'Save prices')}
@@ -467,6 +565,50 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {draftMode && (
+                <Dialog open={draftOpen} onOpenChange={(o) => busy !== 'draft' && setDraftOpen(o)}>
+                    <DialogContent className="max-w-lg">
+                        <DialogHeader>
+                            <DialogTitle>{tx(`บันทึกราคาร่าง ${catalog.name[0]}`, `Save ${catalog.name[1]} price draft`)}</DialogTitle>
+                            <DialogDescription>
+                                {tx('ร่างนี้ยังไม่ใช้จริง: เว็บยังแสดงและเก็บเงินราคาปัจจุบันต่อไปจนกว่าจะตั้ง Stripe เสร็จ แล้วกดบันทึกราคาจริงจากหน้านี้ ไม่มีการสร้างอะไรใน Stripe และลูกค้าไม่เห็นร่าง',
+                                    'This draft is not live: the site keeps showing and charging the current price until Stripe is set up and you save the real price from this page. Nothing is created in Stripe and customers never see the draft.')}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>{tx('แพ็กเกจ', 'Plan')}</TableHead>
+                                    <TableHead>{tx('บนเว็บตอนนี้', 'Live now')}</TableHead>
+                                    <TableHead>{tx('ร่าง', 'Draft')}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {catalog.plans.flatMap((plan) => PRICING_INTERVALS.map((interval) => {
+                                    const live = view.plans[plan.id]?.[interval] ?? null;
+                                    const raw = inputs[plan.id]?.[interval] ?? '';
+                                    const fmt = (v: number | null) => (v === null ? tx('ไม่ขาย', 'Not sold') : baht(v));
+                                    return (
+                                        <TableRow key={`${plan.id}-${interval}`}>
+                                            <TableCell>{plan.name} · {interval === 'monthly' ? tx('รายเดือน', 'Monthly') : tx('รายปี', 'Yearly')}</TableCell>
+                                            <TableCell>{fmt(live)}</TableCell>
+                                            <TableCell className={String(live ?? '') !== raw ? 'font-semibold' : ''}>{fmt(raw === '' ? null : Number(raw))}</TableCell>
+                                        </TableRow>
+                                    );
+                                }))}
+                            </TableBody>
+                        </Table>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setDraftOpen(false)} disabled={busy === 'draft'}>{tx('ยกเลิก', 'Cancel')}</Button>
+                            <Button onClick={saveDraft} disabled={busy !== null}>
+                                {busy === 'draft' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {tx('บันทึกเป็นร่าง (ยังไม่ใช้จริง)', 'Save as draft (not live)')}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
         </Card>
     );
 }

@@ -57,11 +57,26 @@ export type PlanPricingDoc = {
     updatedAt: string;
     /** uid แอดมินเท่านั้น ห้ามอีเมล */
     updatedBy: string;
+    /**
+     * ราคาร่าง (ยังไม่ใช้จริง) — admin อ่าน/เขียนฝ่ายเดียว เว็บต้องไม่สนฟิลด์นี้
+     * ห้ามเอาไปไว้ใน plans/stripe เพราะเว็บแสดง plans เป็นราคา และใช้ stripe.*PriceId เก็บเงิน
+     */
+    draft?: PlanPriceDraft | null;
+};
+
+export type PlanPriceDraft = {
+    plans: Record<string, { monthly: number | null; yearly: number | null }>;
+    /** เวอร์ชันของร่าง (แยกจาก updatedAt ของเอกสาร — บันทึกร่างไม่เปลี่ยน updatedAt หลัก) */
+    updatedAt: string;
+    /** uid แอดมินเท่านั้น */
+    updatedBy: string;
 };
 
 export type PlanPricingLog = {
     /** doc id ที่แก้: capdeal | lawyer | wittaya | lawslane | ai_credits | ebook | costModel | interpreter_gp */
     product: string;
+    /** 'draft' = บันทึก/ล้างราคาร่าง (ไม่มีผลกับเว็บ) · ไม่มี = เปลี่ยนราคาจริง */
+    kind?: 'draft';
     before: unknown;
     after: unknown;
     createdPriceIds: string[];
@@ -344,6 +359,15 @@ export interface PricingStorePort {
         build: (current: PlanPricingDoc | null) => { doc: PlanPricingDoc; log: PlanPricingLog },
     ): Promise<PlanPricingDoc>;
     setPortalConfigId(product: PricingProduct, portalConfigId: string): Promise<void>;
+    /**
+     * เขียนราคาร่างใน transaction: อ่านใหม่ → ถ้า draft.updatedAt ไม่ตรง expected ให้โยน PricingConflictError
+     * → เขียนเฉพาะฟิลด์ `draft` (null = ลบฟิลด์) + log · ห้ามแตะ plans/stripe/portalConfigId/updatedAt
+     */
+    commitDraft(
+        product: PricingProduct,
+        expectedDraftUpdatedAt: string | null,
+        build: (current: PlanPricingDoc | null) => { patch: DraftPatch; log: PlanPricingLog },
+    ): Promise<PlanPriceDraft | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -440,7 +464,8 @@ export async function executeSave(
     let savedDoc: PlanPricingDoc = currentDoc ?? {
         currency: 'thb', plans: current, portalConfigId: null, updatedAt: '', updatedBy: '',
     };
-    if (changes.length > 0) {
+    // มีร่างค้างอยู่ → เขียนแม้ราคาไม่เปลี่ยน เพื่อล้างร่างในการเขียนครั้งเดียวกัน
+    if (changes.length > 0 || currentDoc?.draft) {
         try {
             savedDoc = await deps.store.commit(product, baseUpdatedAt, (txDoc) => {
                 const before = txDoc ? mergeWithDefaults(product, txDoc) : null;
@@ -471,6 +496,7 @@ export async function executeSave(
                     after[planId] = next;
                 }
                 const at = deps.now().toISOString();
+                // doc ไม่มีฟิลด์ draft → commit เขียนทับทั้งเอกสาร = ล้างร่างไปพร้อมกัน (ร่างถูกใช้แล้ว)
                 return {
                     doc: {
                         currency: 'thb',
@@ -738,4 +764,118 @@ export async function executeStoredPlanSave(
     const plans: Record<string, PlanPricingEntry> = {};
     for (const [planId, v] of Object.entries(valid.plans)) plans[planId] = { monthly: v.monthly, yearly: v.yearly };
     return saveStoredDoc(deps, valid.product, { currency: 'thb', plans }, valid.baseUpdatedAt, actorUid);
+}
+
+// ---------------------------------------------------------------------------
+// ราคาร่างของ CapDeal / ทนาย (ยังไม่ใช้จริง)
+//
+// ใช้ตอนยังบันทึกผ่าน Stripe ไม่ได้ (ไม่มี PRICING_WRITE_ENABLED / STRIPE_SECRET_KEY)
+// เก็บที่ฟิลด์ `draft` ในเอกสารเดียวกัน — เว็บ (Lawslane, CapDeal) อ่านแค่ currency/plans/portalConfigId จึงไม่เห็นร่าง
+// ห้ามเขียนลง plans/stripe เด็ดขาด: เว็บแสดง plans[...].monthly/yearly เป็นราคา แต่เก็บเงินตาม stripe.*PriceId
+// ถ้าเอาร่างไปไว้ใน plans หน้าเว็บจะแสดงราคาไม่ตรงกับที่ Stripe เรียกเก็บ
+// บันทึกผ่าน Stripe สำเร็จเมื่อไร ร่างถูกล้างในการเขียนครั้งเดียวกัน (executeSave)
+// ---------------------------------------------------------------------------
+
+/** สิ่งที่เขียนลงเอกสารตอนบันทึก/ล้างร่าง — มีคีย์ draft คีย์เดียวเสมอ (null = ลบฟิลด์) */
+export type DraftPatch = { draft: PlanPriceDraft | null };
+
+/** อ่านร่างจากเอกสารดิบ — ผิดรูป = null (ไม่ทำให้หน้าพัง) · ตัดแพลนที่ไม่รู้จัก */
+export function parsePlanDraft(product: SubscriptionProduct, raw: unknown): PlanPriceDraft | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const r = raw as Record<string, any>;
+    if (typeof r.updatedAt !== 'string' || !r.updatedAt || !r.plans || typeof r.plans !== 'object') return null;
+    const plans: PlanPriceDraft['plans'] = {};
+    for (const plan of PRICING_CATALOG[product].plans) {
+        const row = r.plans[plan.id];
+        if (!row || typeof row !== 'object') return null;
+        plans[plan.id] = { monthly: cleanAmount(row.monthly), yearly: cleanAmount(row.yearly) };
+    }
+    return { plans, updatedAt: r.updatedAt, updatedBy: typeof r.updatedBy === 'string' ? r.updatedBy : '' };
+}
+
+/** ตรวจร่างด้วยกติกาเดียวกับราคาจริง (validateDraft) และต้องเป็นผลิตภัณฑ์ที่ขายผ่าน Stripe */
+export function validatePlanDraft(
+    product: unknown,
+    draft: unknown,
+    expectedUpdatedAt: unknown,
+): { ok: true; product: PricingProduct; plans: ValidDraftPlans; expectedUpdatedAt: string | null } | { ok: false; errors: string[] } {
+    if (expectedUpdatedAt !== null && expectedUpdatedAt !== undefined && typeof expectedUpdatedAt !== 'string') {
+        return { ok: false, errors: ['ข้อมูลเวอร์ชันไม่ถูกต้อง โหลดหน้าใหม่'] };
+    }
+    const v = validateDraft(product, { plans: (draft as any)?.plans, baseUpdatedAt: expectedUpdatedAt ?? null });
+    if (!v.ok) return v;
+    if (!isPricingProduct(v.product)) return { ok: false, errors: ['ราคาร่างใช้กับ CapDeal และทนายเท่านั้น'] };
+    return { ok: true, product: v.product, plans: v.plans, expectedUpdatedAt: v.baseUpdatedAt };
+}
+
+/** สร้าง patch + log ของการบันทึก/ล้างร่าง (plans = null คือล้างร่าง) — patch มีแค่คีย์ draft */
+export function buildDraftWrite(
+    product: PricingProduct,
+    current: PlanPricingDoc | null,
+    plans: ValidDraftPlans | null,
+    actorUid: string,
+    at: string,
+): { patch: DraftPatch; log: PlanPricingLog } {
+    const draft: PlanPriceDraft | null = plans
+        ? {
+            plans: Object.fromEntries(
+                Object.entries(plans).map(([id, v]) => [id, { monthly: v.monthly, yearly: v.yearly }]),
+            ),
+            updatedAt: at,
+            updatedBy: actorUid,
+        }
+        : null;
+    const before = current?.draft ? { plans: current.draft.plans } : null;
+    return {
+        patch: { draft },
+        log: { product, kind: 'draft', before, after: draft ? { plans: draft.plans } : null, createdPriceIds: [], actorUid, at },
+    };
+}
+
+export type DraftSaveResult =
+    | { status: 'ok'; draft: PlanPriceDraft | null }
+    | { status: 'error'; step: 'validate' | 'conflict' | 'firestore'; message: string };
+
+/** บันทึกราคาร่าง — ไม่แตะ Stripe ไม่ต้องรอ PRICING_WRITE_ENABLED · ไม่เปลี่ยนสิ่งที่เว็บเห็น */
+export async function executeDraftSave(
+    deps: { store: PricingStorePort; now: () => Date },
+    productInput: unknown,
+    draftInput: unknown,
+    expectedUpdatedAt: unknown,
+    actorUid: string,
+): Promise<DraftSaveResult> {
+    const v = validatePlanDraft(productInput, draftInput, expectedUpdatedAt);
+    if (!v.ok) return { status: 'error', step: 'validate', message: v.errors.join(' · ') };
+    return commitDraftWrite(deps, v.product, v.plans, v.expectedUpdatedAt, actorUid);
+}
+
+/** ล้างราคาร่าง (ปุ่ม "ล้างร่าง") */
+export async function executeDraftClear(
+    deps: { store: PricingStorePort; now: () => Date },
+    productInput: unknown,
+    expectedUpdatedAt: unknown,
+    actorUid: string,
+): Promise<DraftSaveResult> {
+    if (!isPricingProduct(productInput)) return { status: 'error', step: 'validate', message: 'ราคาร่างใช้กับ CapDeal และทนายเท่านั้น' };
+    if (typeof expectedUpdatedAt !== 'string' || !expectedUpdatedAt) {
+        return { status: 'error', step: 'validate', message: 'ไม่มีราคาร่างให้ล้าง' };
+    }
+    return commitDraftWrite(deps, productInput, null, expectedUpdatedAt, actorUid);
+}
+
+async function commitDraftWrite(
+    deps: { store: PricingStorePort; now: () => Date },
+    product: PricingProduct,
+    plans: ValidDraftPlans | null,
+    expected: string | null,
+    actorUid: string,
+): Promise<DraftSaveResult> {
+    try {
+        const draft = await deps.store.commitDraft(product, expected, (current) =>
+            buildDraftWrite(product, current, plans, actorUid, deps.now().toISOString()));
+        return { status: 'ok', draft };
+    } catch (e) {
+        if (e instanceof PricingConflictError) return { status: 'error', step: 'conflict', message: e.message };
+        return { status: 'error', step: 'firestore', message: `บันทึกร่างไม่สำเร็จ: ${errMsg(e)}` };
+    }
 }

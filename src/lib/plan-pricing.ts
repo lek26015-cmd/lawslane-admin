@@ -1,7 +1,9 @@
 import 'server-only';
 import type * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import {
     PricingConflictError,
+    parsePlanDraft,
     type DocStorePort,
     type StoredDoc,
     type PlanPricingDoc,
@@ -43,7 +45,7 @@ export function stripeKeyMode(): 'test' | 'live' | 'missing' | 'invalid' {
     return 'invalid';
 }
 
-function toDoc(data: FirebaseFirestore.DocumentData | undefined): PlanPricingDoc | null {
+function toDoc(product: SubscriptionProduct, data: FirebaseFirestore.DocumentData | undefined): PlanPricingDoc | null {
     if (!data) return null;
     return {
         currency: 'thb',
@@ -51,6 +53,8 @@ function toDoc(data: FirebaseFirestore.DocumentData | undefined): PlanPricingDoc
         portalConfigId: typeof data.portalConfigId === 'string' ? data.portalConfigId : null,
         updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
         updatedBy: typeof data.updatedBy === 'string' ? data.updatedBy : '',
+        // ร่างผิดรูป = ไม่มีร่าง (ไม่ทำให้หน้าพัง)
+        draft: parsePlanDraft(product, data.draft),
     };
 }
 
@@ -60,16 +64,17 @@ export function firestorePricingStore(db: admin.firestore.Firestore): PricingSto
     return {
         async read(product: SubscriptionProduct) {
             const snap = await col().doc(product).get();
-            return snap.exists ? toDoc(snap.data()) : null;
+            return snap.exists ? toDoc(product, snap.data()) : null;
         },
         async commit(product, expectedUpdatedAt, build) {
             const ref = col().doc(product);
             const logRef = db.collection(PLAN_PRICING_LOGS_COLLECTION).doc();
             return db.runTransaction(async (tx) => {
                 const snap = await tx.get(ref);
-                const current = snap.exists ? toDoc(snap.data()) : null;
+                const current = snap.exists ? toDoc(product, snap.data()) : null;
                 if ((current?.updatedAt || null) !== expectedUpdatedAt) throw new PricingConflictError();
                 const { doc, log }: { doc: PlanPricingDoc; log: PlanPricingLog } = build(current);
+                // เขียนทับทั้งเอกสาร (ไม่ merge) → ฟิลด์ draft หายไปด้วย = ร่างถูกล้างเมื่อบันทึกราคาจริงสำเร็จ
                 tx.set(ref, doc);
                 tx.set(logRef, log);
                 return doc;
@@ -78,6 +83,25 @@ export function firestorePricingStore(db: admin.firestore.Firestore): PricingSto
         async setPortalConfigId(product, portalConfigId) {
             // ไม่แตะ updatedAt: ไม่ใช่การเปลี่ยนราคา และไม่ให้แอดมินที่เปิดหน้าอยู่ชนเวอร์ชัน
             await col().doc(product).set({ portalConfigId }, { merge: true });
+        },
+        async commitDraft(product, expectedDraftUpdatedAt, build) {
+            const ref = col().doc(product);
+            const logRef = db.collection(PLAN_PRICING_LOGS_COLLECTION).doc();
+            return db.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                const current = snap.exists ? toDoc(product, snap.data()) : null;
+                if ((current?.draft?.updatedAt || null) !== expectedDraftUpdatedAt) throw new PricingConflictError();
+                const { patch, log } = build(current);
+                // แตะเฉพาะฟิลด์ draft — plans/stripe/portalConfigId/updatedAt ของเอกสารไม่เปลี่ยน
+                if (snap.exists) {
+                    tx.update(ref, { draft: patch.draft ?? FieldValue.delete() });
+                } else if (patch.draft) {
+                    // ยังไม่มีเอกสาร: สร้างเอกสารที่มีแค่ draft — เว็บเห็นว่าไม่มี currency/plans จึงใช้ราคาใน env เหมือนเดิม
+                    tx.set(ref, { draft: patch.draft });
+                }
+                tx.set(logRef, log);
+                return patch.draft;
+            });
         },
     };
 }
