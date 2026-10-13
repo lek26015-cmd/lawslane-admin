@@ -73,7 +73,10 @@ export type PlanPriceDraft = {
 };
 
 export type PlanPricingLog = {
-    /** doc id ที่แก้: capdeal | lawyer | wittaya | lawslane | ai_credits | ebook | costModel | interpreter_gp */
+    /**
+     * doc id ที่แก้: capdeal | lawyer | wittaya | lawslane | ai_credits | ebook | costModel | interpreter_gp
+     * (การส่งไป Google Sheet log แยกรูปแบบ: {product:'cost_sheet', kind:'export', cellCount, actorUid, at} — ไม่มี before/after)
+     */
     product: string;
     /** 'draft' = บันทึก/ล้างราคาร่าง (ไม่มีผลกับเว็บ) · ไม่มี = เปลี่ยนราคาจริง */
     kind?: 'draft';

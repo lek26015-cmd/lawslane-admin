@@ -42,6 +42,7 @@ import {
 } from '@/lib/plan-pricing';
 import { countSubscriptionsOnPrice, stripePricingPort } from '@/lib/stripe-admin';
 import { mergeCostAssumptions, validateCostAssumptions, type CostAssumptions } from '@/lib/cost-model';
+import { autoExportAfterSave, type SheetNotice } from '@/lib/cost-sheet-export';
 
 /**
  * ราคาแพ็กเกจ (Super Admin เท่านั้น) — PLAN-08 เฟส 3
@@ -56,7 +57,11 @@ import { mergeCostAssumptions, validateCostAssumptions, type CostAssumptions } f
  * → ผู้สมัครเดิมจ่ายราคาเดิมต่อไป ราคาใหม่มีผลกับคนที่สมัครใหม่เท่านั้น
  */
 
-type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+/**
+ * sheet = ผลส่งไป Google Sheet อัตโนมัติหลังบันทึก (COST_SHEET_AUTO_EXPORT=true) · null/ไม่มี = ไม่ได้ส่ง
+ * ส่งไม่สำเร็จไม่ทำให้การบันทึกล้ม — หน้าเว็บขึ้น toast เตือนแทน
+ */
+type Result<T> = { ok: true; data: T; sheet?: SheetNotice | null } | { ok: false; error: string };
 
 function fail(e: unknown): { ok: false; error: string } {
     if (e instanceof AuthError) return { ok: false, error: 'ไม่มีสิทธิ์ดำเนินการ — ต้องเป็น Super Admin เท่านั้น' };
@@ -241,7 +246,9 @@ export async function savePricingAction(product: SubscriptionProduct, draft: unk
                 step: result.status === 'error' ? result.step : result.failed.map((f) => f.step).join(','),
             });
         }
-        return { ok: true, data: result };
+        // Firestore เขียนแล้ว (ok/partial) = ราคาจริงเปลี่ยน → ส่ง Sheet ถ้าเปิดอัตโนมัติ
+        const sheet = result.status === 'error' ? null : await autoExportAfterSave(adminApp.firestore(), actorUid);
+        return { ok: true, data: result, sheet };
     } catch (e) {
         return fail(e);
     }
@@ -306,7 +313,8 @@ export async function saveStoredPlanPricingAction(product: SubscriptionProduct, 
         const { uid, db } = await storedGuard();
         const r = await executeStoredPlanSave({ store: firestoreDocStore(db), now: () => new Date() }, product, draft, uid);
         logStoredFailure(uid, String(product), r);
-        return { ok: true, data: r };
+        const sheet = r.status === 'ok' ? await autoExportAfterSave(db, uid) : null;
+        return { ok: true, data: r, sheet };
     } catch (e) {
         return fail(e);
     }
@@ -350,7 +358,8 @@ export async function saveCostModelAction(draft: { assumptions: unknown; baseUpd
         const r = await saveStoredDoc({ store: firestoreDocStore(db), now: () => new Date() },
             PRICING_DOC_IDS.costModel, { assumptions: v.value }, base, uid);
         logStoredFailure(uid, PRICING_DOC_IDS.costModel, r);
-        return { ok: true, data: r };
+        const sheet = r.status === 'ok' ? await autoExportAfterSave(db, uid) : null;
+        return { ok: true, data: r, sheet };
     } catch (e) {
         return fail(e);
     }
@@ -380,7 +389,8 @@ export async function setInterpreterGpAction(gpPercent: unknown): Promise<Result
                 at: new Date().toISOString(),
             });
         });
-        return { ok: true, data: { gpPercent: v.value } };
+        const sheet = await autoExportAfterSave(db, uid);
+        return { ok: true, data: { gpPercent: v.value }, sheet };
     } catch (e) {
         return fail(e);
     }
