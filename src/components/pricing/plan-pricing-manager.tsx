@@ -16,6 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAdminLocale } from '@/lib/admin-i18n';
+import { cn } from '@/lib/utils';
 import {
     PRICING_CATALOG,
     PRICING_INTERVALS,
@@ -24,7 +25,12 @@ import {
     type SaveResult,
     type StoredSaveResult,
 } from '@/lib/plan-pricing-core';
-import { costTierFor, planEconomics, type CostAssumptions } from '@/lib/cost-model';
+import {
+    SHEET_PLAN_PRICES, costTierFor, planEconomics, type CostAssumptions, type PlanPrices, type RunContext,
+} from '@/lib/cost-model';
+import {
+    GENERAL_LABELS, PRICE_FIELD_DOCS, PRODUCT_DOCS, assumptionFieldDoc, priceFieldKey, type CostSection,
+} from '@/lib/pricing-field-docs';
 import {
     getPricingAction,
     clearStripePlanDraftAction,
@@ -39,9 +45,15 @@ import {
 import { PlanEconomicsLine, baht } from './economics';
 import { CreditPacksCard, EbookCard, InterpreterGpCard, NotLiveBadge } from './one-time-cards';
 import { CostAssumptionsEditor } from './cost-assumptions-editor';
+import { COST_SECTIONS, CostOverview } from './cost-overview';
+import { AffectsSummary, FieldInfo, ProductAbout } from './field-info';
+import { PricingGuide } from './pricing-guide';
 
 /**
  * หน้า "ราคาแพ็กเกจ" (Super Admin) — ราคาทุกอย่างในหน้าเดียว + ต้นทุน/กำไรจากสมมติฐาน
+ *
+ * แท็บบนสุด: "ตั้งราคา" | "ต้นทุนระบบ" (?view=costs&section=...) — ตัวเลือกสถานการณ์, คู่มือ และ
+ * กล่องสมมติฐานต้นทุนอยู่นอกแท็บ ใช้ร่วมกันทั้งสองแท็บ (state เดียว แก้แล้วเห็นผลทั้งคู่ทันที)
  *
  *  - แพ็กเกจรายเดือน: CapDeal, ทนาย (ผ่าน Stripe) · Wittaya, ลูกค้า AI Plus (บันทึกราคาไว้ก่อน)
  *  - จ่ายครั้งเดียว (Beam): แพ็กเครดิต AI, E-Book + ค่าส่ง
@@ -86,12 +98,52 @@ function toDraft(inputs: DraftInputs, baseUpdatedAt: string | null): PricingDraf
     return { plans, baseUpdatedAt };
 }
 
-export function PlanPricingManager() {
+export type PricingView = 'prices' | 'costs';
+
+/** ราคาต่อเดือนที่บันทึกแล้ว (ใช้คิดรายได้/ค่าธรรมเนียมในต้นทุนระบบ) · ยังไม่ขาย = 0 */
+function runContextFrom(overview: PricingOverview): RunContext {
+    const monthly = (product: string, plan: string, fallback: number) => {
+        const v = overview.products.find((p) => p.product === product)?.plans[plan]?.monthly;
+        return v === undefined ? fallback : v ?? 0;
+    };
+    const prices: PlanPrices = {
+        lawPro: monthly('lawyer', 'pro', SHEET_PLAN_PRICES.lawPro),
+        lawFirm: monthly('lawyer', 'top', SHEET_PLAN_PRICES.lawFirm),
+        custPlus: monthly('lawslane', 'plus', SHEET_PLAN_PRICES.custPlus),
+        cdLite: monthly('capdeal', 'lite', SHEET_PLAN_PRICES.cdLite),
+        cdPro: monthly('capdeal', 'pro', SHEET_PLAN_PRICES.cdPro),
+        cdScale: monthly('capdeal', 'scale', SHEET_PLAN_PRICES.cdScale),
+        witPremium: monthly('wittaya', 'premium', SHEET_PLAN_PRICES.witPremium),
+        witPro: monthly('wittaya', 'pro', SHEET_PLAN_PRICES.witPro),
+    };
+    return { prices, gpPercent: overview.gp.effective };
+}
+
+/** เก็บแท็บที่เปิดไว้ใน URL (ไม่โหลดหน้าใหม่) ให้รีเฟรชแล้วกลับมาที่เดิม */
+function syncUrl(view: PricingView, section: CostSection) {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (view === 'costs') {
+        url.searchParams.set('view', 'costs');
+        if (section === 'overview') url.searchParams.delete('section');
+        else url.searchParams.set('section', section);
+    } else {
+        url.searchParams.delete('view');
+        url.searchParams.delete('section');
+    }
+    window.history.replaceState(window.history.state, '', url.toString());
+}
+
+export function PlanPricingManager({ initialView = 'prices', initialSection = 'overview' }: {
+    initialView?: PricingView; initialSection?: CostSection;
+}) {
     const { tx } = useAdminLocale();
     const [overview, setOverview] = useState<PricingOverview | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
-    // ร่างสมมติฐานต้นทุน — ตัวเลขกำไรทุกช่องคำนวณจากร่างนี้ (ยังไม่บันทึกก็เห็นผล)
+    // ร่างสมมติฐานต้นทุน — ตัวเลขกำไรทุกช่อง (ทั้งสองแท็บ) คำนวณจากร่างนี้ (ยังไม่บันทึกก็เห็นผล)
     const [model, setModel] = useState<CostAssumptions | null>(null);
+    const [view, setView] = useState<PricingView>(initialView);
+    const [section, setSection] = useState<CostSection>(COST_SECTIONS.includes(initialSection) ? initialSection : 'overview');
 
     const load = useCallback(async () => {
         setLoadError(null);
@@ -104,8 +156,10 @@ export function PlanPricingManager() {
     const costVersion = overview ? `${overview.costModel.updatedAt}` : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { if (overview) setModel(overview.costModel.assumptions); }, [costVersion]);
+    useEffect(() => { syncUrl(view, section); }, [view, section]);
 
     const setScenario = (v: string) => setModel((m) => (m ? { ...m, general: { ...m.general, marginScenario: Number(v) } } : m));
+    const run = useMemo(() => (overview ? runContextFrom(overview) : null), [overview]);
 
     return (
         <div className="space-y-6">
@@ -113,8 +167,8 @@ export function PlanPricingManager() {
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">{tx('ราคาแพ็กเกจ', 'Plan Pricing')}</h2>
                 <p className="text-slate-500">
                     {tx(
-                        'ราคาทุกแพ็กเกจในหน้าเดียว พร้อมต้นทุนและกำไรโดยประมาณจากสมมติฐาน (Super Admin เท่านั้น) · ราคาที่ขายผ่าน Stripe เปลี่ยนแล้วใช้กับคนที่สมัครใหม่เท่านั้น',
-                        'Every price on one page with estimated cost and margin (Super Admin only). Stripe price changes apply to new sign-ups only.',
+                        'ตั้งราคาทุกแพ็กเกจ และดูต้นทุนระบบ/กำไรโดยประมาณจากสมมติฐาน ในหน้าเดียว (Super Admin เท่านั้น) · ราคาที่ขายผ่าน Stripe เปลี่ยนแล้วใช้กับคนที่สมัครใหม่เท่านั้น',
+                        'Set every plan price and see estimated system costs and margins in one place (Super Admin only). Stripe price changes apply to new sign-ups only.',
                     )}
                 </p>
             </div>
@@ -133,28 +187,32 @@ export function PlanPricingManager() {
                 </div>
             )}
 
-            {overview && model && (
+            {overview && model && run && (
                 <>
-                    {!overview.writeEnabled && (
-                        <Alert className="border-amber-300 bg-amber-50 text-amber-900">
-                            <Lock className="h-4 w-4" />
-                            <AlertTitle>{tx('ราคาที่ขายผ่าน Stripe: ดูได้อย่างเดียว', 'Stripe prices: view-only')}</AlertTitle>
-                            <AlertDescription>
-                                {overview.writeBlockedReason}
-                                <span className="block">{tx('ส่วนที่ไม่แตะ Stripe (Wittaya, AI Plus, จ่ายครั้งเดียว, GP ล่าม, สมมติฐาน) ยังบันทึกได้', 'Non-Stripe sections (Wittaya, AI Plus, one-time, interpreter GP, assumptions) can still be saved.')}</span>
-                                <span className="block">{tx('CapDeal/ทนาย บันทึกเป็นร่างได้ (ยังไม่ใช้จริง เว็บยังใช้ราคาเดิม)', 'CapDeal/Lawyer can be saved as a draft (not live; the site keeps the current price).')}</span>
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <Badge variant="outline" className="font-mono">collection: {overview.collection}</Badge>
-                        <Badge variant="outline" className={overview.stripeMode === 'live' ? 'border-red-300 text-red-700' : ''}>
-                            Stripe: {overview.stripeMode}
-                        </Badge>
-                        <span className="ml-auto flex items-center gap-2">
-                            {tx('ปันค่าส่วนกลางตามสถานการณ์', 'Infra share scenario')}
+                    <PricingGuide />
+
+                    {/* หัวร่วม: แท็บบนสุด + ตัวเลือกสถานการณ์ (ใช้ทั้งสองแท็บ) */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div role="tablist" aria-label={tx('ส่วนของหน้า', 'Page section')} className="inline-flex rounded-lg border bg-slate-100 p-1">
+                            {([['prices', ['ตั้งราคา', 'Set prices']], ['costs', ['ต้นทุนระบบ', 'System costs']]] as [PricingView, [string, string]][]).map(([v, l]) => (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={view === v}
+                                    onClick={() => setView(v)}
+                                    className={cn('rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                                        view === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900')}
+                                >
+                                    {tx(...l)}
+                                </button>
+                            ))}
+                        </div>
+                        <span className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+                            {tx('สถานการณ์', 'Scenario')}
+                            <FieldInfo doc={() => assumptionFieldDoc('general/marginScenario', model, run)} label={GENERAL_LABELS.marginScenario[1]} />
                             <Select value={String(model.general.marginScenario)} onValueChange={setScenario}>
-                                <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 w-36" aria-label={tx('สถานการณ์', 'Scenario')}><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="1">{tx('เริ่มต้น', 'Start')}</SelectItem>
                                     <SelectItem value="2">{tx('เติบโต', 'Growth')}</SelectItem>
@@ -164,28 +222,52 @@ export function PlanPricingManager() {
                         </span>
                     </div>
 
-                    <Tabs defaultValue="subscriptions">
-                        <TabsList className="flex-wrap">
-                            <TabsTrigger value="subscriptions">{tx('แพ็กเกจรายเดือน', 'Subscriptions')}</TabsTrigger>
-                            <TabsTrigger value="one-time">{tx('จ่ายครั้งเดียว', 'One-time')}</TabsTrigger>
-                            <TabsTrigger value="interpreter">{tx('GP ล่าม', 'Interpreter GP')}</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="subscriptions" className="mt-4 space-y-6">
-                            {overview.products.map((view) => (
-                                <ProductCard key={view.product} view={view} writeEnabled={overview.writeEnabled} model={model} onSaved={load} />
-                            ))}
-                        </TabsContent>
-                        <TabsContent value="one-time" className="mt-4 space-y-6">
-                            <CreditPacksCard packs={overview.aiCredits.packs} updatedAt={overview.aiCredits.updatedAt} model={model} onSaved={load} />
-                            <EbookCard value={overview.ebook.value} updatedAt={overview.ebook.updatedAt} model={model} onSaved={load} />
-                        </TabsContent>
-                        <TabsContent value="interpreter" className="mt-4 space-y-6">
-                            <InterpreterGpCard
-                                gpPercent={overview.gp.gpPercent} effective={overview.gp.effective} updatedAt={overview.gp.updatedAt}
-                                model={model} onSaved={load}
-                            />
-                        </TabsContent>
-                    </Tabs>
+                    {view === 'prices' ? (
+                        <>
+                            {!overview.writeEnabled && (
+                                <Alert className="border-amber-300 bg-amber-50 text-amber-900">
+                                    <Lock className="h-4 w-4" />
+                                    <AlertTitle>{tx('ราคาที่ขายผ่าน Stripe: ดูได้อย่างเดียว', 'Stripe prices: view-only')}</AlertTitle>
+                                    <AlertDescription>
+                                        {overview.writeBlockedReason}
+                                        <span className="block">{tx('ส่วนที่ไม่แตะ Stripe (Wittaya, AI Plus, จ่ายครั้งเดียว, GP ล่าม, สมมติฐาน) ยังบันทึกได้', 'Non-Stripe sections (Wittaya, AI Plus, one-time, interpreter GP, assumptions) can still be saved.')}</span>
+                                        <span className="block">{tx('CapDeal/ทนาย บันทึกเป็นร่างได้ (ยังไม่ใช้จริง เว็บยังใช้ราคาเดิม)', 'CapDeal/Lawyer can be saved as a draft (not live; the site keeps the current price).')}</span>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <Badge variant="outline" className="font-mono">collection: {overview.collection}</Badge>
+                                <Badge variant="outline" className={overview.stripeMode === 'live' ? 'border-red-300 text-red-700' : ''}>
+                                    Stripe: {overview.stripeMode}
+                                </Badge>
+                            </div>
+
+                            <Tabs defaultValue="subscriptions">
+                                <TabsList className="flex-wrap">
+                                    <TabsTrigger value="subscriptions">{tx('แพ็กเกจรายเดือน', 'Subscriptions')}</TabsTrigger>
+                                    <TabsTrigger value="one-time">{tx('จ่ายครั้งเดียว', 'One-time')}</TabsTrigger>
+                                    <TabsTrigger value="interpreter">{tx('GP ล่าม', 'Interpreter GP')}</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="subscriptions" className="mt-4 space-y-6">
+                                    {overview.products.map((pv) => (
+                                        <ProductCard key={pv.product} view={pv} writeEnabled={overview.writeEnabled} model={model} onSaved={load} />
+                                    ))}
+                                </TabsContent>
+                                <TabsContent value="one-time" className="mt-4 space-y-6">
+                                    <CreditPacksCard packs={overview.aiCredits.packs} updatedAt={overview.aiCredits.updatedAt} model={model} onSaved={load} />
+                                    <EbookCard value={overview.ebook.value} updatedAt={overview.ebook.updatedAt} model={model} onSaved={load} />
+                                </TabsContent>
+                                <TabsContent value="interpreter" className="mt-4 space-y-6">
+                                    <InterpreterGpCard
+                                        gpPercent={overview.gp.gpPercent} effective={overview.gp.effective} updatedAt={overview.gp.updatedAt}
+                                        model={model} onSaved={load}
+                                    />
+                                </TabsContent>
+                            </Tabs>
+                        </>
+                    ) : (
+                        <CostOverview model={model} run={run} section={section} onSection={setSection} onGoToPrices={() => setView('prices')} />
+                    )}
 
                     <CostAssumptionsEditor
                         draft={model}
@@ -194,6 +276,7 @@ export function PlanPricingManager() {
                         updatedAt={overview.costModel.updatedAt}
                         isDefault={overview.costModel.isDefault}
                         onSaved={load}
+                        run={run}
                     />
                 </>
             )}
@@ -353,6 +436,7 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                         </span>
                     )}
                 </CardDescription>
+                <ProductAbout docs={catalog.plans.map((p) => PRODUCT_DOCS[`${view.product}.${p.id}`]).filter(Boolean)} />
             </CardHeader>
             <CardContent className="space-y-4">
                 <Table>
@@ -369,7 +453,10 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                             return (
                                 <TableRow key={plan.id}>
                                     <TableCell className="align-top font-medium">
-                                        {plan.name}
+                                        <span className="flex items-center gap-1">
+                                            {plan.name}
+                                            <FieldInfo doc={PRICE_FIELD_DOCS[priceFieldKey(view.product, plan.id)] ?? null} label={plan.name} />
+                                        </span>
                                         <div className="font-mono text-[10px] text-slate-400">{plan.id}</div>
                                     </TableCell>
                                     {PRICING_INTERVALS.map((interval) => {
@@ -427,10 +514,13 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
 
                 <div className="flex flex-wrap gap-2">
                     {draftMode ? (
+                        <span className="flex items-center gap-1">
                         <Button onClick={() => { setError(null); setDraftOpen(true); }} disabled={!dirty || busy !== null}>
                             {busy === 'draft' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FilePen className="mr-2 h-4 w-4" />}
                             {tx('บันทึกเป็นร่าง (ยังไม่ใช้จริง)', 'Save as draft (not live)')}
                         </Button>
+                        <FieldInfo doc={PRICE_FIELD_DOCS[`draft.${view.product}`] ?? null} label="Draft" />
+                        </span>
                     ) : (
                         // มีร่างค้าง: ช่องเติมจากร่างแล้ว จึงตรวจ/บันทึกได้โดยไม่ต้องพิมพ์เพิ่ม
                         <Button onClick={openPreview} disabled={!(dirty || hasDraft) || busy !== null}>
@@ -525,6 +615,11 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                                 {preview.countNote && <div className="text-xs text-slate-500">{preview.countNote}</div>}
                             </div>}
 
+                            {preview.changes.length > 0 && (() => {
+                                const docs = [...new Set(preview.changes.map((c) => c.planId))]
+                                    .map((planId) => PRICE_FIELD_DOCS[priceFieldKey(view.product, planId)]).filter(Boolean);
+                                return <AffectsSummary affects={docs[0]?.affects ?? []} live={docs.map((d) => d.live)} liveDetails={docs.map((d) => d.liveDetail)} />;
+                            })()}
                             <Alert className="border-amber-300 bg-amber-50 text-amber-900">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertDescription>
@@ -599,6 +694,13 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
                                 }))}
                             </TableBody>
                         </Table>
+                        {PRICE_FIELD_DOCS[`draft.${view.product}`] && (
+                            <AffectsSummary
+                                affects={PRICE_FIELD_DOCS[`draft.${view.product}`].affects}
+                                live={['stored']}
+                                liveDetails={[PRICE_FIELD_DOCS[`draft.${view.product}`].liveDetail]}
+                            />
+                        )}
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setDraftOpen(false)} disabled={busy === 'draft'}>{tx('ยกเลิก', 'Cancel')}</Button>
                             <Button onClick={saveDraft} disabled={busy !== null}>

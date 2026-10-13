@@ -17,14 +17,31 @@
  *     CapDeal Scale 1,049: E13 = 786.5894 · I13 = 194.0053 · J13 = 18.49% · M13 = 5,171.6497
  *     Wittaya Premium 199: E15 = 150 × 4 × 0.0231 = 13.86 · I15 = 153.7097
  *   PLAN-08: ค่าธรรมเนียมทนาย Pro 590 รวม VAT 7% = 35.665 × 1.07 = ฿38.16
+ *
+ * หน้า "ค่ารันรายเดือน" + "สรุปต่อเว็บ" (สถานการณ์เติบโต) — ประเมินสูตรทุกช่องด้วยสคริปต์ Python ทิ้ง (แปลตรงจากสูตร):
+ *   ส่วนกลาง (B13/C13) ฿2,899.6552 · รวมทั้งหมด (F40) ฿28,105.0080 · USD (F44) $851.6669
+ *   ค่าคงที่/ขั้นบันได (F41) ฿3,460 · ค่าธรรมเนียม (F42) ฿9,469.1705 · ค่า AI (F43) ฿12,522.4596
+ *   ต่อเว็บรวมปันส่วนกลาง (F5–F12): lawslane ฿19,612.3728 · admin ฿90.4894 · CapDeal ฿4,445.6609
+ *     Wittaya ฿3,465.7141 · business ฿478.6432 · docs 0 · Lalin ฿12.1275 · สิทธิคนทำงาน 0
+ *   รายได้ (C22) ฿90,843 (lawslane ฿54,520 · CapDeal ฿10,603 · Wittaya ฿19,920 · business ฿5,800)
+ *   ผู้ใช้ active 12,777 · บัญชีจ่ายเงิน 227 · กำไรขั้นต้น (C23) 69.06%
+ * ต่างจากไฟล์โดยตั้งใจ:
+ *   1) ค่าธรรมเนียมงานล่ามคิด Beam บัตร premium 2.75% ไม่มีค่าคงที่ แทน Stripe 3.65% + Connect 0.25% + ฿10
+ *      เติบโต 50 งาน × ฿2,000: ไฟล์ ฿4,400 → ระบบ ฿2,750 (ไม่คิด VAT) / ฿2,942.50 (รวม VAT)
+ *      → รวมทั้งหมด (ไม่คิด VAT) = 28,105.0080 − 4,400 + 2,750 = ฿26,455.0080 · lawslane = ฿17,962.3728
+ *   2) ค่าธรรมเนียม Stripe คูณ 1.07 (VAT) — ค่าเริ่มต้นรวม = 26,455.0080 + 5,069.1705 × 0.07 + 192.5 = ฿27,002.3499
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     DEFAULT_COST_ASSUMPTIONS,
     creditPackEconomics,
+    costTakeaways,
     interpreterEconomics,
     mergeCostAssumptions,
+    monthlyRun,
+    siteSummary,
+    usageVolumes,
     planEconomics,
     scenarioTotals,
     stripeSubscriptionFee,
@@ -158,4 +175,61 @@ test('validate/merge สมมติฐาน: ค่าติดลบ/ชื�
     assert.equal(merged.general.fx, 35);
     assert.equal(merged.general.targetMargin, 0.8);
     assert.ok(!('extra' in merged));
+});
+
+test('ค่ารันรายเดือน (เติบโต): ตรงไฟล์ ยกเว้นค่าธรรมเนียมงานล่าม (Beam แทน Stripe+Connect)', () => {
+    const m = monthlyRun(noVat);
+    close(m.sharedComputed[1], 2899.6552, 0.001);
+    close(m.total[1], 28105.008 - 4400 + 2750, 0.001);
+    close(m.fixedTiered[1], 3460, 1e-9);
+    close(m.fees[1], 9469.1705 - 4400 + 2750, 0.001);
+    close(m.ai[1], 12522.4596, 0.001);
+    close(m.totalUsd[1], (28105.008 - 1650) / 33, 0.0001);
+    const row = (k: string) => m.rows.find((r) => r.key === k)!.amounts;
+    close(row('interpreterFees')[1], 2750, 1e-9);
+    close(row('lineMain')[1], 1280, 1e-9);
+    close(row('lineMain')[2], 1780, 1e-9);
+    close(row('cdSms')[1], 528, 1e-9);
+    close(row('lalin')[1], 12.1275, 1e-9);
+    // สถานการณ์อื่น (ไม่คิด VAT, หักส่วนต่างงานล่าม 5 / 300 งาน)
+    close(m.total[0], 3514.418 - 440 + 275, 0.001);
+    close(m.total[2], 146393.6357 - 26400 + 16500, 0.001);
+});
+
+test('ค่ารันรายเดือน (เติบโต) ค่าเริ่มต้นรวม VAT บนค่าธรรมเนียม', () => {
+    close(monthlyRun(DEFAULT_COST_ASSUMPTIONS).total[1], 27002.3499, 0.001);
+});
+
+test('สรุปต่อเว็บ (เติบโต): ปันส่วนกลางตามการเข้าชม รายได้ และกำไรขั้นต้น', () => {
+    const s = siteSummary(noVat);
+    const site = (k: string) => s.sites.find((r) => r.site === k)!;
+    close(site('lawslane').withShared[1], 19612.3728 - 1650, 0.001);
+    close(site('admin').withShared[1], 90.4894, 0.001);
+    close(site('capdeal').withShared[1], 4445.6609, 0.001);
+    close(site('wittaya').withShared[1], 3465.7141, 0.001);
+    close(site('business').withShared[1], 478.6432, 0.001);
+    close(site('lalin').withShared[1], 12.1275, 1e-9);
+    assert.equal(site('docs').withShared[1], 0);
+    assert.equal(site('sitthi').withShared[1], 0);
+    close(site('lawslane').revenue[1], 54520, 1e-9);
+    close(s.revenue[1], 90843, 1e-9);
+    close(s.total[1], 26455.008, 0.001);
+    assert.equal(s.users[1], 12777);
+    assert.equal(s.paying[1], 227);
+    close(s.grossMargin[1]!, (90843 - 26455.008) / 90843, 1e-6);
+    close(site('capdeal').profit[1], 10603 - 4445.6609, 0.001);
+    // ปันครบ: รวมรายเว็บ = ต้นทุนตรง + ส่วนกลาง
+    close(s.total[1], monthlyRun(noVat).total[1], 1e-6);
+});
+
+test('ปริมาณใช้งาน (เติบโต) และข้อสังเกตอัตโนมัติ', () => {
+    const v = usageVolumes(DEFAULT_COST_ASSUMPTIONS, 1);
+    close(v.rag, 54936.5217, 0.001);
+    assert.equal(v.witEssays, 48000);
+    assert.equal(v.find, 10000);
+    const t = costTakeaways(noVat);
+    close(t.shared, 2899.6552, 0.001);
+    assert.equal(t.lowestMargin?.tier, 'capdeal.scale');
+    close(t.lowestMargin!.margin, 0.1849, 0.0001);
+    close(t.aiShare, 12522.4596 / 26455.008, 1e-6);
 });
