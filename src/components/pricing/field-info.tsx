@@ -23,7 +23,8 @@ export function LiveBadge({ live, className }: { live: LiveEffect; className?: s
     const { tx } = useAdminLocale();
     const style = live === 'live'
         ? 'border-red-300 bg-red-50 text-red-700'
-        : live === 'stored' ? 'border-violet-300 bg-violet-50 text-violet-800' : 'border-slate-300 bg-slate-50 text-slate-600';
+        : live === 'sheet' ? 'border-amber-300 bg-amber-50 text-amber-800'
+            : live === 'stored' ? 'border-violet-300 bg-violet-50 text-violet-800' : 'border-slate-300 bg-slate-50 text-slate-600';
     return <Badge variant="outline" className={cn('font-normal', style, className)}>{tx(...LIVE_EFFECT_LABELS[live])}</Badge>;
 }
 

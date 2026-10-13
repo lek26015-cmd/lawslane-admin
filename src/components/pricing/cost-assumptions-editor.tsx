@@ -22,6 +22,7 @@ import { AffectsSummary, FieldInfo } from './field-info';
 import type { StoredSaveResult } from '@/lib/plan-pricing-core';
 import { saveCostModelAction } from '@/app/actions/plan-pricing-actions';
 import { ConfirmSaveDialog } from './confirm-save-dialog';
+import { NoSheetTag, useSheetNotice } from './cost-sheet-sync';
 import { bahtR } from './economics';
 
 /**
@@ -88,6 +89,7 @@ export function CostAssumptionsEditor({ draft, setDraft, saved, updatedAt, isDef
     run: RunContext;
 }) {
     const { tx } = useAdminLocale();
+    const notifySheet = useSheetNotice();
     const [openPanel, setOpenPanel] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -121,6 +123,7 @@ export function CostAssumptionsEditor({ draft, setDraft, saved, updatedAt, isDef
         setBusy(false);
         setConfirmOpen(false);
         setResult(res.ok ? res.data : res.error);
+        if (res.ok) notifySheet(res.sheet);
         if (res.ok && res.data.status === 'ok') await onSaved();
     };
 
@@ -138,6 +141,7 @@ export function CostAssumptionsEditor({ draft, setDraft, saved, updatedAt, isDef
                     <div key={k} className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex items-center gap-1 text-slate-600">
                             {tx(...label)} <FieldInfo doc={info(`${group}/${k}`)} label={label[1]} />
+                            <NoSheetTag path={`${group}/${k}`} />
                         </span>
                         <NumField value={getAt(draft, [group, k])} onValue={set([group, k])} ariaLabel={label[1]} />
                     </div>
@@ -232,6 +236,7 @@ export function CostAssumptionsEditor({ draft, setDraft, saved, updatedAt, isDef
                                                 <span className="flex items-center gap-1">
                                                     {tx('ใช้ยอดจริงแทน (บาท/เดือน, เว้นว่าง = ใช้ค่าที่คำนวณ)', 'Override with real bill (THB/mo, blank = computed)')}
                                                     <FieldInfo doc={info('sharedOverride/1')} label="Real bill override" />
+                                                    <NoSheetTag path="sharedOverride/1" />
                                                 </span>
                                             </TableCell>
                                             {[0, 1, 2].map((i) => (
@@ -267,7 +272,9 @@ export function CostAssumptionsEditor({ draft, setDraft, saved, updatedAt, isDef
                                     <TableBody>
                                         {Object.keys(DEFAULT_COST_ASSUMPTIONS.models).map((m) => (
                                             <TableRow key={m}>
-                                                <TableCell className="py-1 font-mono text-xs">{m}</TableCell>
+                                                <TableCell className="py-1 font-mono text-xs">
+                                                    <span className="flex items-center gap-1">{m} <NoSheetTag path={`models/${m}/input`} /></span>
+                                                </TableCell>
                                                 {(['input', 'cached', 'output'] as const).map((f) => (
                                                     <TableCell key={f} className="py-1">
                                                         <span className="flex items-center gap-1">

@@ -18,6 +18,7 @@ import { saveCreditPacksAction, saveEbookAction, setInterpreterGpAction } from '
 import { ConfirmSaveDialog } from './confirm-save-dialog';
 import { OneTimeLine, baht, bahtR, pct } from './economics';
 import { AffectsSummary, FieldInfo, ProductAbout } from './field-info';
+import { useSheetNotice } from './cost-sheet-sync';
 import { PRICE_FIELD_DOCS, PRODUCT_DOCS } from '@/lib/pricing-field-docs';
 
 /**
@@ -280,6 +281,7 @@ export function InterpreterGpCard({ gpPercent, effective, updatedAt, model, onSa
     gpPercent: number | null; effective: number; updatedAt: string | null; model: CostAssumptions; onSaved: () => Promise<void>;
 }) {
     const { tx, locale } = useAdminLocale();
+    const notifySheet = useSheetNotice();
     const [gp, setGp] = useState(String(effective));
     const [open, setOpen] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -297,6 +299,7 @@ export function InterpreterGpCard({ gpPercent, effective, updatedAt, model, onSa
         setBusy(false);
         setOpen(false);
         if (!res.ok) { setOk(false); setResult(res.error); return; }
+        notifySheet(res.sheet);
         setOk(true);
         setResult(tx(`บันทึกแล้ว GP ${res.data.gpPercent}%`, `Saved: GP ${res.data.gpPercent}%`));
         await onSaved();

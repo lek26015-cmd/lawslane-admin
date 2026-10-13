@@ -25,9 +25,8 @@ import {
     type SaveResult,
     type StoredSaveResult,
 } from '@/lib/plan-pricing-core';
-import {
-    SHEET_PLAN_PRICES, costTierFor, planEconomics, type CostAssumptions, type PlanPrices, type RunContext,
-} from '@/lib/cost-model';
+import { costTierFor, planEconomics, type CostAssumptions, type RunContext } from '@/lib/cost-model';
+import { runContextFromPlans } from '@/lib/cost-sheet-map';
 import {
     GENERAL_LABELS, PRICE_FIELD_DOCS, PRODUCT_DOCS, assumptionFieldDoc, priceFieldKey, type CostSection,
 } from '@/lib/pricing-field-docs';
@@ -48,6 +47,7 @@ import { CostAssumptionsEditor } from './cost-assumptions-editor';
 import { COST_SECTIONS, CostOverview } from './cost-overview';
 import { AffectsSummary, FieldInfo, ProductAbout } from './field-info';
 import { PricingGuide } from './pricing-guide';
+import { CostSheetSyncBar, useSheetNotice } from './cost-sheet-sync';
 
 /**
  * หน้า "ราคาแพ็กเกจ" (Super Admin) — ราคาทุกอย่างในหน้าเดียว + ต้นทุน/กำไรจากสมมติฐาน
@@ -100,23 +100,9 @@ function toDraft(inputs: DraftInputs, baseUpdatedAt: string | null): PricingDraf
 
 export type PricingView = 'prices' | 'costs';
 
-/** ราคาต่อเดือนที่บันทึกแล้ว (ใช้คิดรายได้/ค่าธรรมเนียมในต้นทุนระบบ) · ยังไม่ขาย = 0 */
+/** ราคาต่อเดือนที่เว็บใช้จริง (ไม่ใช่ร่าง) ใช้คิดรายได้/ค่าธรรมเนียมในต้นทุนระบบ · ยังไม่ขาย = 0 — ชุดเดียวกับที่ส่งไป Google Sheet */
 function runContextFrom(overview: PricingOverview): RunContext {
-    const monthly = (product: string, plan: string, fallback: number) => {
-        const v = overview.products.find((p) => p.product === product)?.plans[plan]?.monthly;
-        return v === undefined ? fallback : v ?? 0;
-    };
-    const prices: PlanPrices = {
-        lawPro: monthly('lawyer', 'pro', SHEET_PLAN_PRICES.lawPro),
-        lawFirm: monthly('lawyer', 'top', SHEET_PLAN_PRICES.lawFirm),
-        custPlus: monthly('lawslane', 'plus', SHEET_PLAN_PRICES.custPlus),
-        cdLite: monthly('capdeal', 'lite', SHEET_PLAN_PRICES.cdLite),
-        cdPro: monthly('capdeal', 'pro', SHEET_PLAN_PRICES.cdPro),
-        cdScale: monthly('capdeal', 'scale', SHEET_PLAN_PRICES.cdScale),
-        witPremium: monthly('wittaya', 'premium', SHEET_PLAN_PRICES.witPremium),
-        witPro: monthly('wittaya', 'pro', SHEET_PLAN_PRICES.witPro),
-    };
-    return { prices, gpPercent: overview.gp.effective };
+    return runContextFromPlans(overview.products, overview.gp.effective);
 }
 
 /** เก็บแท็บที่เปิดไว้ใน URL (ไม่โหลดหน้าใหม่) ให้รีเฟรชแล้วกลับมาที่เดิม */
@@ -190,6 +176,10 @@ export function PlanPricingManager({ initialView = 'prices', initialSection = 'o
             {overview && model && run && (
                 <>
                     <PricingGuide />
+                    <CostSheetSyncBar
+                        refreshKey={overview}
+                        unsaved={JSON.stringify(model) !== JSON.stringify(overview.costModel.assumptions)}
+                    />
 
                     {/* หัวร่วม: แท็บบนสุด + ตัวเลือกสถานการณ์ (ใช้ทั้งสองแท็บ) */}
                     <div className="flex flex-wrap items-center gap-3">
@@ -299,6 +289,7 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
     const [draftOpen, setDraftOpen] = useState(false);
     const [draftSaved, setDraftSaved] = useState<'saved' | 'cleared' | null>(null);
     const { tx, locale } = useAdminLocale();
+    const notifySheet = useSheetNotice();
     const catalog = PRICING_CATALOG[view.product];
     const [inputs, setInputs] = useState<DraftInputs>(() => loadedInputs(view));
     const [preview, setPreview] = useState<PricingPreview | null>(null);
@@ -345,6 +336,7 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
             if (!r.ok) { setError(r.error); return; }
             if (r.data.status === 'error') { setError(r.data.message); return; }
             setStoredResult(r.data);
+            notifySheet(r.sheet);
             await onSaved();
             return;
         }
@@ -353,6 +345,7 @@ function ProductCard({ view, writeEnabled, model, onSaved }: {
         setPreviewOpen(false);
         if (!res.ok) { setError(res.error); return; }
         setResult(res.data);
+        notifySheet(res.sheet);
         if (res.data.status !== 'error') await onSaved();
     };
 

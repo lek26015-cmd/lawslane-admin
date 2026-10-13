@@ -34,13 +34,14 @@ import {
 
 export type { Label };
 
-/** ผลกับเว็บจริง */
-export type LiveEffect = 'estimate' | 'stored' | 'live';
+/** ผลกับเว็บจริง · sheet = ส่งออกไป Google Sheet ที่แชร์แบบมีลิงก์ (คนนอกทีมเห็นได้) */
+export type LiveEffect = 'estimate' | 'stored' | 'live' | 'sheet';
 
 export const LIVE_EFFECT_LABELS: Record<LiveEffect, Label> = {
     estimate: ['แค่ตัวเลขประมาณ — ไม่กระทบเว็บ', 'Estimate only — no effect on the sites'],
     stored: ['เก็บไว้ ยังไม่ใช้จริง', 'Stored, not live yet'],
     live: ['มีผลจริงทันที', 'Live immediately'],
+    sheet: ['ส่งออกไป Google Sheet — ทุกคนที่มีลิงก์ดูได้', 'Exported to Google Sheet — anyone with the link can view'],
 };
 
 export type FieldDoc = {
@@ -886,6 +887,32 @@ export const PRICE_FIELD_DOCS: Record<string, FieldDoc> = {
         live: 'live',
         liveDetail: ['มีผลทันทีกับการจองล่ามใหม่ทุกงาน งานที่จองแล้วใช้ GP ตอนจอง · ล่ามเห็น % ใหม่ในแดชบอร์ด', 'Applies immediately to every new booking; existing bookings keep their GP · interpreters see the new % on their dashboard'],
     },
+};
+
+/** ปุ่ม "ส่งไป Google Sheet" บนหัวหน้า (ไม่ใช่ช่องราคา — แยกจาก PRICE_FIELD_DOCS) */
+export const COST_SHEET_DOC: FieldDoc = {
+    title: ['ส่งไป Google Sheet', 'Send to Google Sheet'],
+    what: [
+        'คัดลอกตัวเลขจากหน้านี้ไปใส่ Google Sheet ต้นทุน (ไฟล์เดียวกับ LAWSLANE-ต้นทุน-2026-10.xlsx) ให้คนที่ไม่มีสิทธิ์เข้าหลังบ้านเปิดดูได้ — ส่งทางเดียว หน้านี้เป็นต้นฉบับ แก้ใน Sheet แล้วไม่กลับมาที่นี่',
+        'Copies the figures on this page into the cost Google Sheet (same workbook as LAWSLANE-ต้นทุน-2026-10.xlsx) so people without admin access can view them. One-way: this page is the source of truth; edits in the Sheet never come back here.',
+    ],
+    how: [
+        'เขียนเฉพาะช่องตัวเลขสีน้ำเงิน (สมมติฐาน ราคาบริการ ราคาโมเดล token ต่อการเรียก AI) + ราคาแพลนที่เว็บใช้จริง (ไม่ใช่ร่าง) + GP ล่าม ด้วยค่าที่ "บันทึกแล้ว" — สูตรใน Sheet คำนวณผลรวมเอง · ก่อนเขียนตรวจว่าไม่มีช่องสูตรและแถวไม่เลื่อน ถ้าไม่ตรงจะไม่เขียนเลยสักช่อง · ช่องที่ไม่มีใน Sheet (VAT, Beam, ใช้ยอดจริงแทน) ไม่ถูกส่ง · กดได้ห่างกันอย่างน้อย 30 วินาที',
+        'Writes only the blue input cells (assumptions, vendor prices, model prices, tokens per AI call) + the live plan prices (not drafts) + interpreter GP, using the SAVED values; the Sheet formulas recompute totals. Before writing it checks no target is a formula and rows have not moved; otherwise nothing is written. Admin-only fields (VAT, Beam, real-bill override) are not sent. At most once every 30 seconds.',
+    ],
+    when: [
+        'หลังบันทึกสมมติฐาน/ราคา/GP แล้วอยากให้คนดู Sheet เห็นตัวเลขล่าสุด (ถ้าตั้ง COST_SHEET_AUTO_EXPORT=true ระบบส่งให้เองหลังบันทึก)',
+        'After saving assumptions/prices/GP when Sheet viewers should see the latest figures (with COST_SHEET_AUTO_EXPORT=true it is sent automatically after each save)',
+    ],
+    affects: [
+        ['Google Sheet ต้นทุน: หน้า สมมติฐาน / ราคาบริการ / ต้นทุนต่อหน่วย และทุกหน้าที่คำนวณจากสูตร', 'Cost Google Sheet: tabs สมมติฐาน / ราคาบริการ / ต้นทุนต่อหน่วย and every formula tab'],
+        ['ไม่เปลี่ยนตัวเลขใดในหน้านี้ ไม่เปลี่ยนราคาบนเว็บ', 'No figure on this page or price on any site changes'],
+    ],
+    live: 'sheet',
+    liveDetail: [
+        'Sheet แชร์แบบ "ทุกคนที่มีลิงก์ดูได้" — ใครได้ลิงก์ก็เห็นต้นทุน ราคา และกำไรทั้งหมด อย่าส่งลิงก์ต่อในที่สาธารณะ · ค่าที่คนแก้ไว้ในช่องเหล่านั้นของ Sheet จะถูกเขียนทับ',
+        'The Sheet is shared as "anyone with the link can view" — whoever has the link sees all costs, prices and margins; do not post the link publicly · values edited by hand in those Sheet cells are overwritten',
+    ],
 };
 
 /** ทุก key ของช่องในแท็บตั้งราคา (ใช้ในเทสต์) */

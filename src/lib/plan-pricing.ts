@@ -107,7 +107,8 @@ export function firestorePricingStore(db: admin.firestore.Firestore): PricingSto
 }
 
 /** doc id ใน collection ราคากลาง นอกจากแพ็กเกจ (capdeal/lawyer/wittaya/lawslane) */
-export const PRICING_DOC_IDS = { aiCredits: 'ai_credits', ebook: 'ebook', costModel: 'costModel' } as const;
+/** costSheetExport = สถานะการส่งต้นทุนไป Google Sheet ล่าสุด (ดู cost-sheet-export.ts) — เว็บอื่นไม่อ่าน */
+export const PRICING_DOC_IDS = { aiCredits: 'ai_credits', ebook: 'ebook', costModel: 'costModel', costSheetExport: 'costSheetExport' } as const;
 
 /** ที่เก็บทั่วไปสำหรับเอกสารที่ไม่แตะ Stripe (wittaya, lawslane, ai_credits, ebook, costModel) */
 export function firestoreDocStore(db: admin.firestore.Firestore): DocStorePort {
