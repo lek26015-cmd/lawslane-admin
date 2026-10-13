@@ -27,6 +27,12 @@ import {
     validateEbook,
     validateGpPercent,
     mergeEbook,
+    buildDraftWrite,
+    executeDraftClear,
+    executeDraftSave,
+    parsePlanDraft,
+    validatePlanDraft,
+    type DraftPatch,
 } from '../plan-pricing-core';
 
 // ---------------------------------------------------------------------------
@@ -110,8 +116,25 @@ function fakeStore(initial: Partial<Record<PricingProduct, PlanPricingDoc>> = {}
             const d = docs.get(product);
             if (d) d.portalConfigId = id;
         },
+        // เลียนแบบ Firestore: แตะเฉพาะคีย์ใน patch (update) — เอกสารที่ยังไม่มีได้แค่ { draft }
+        async commitDraft(product, expected, build) {
+            if (fail.commit) throw new Error('firestore unavailable');
+            const cur = docs.get(product) ?? null;
+            if ((cur?.draft?.updatedAt || null) !== expected) throw new PricingConflictError();
+            const { patch, log } = build(cur ? structuredClone(cur) : null);
+            patches.push(structuredClone(patch));
+            if (cur) {
+                if (patch.draft) cur.draft = structuredClone(patch.draft);
+                else delete cur.draft;
+            } else if (patch.draft) {
+                docs.set(product, { draft: structuredClone(patch.draft) } as unknown as PlanPricingDoc);
+            }
+            logs.push(structuredClone(log));
+            return patch.draft;
+        },
     };
-    return { store, docs, logs, fail };
+    const patches: DraftPatch[] = [];
+    return { store, docs, logs, fail, patches };
 }
 
 let clock = Date.parse('2026-10-12T00:00:00Z');
@@ -473,4 +496,129 @@ test('validateGpPercent: 0–50 ปัด 2 ตำแหน่ง', () => {
     assert.equal(validateGpPercent(51).ok, false);
     assert.equal(validateGpPercent(-1).ok, false);
     assert.equal(validateGpPercent('15').ok, false);
+});
+
+// ---------------------------------------------------------------------------
+// ราคาร่าง CapDeal / ทนาย (ยังไม่ใช้จริง)
+// ---------------------------------------------------------------------------
+
+const capdealPlans = () => capdealDraft().plans;
+
+test('validatePlanDraft: กติกาเดียวกับราคาจริง และใช้ได้แค่ capdeal/lawyer', () => {
+    assert.ok(validatePlanDraft('capdeal', { plans: capdealPlans() }, null).ok);
+    assert.ok(validatePlanDraft('lawyer', { plans: { pro: { monthly: 690, yearly: null }, top: { monthly: 1990, yearly: null } } }, undefined).ok);
+    const bad = (plans: unknown) => validatePlanDraft('capdeal', { plans }, null).ok;
+    assert.equal(bad({ ...capdealPlans(), pro: { monthly: 249.5, yearly: null } }), false);
+    assert.equal(bad({ ...capdealPlans(), pro: { monthly: 0, yearly: null } }), false);
+    assert.equal(bad({ ...capdealPlans(), pro: { monthly: 1_000_001, yearly: null } }), false);
+    assert.equal(bad({ ...capdealPlans(), extra: { monthly: 1, yearly: null } }), false);
+    assert.equal(bad({ lite: capdealPlans().lite }), false);
+    assert.equal(validatePlanDraft('wittaya', { plans: { premium: { monthly: 199, yearly: null }, pro: { monthly: 399, yearly: null } } }, null).ok, false);
+    assert.equal(validatePlanDraft('capdeal', { plans: capdealPlans() }, 123).ok, false);
+});
+
+test('buildDraftWrite: patch มีแค่คีย์ draft ไม่มี plans/stripe/portalConfigId/updatedAt ของเอกสาร', () => {
+    const current: PlanPricingDoc = {
+        currency: 'thb',
+        plans: { pro: { monthly: 249, yearly: 2490, stripe: { productId: 'prod_1', monthlyPriceId: 'price_1', yearlyPriceId: null, previousPriceIds: [] } } },
+        portalConfigId: 'bpc_1', updatedAt: '2026-10-01T00:00:00.000Z', updatedBy: 'uid_a',
+    };
+    for (const plans of [capdealPlans(), null]) {
+        const { patch, log } = buildDraftWrite('capdeal', current, plans, 'uid_admin', '2026-10-13T00:00:00.000Z');
+        assert.deepEqual(Object.keys(patch), ['draft']);
+        assert.ok(!JSON.stringify(patch).includes('stripe'));
+        assert.ok(!JSON.stringify(patch).includes('PriceId'));
+        assert.ok(!('portalConfigId' in patch) && !('updatedAt' in patch));
+        assert.equal(log.kind, 'draft');
+        assert.equal(log.product, 'capdeal');
+        assert.deepEqual(log.createdPriceIds, []);
+    }
+});
+
+test('บันทึกร่าง: ไม่แตะ Stripe และ plans/stripe/portalConfigId/updatedAt เดิมไม่เปลี่ยน', async () => {
+    const s = fakeStripe();
+    const f = fakeStore();
+    const saved = await executeSave({ stripe: s.port, store: f.store, now }, 'capdeal', capdealDraft({ pro: { monthly: 299, yearly: 2490 } }), 'uid_admin');
+    assert.equal(saved.status, 'ok');
+    const before = structuredClone(f.docs.get('capdeal')!);
+    const calls = s.calls.length;
+
+    const r = await executeDraftSave({ store: f.store, now }, 'capdeal', { plans: capdealDraft({ pro: { monthly: 349, yearly: 3490 } }).plans }, null, 'uid_admin');
+    assert.equal(r.status, 'ok');
+    if (r.status !== 'ok') return;
+    const after = f.docs.get('capdeal')!;
+    const { draft, ...rest } = after;
+    assert.deepEqual(rest, before, 'ทุกฟิลด์ที่เว็บอ่านต้องเหมือนเดิม');
+    assert.equal(draft?.plans.pro.monthly, 349);
+    assert.equal(after.plans.pro.monthly, 299, 'ราคาที่เว็บแสดงยังเป็นราคาจริง');
+    assert.equal(s.calls.length, calls, 'ไม่เรียก Stripe');
+    assert.deepEqual(Object.keys(f.patches[0]), ['draft']);
+    assert.equal(f.logs.at(-1)?.kind, 'draft');
+
+    // ร่างที่สอง: ต้องส่งเวอร์ชันของร่าง ไม่งั้นชนกัน
+    const stale = await executeDraftSave({ store: f.store, now }, 'capdeal', { plans: capdealPlans() }, null, 'uid_admin');
+    assert.equal(stale.status === 'error' && stale.step, 'conflict');
+    const ok2 = await executeDraftSave({ store: f.store, now }, 'capdeal', { plans: capdealPlans() }, r.draft!.updatedAt, 'uid_admin');
+    assert.equal(ok2.status, 'ok');
+});
+
+test('บันทึกร่างตอนยังไม่มีเอกสาร: สร้างเอกสารที่มีแค่ draft (เว็บใช้ env ตามเดิม) แล้วล้างร่างได้', async () => {
+    const f = fakeStore();
+    const r = await executeDraftSave({ store: f.store, now }, 'lawyer', { plans: { pro: { monthly: 690, yearly: 6900 }, top: { monthly: 1990, yearly: null } } }, null, 'uid_admin');
+    assert.equal(r.status, 'ok');
+    assert.deepEqual(Object.keys(f.docs.get('lawyer')!), ['draft']);
+    // admin parser: ราคาจริง = ค่าเริ่มต้น (ไม่หยิบร่างมาเป็นราคา)
+    assert.equal(mergeWithDefaults('lawyer', f.docs.get('lawyer')).pro.monthly, 590);
+    const v = r.status === 'ok' ? r.draft!.updatedAt : '';
+    assert.equal((await executeDraftClear({ store: f.store, now }, 'lawyer', 'wrong', 'uid_admin')).status, 'error');
+    assert.equal((await executeDraftClear({ store: f.store, now }, 'lawyer', v, 'uid_admin')).status, 'ok');
+    assert.equal(f.docs.get('lawyer')!.draft, undefined);
+    assert.deepEqual(f.patches.at(-1), { draft: null });
+});
+
+test('บันทึกร่าง: validation ล้ม → ไม่เขียนอะไร', async () => {
+    const f = fakeStore();
+    const r = await executeDraftSave({ store: f.store, now }, 'capdeal', { plans: { ...capdealPlans(), lite: { monthly: -5, yearly: null } } }, null, 'uid_admin');
+    assert.equal(r.status === 'error' && r.step, 'validate');
+    assert.equal(f.patches.length, 0);
+    assert.equal(f.docs.size, 0);
+});
+
+test('parser ของ admin รับเอกสารที่มี draft: plans มาจาก plans เท่านั้น, ร่างผิดรูป = null', () => {
+    const raw = {
+        currency: 'thb',
+        plans: { lite: { monthly: 159, yearly: 1590 }, pro: { monthly: 249, yearly: 2490 }, scale: { monthly: 1049, yearly: 10490 } },
+        portalConfigId: null, updatedAt: '2026-10-01T00:00:00.000Z', updatedBy: 'uid_a',
+        draft: { plans: { lite: { monthly: 199, yearly: null }, pro: { monthly: 299, yearly: 2990 }, scale: { monthly: 1099, yearly: 10990 } }, updatedAt: '2026-10-13T00:00:00.000Z', updatedBy: 'uid_b' },
+    };
+    const merged = mergeWithDefaults('capdeal', raw);
+    assert.deepEqual(merged.pro, { monthly: 249, yearly: 2490 });
+    assert.deepEqual(Object.keys(merged), ['lite', 'pro', 'scale']);
+    const d = parsePlanDraft('capdeal', raw.draft);
+    assert.equal(d?.plans.pro.monthly, 299);
+    assert.equal(d?.plans.lite.yearly, null);
+    assert.equal(parsePlanDraft('capdeal', null), null);
+    assert.equal(parsePlanDraft('capdeal', { plans: raw.draft.plans }), null, 'ไม่มี updatedAt = ผิดรูป');
+    assert.equal(parsePlanDraft('capdeal', { updatedAt: 'x', plans: { lite: raw.draft.plans.lite } }), null, 'แพลนขาด = ผิดรูป');
+});
+
+test('บันทึกผ่าน Stripe สำเร็จ → ร่างถูกล้างในการเขียนเดียวกัน (รวมกรณีร่างเท่าราคาเดิม)', async () => {
+    const s = fakeStripe();
+    const f = fakeStore();
+    const d1 = await executeDraftSave({ store: f.store, now }, 'capdeal', { plans: capdealDraft({ pro: { monthly: 299, yearly: 2490 } }).plans }, null, 'uid_admin');
+    assert.equal(d1.status, 'ok');
+    const r = await executeSave({ stripe: s.port, store: f.store, now }, 'capdeal', capdealDraft({ pro: { monthly: 299, yearly: 2490 } }), 'uid_admin');
+    assert.equal(r.status, 'ok');
+    const doc = f.docs.get('capdeal')!;
+    assert.equal(doc.draft, undefined);
+    assert.equal(doc.plans.pro.monthly, 299);
+
+    // ร่างเท่าราคาปัจจุบัน → ไม่สร้าง Price แต่ยังล้างร่าง
+    await executeDraftSave({ store: f.store, now }, 'capdeal', { plans: capdealDraft({ pro: { monthly: 299, yearly: 2490 } }).plans }, null, 'uid_admin');
+    assert.ok(f.docs.get('capdeal')!.draft);
+    const created = s.prices.size;
+    const r2 = await executeSave({ stripe: s.port, store: f.store, now }, 'capdeal', capdealDraft({ pro: { monthly: 299, yearly: 2490 } }, doc.updatedAt), 'uid_admin');
+    assert.equal(r2.status, 'ok');
+    assert.equal(s.prices.size, created);
+    assert.equal(f.docs.get('capdeal')!.draft, undefined);
 });

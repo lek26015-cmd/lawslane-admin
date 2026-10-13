@@ -24,6 +24,8 @@ import {
     checkKeyCollectionPairing,
     diffPricing,
     executeSave,
+    executeDraftClear,
+    executeDraftSave,
     firestorePricingStore,
     isPricingWriteEnabled,
     mergeWithDefaults,
@@ -31,6 +33,8 @@ import {
     priceField,
     stripeKeyMode,
     validateDraft,
+    type DraftSaveResult,
+    type PlanPriceDraft,
     type PlanPricingEntry,
     type PriceChange,
     type PricingProduct,
@@ -77,6 +81,8 @@ export type ProductPricingView = {
     isDefault: boolean;
     updatedAt: string | null;
     portalConfigId: string | null;
+    /** ราคาร่าง (CapDeal/ทนาย เท่านั้น) — ยังไม่ใช้จริง เว็บไม่อ่าน */
+    draft: PlanPriceDraft | null;
 };
 
 export type PricingOverview = {
@@ -108,9 +114,11 @@ export async function getPricingAction(): Promise<Result<PricingOverview>> {
                 product,
                 mode: isPricingProduct(product) ? 'stripe' : 'stored',
                 plans: mergeWithDefaults(product, doc),
-                isDefault: !doc,
+                // เอกสารที่มีแค่ร่าง = ราคาจริงยังเป็นค่าเริ่มต้น
+                isDefault: !doc || Object.keys(doc.plans ?? {}).length === 0,
                 updatedAt: doc?.updatedAt || null,
                 portalConfigId: doc?.portalConfigId ?? null,
+                draft: isPricingProduct(product) ? doc?.draft ?? null : null,
             });
         }
         const [credits, ebook, cost, gpSnap] = await Promise.all([
@@ -234,6 +242,46 @@ export async function savePricingAction(product: SubscriptionProduct, draft: unk
             });
         }
         return { ok: true, data: result };
+    } catch (e) {
+        return fail(e);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ราคาร่าง CapDeal / ทนาย (ยังไม่ใช้จริง)
+// ---------------------------------------------------------------------------
+
+/**
+ * บันทึกราคาร่างลงฟิลด์ `draft` อย่างเดียว — ไม่แตะ Stripe และไม่เปลี่ยน plans/stripe/portalConfigId
+ * จึงไม่ล็อกด้วย PRICING_WRITE_ENABLED / STRIPE_SECRET_KEY (เว็บยังแสดงและเก็บเงินราคาเดิม)
+ * @param expectedUpdatedAt updatedAt ของร่างตอนเปิดหน้า (null = ยังไม่มีร่าง) ใช้กันแก้ชนกัน
+ */
+export async function saveStripePlanDraftAction(
+    product: PricingProduct, draft: unknown, expectedUpdatedAt?: string | null,
+): Promise<Result<DraftSaveResult>> {
+    try {
+        const { uid, adminApp } = await requireSuperAdmin();
+        const r = await executeDraftSave(
+            { store: firestorePricingStore(adminApp.firestore()), now: () => new Date() },
+            product, draft, expectedUpdatedAt ?? null, uid,
+        );
+        if (r.status === 'error') console.error('PLAN_PRICING_DRAFT_SAVE', { actorUid: uid, step: r.step });
+        return { ok: true, data: r };
+    } catch (e) {
+        return fail(e);
+    }
+}
+
+/** ล้างราคาร่าง (ไม่มีผลกับเว็บ) */
+export async function clearStripePlanDraftAction(product: PricingProduct, expectedUpdatedAt: string): Promise<Result<DraftSaveResult>> {
+    try {
+        const { uid, adminApp } = await requireSuperAdmin();
+        const r = await executeDraftClear(
+            { store: firestorePricingStore(adminApp.firestore()), now: () => new Date() },
+            product, expectedUpdatedAt, uid,
+        );
+        if (r.status === 'error') console.error('PLAN_PRICING_DRAFT_CLEAR', { actorUid: uid, step: r.step });
+        return { ok: true, data: r };
     } catch (e) {
         return fail(e);
     }

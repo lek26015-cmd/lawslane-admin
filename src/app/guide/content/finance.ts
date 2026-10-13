@@ -223,9 +223,32 @@ export const financeGroup: GuideGroup = {
             href: '/pricing',
             superAdminOnly: true,
             th: {
-                title: 'ราคาแพ็กเกจ และต้นทุน/กำไร',
-                summary: 'ราคาทุกอย่างในหน้าเดียว (แพ็กเกจรายเดือน, จ่ายครั้งเดียว, GP ล่าม) พร้อมต้นทุนและกำไรโดยประมาณจากสมมติฐาน เห็นเฉพาะ Super Admin',
+                title: 'ราคาแพ็กเกจ และต้นทุนระบบ',
+                summary: 'หน้าเดียวมี 2 แท็บ: "ตั้งราคา" (แพ็กเกจรายเดือน, จ่ายครั้งเดียว, GP ล่าม) และ "ต้นทุนระบบ" (เนื้อหาทั้งไฟล์ต้นทุน Excel แบบอ่านง่าย) ใช้ตัวเลือกสถานการณ์และสมมติฐานต้นทุนชุดเดียวกัน เห็นเฉพาะ Super Admin',
                 blocks: [
+                    {
+                        heading: 'โครงหน้า: แท็บบนสุด + คู่มือ + ปุ่ม ⓘ',
+                        items: [
+                            'แท็บบนสุด "ตั้งราคา" | "ต้นทุนระบบ" — แท็บที่เปิดจำไว้ใน URL (/pricing?view=costs&section=...) รีเฟรชแล้วอยู่ที่เดิม · /pricing/costs พาไปแท็บต้นทุนระบบ',
+                            'ตัวเลือกสถานการณ์ (เริ่มต้น/เติบโต/ขยาย) และกล่อง "สมมติฐานต้นทุน" ด้านล่าง ใช้ร่วมกันทั้งสองแท็บ แก้แล้วตัวเลขทั้งสองแท็บเปลี่ยนทันทีโดยไม่ต้องโหลดใหม่',
+                            '"คู่มือหน้านี้" (กดเพื่อกาง) อธิบายว่าหน้านี้คืออะไร ตัวเลขไหลยังไง ควรแก้อะไรเมื่อไร และอะไรมีผลจริง',
+                            'ทุกช่องที่แก้ได้มีปุ่ม ⓘ บอก 4 อย่าง: คืออะไร / ทำงานยังไง / ควรแก้เมื่อไร / แก้แล้วกระทบอะไร (ตัวเลขไหนในหน้าขยับ + ผลกับเว็บจริง) — ผลกระทบของช่องสมมติฐานคำนวณจากโมเดลจริง',
+                            'ป้ายผลกับเว็บจริง 3 แบบ: "แค่ตัวเลขประมาณ — ไม่กระทบเว็บ" (สมมติฐานทั้งหมด) · "เก็บไว้ ยังไม่ใช้จริง" (Wittaya, AI Plus, แพ็กเครดิต, E-Book/ค่าส่ง, ราคาร่าง) · "มีผลจริงทันที" (ราคา CapDeal/ทนายที่บันทึกผ่าน Stripe, GP ล่าม)',
+                            'กล่องยืนยันก่อนบันทึกทุกอัน สรุปผลกระทบของเฉพาะช่องที่แก้อีกครั้ง',
+                            'การ์ดสินค้าทุกใบบอก "บริการนี้คืออะไร" (โควตาจริงจากโค้ด) และ "ราคานี้แสดงที่ไหน" พร้อมลิงก์ไปหน้าจริง (เปิดแท็บใหม่) ถ้าหน้านั้นยังใช้ราคาในโค้ดจะเขียนกำกับไว้',
+                        ],
+                    },
+                    {
+                        heading: 'แท็บ "ต้นทุนระบบ" (8 แท็บย่อย)',
+                        items: [
+                            'ภาพรวม: ตาราง 3 สถานการณ์ (ผู้ใช้ บัญชีจ่ายเงิน ค่าส่วนกลาง ค่ารันรวม รายได้ กำไรขั้นต้น) แผนภาพการไหลของตัวเลข และข้อสังเกตอัตโนมัติ',
+                            'สรุปต่อเว็บ: ต้นทุนตรงของแต่ละเว็บ + ค่าส่วนกลางที่ปันตามสัดส่วนการเข้าชม รายได้ประมาณ และกำไรขั้นต้น (docs/Lalin/สิทธิคนทำงานไม่ถูกปัน)',
+                            'Margin ต่อแพลน: ตารางกำไรทุกแพลน (รวม Business ร่าง และแพลนฟรี) อ่านอย่างเดียว แก้ราคาที่แท็บตั้งราคา',
+                            'ค่ารันรายเดือน: ทุกบริการทุกแถว แยกส่วนกลาง/รายเว็บ พร้อมยอดรวม ค่าคงที่/ขั้นบันได ค่าธรรมเนียม ค่า AI และ USD',
+                            'ปริมาณใช้งาน / ต้นทุนต่อหน่วย / ราคาบริการ (แถวเหลือง ⚠ = ยังไม่ยืนยัน) / หมายเหตุ 13 ข้อ',
+                            'ต่างจากไฟล์ Excel: ค่าธรรมเนียม Stripe บวก VAT 7% และงานล่ามคิดค่าธรรมเนียม Beam แทน Stripe + Connect + ฿10 (ตั้ง VAT = 0 แล้วตรงไฟล์ ยกเว้นแถวงานล่าม)',
+                        ],
+                    },
                     {
                         heading: 'แท็บ "แพ็กเกจรายเดือน"',
                         items: [
@@ -235,6 +258,9 @@ export const financeGroup: GuideGroup = {
                             'ใต้ช่องราคาแสดงต่อบัญชีต่อเดือน: ต้นทุน AI ใช้เต็มโควตา/ใช้เฉลี่ย, ค่าธรรมเนียม Stripe, ค่าส่วนกลาง, กำไรและ margin และ "ราคาต่ำสุดตามเป้า" ตัวเลขสีแดง = ขาดทุน',
                             'รายปีคิดค่าธรรมเนียมครั้งเดียวต่อปีแล้วหาร 12',
                             '"ตรวจการเปลี่ยนแปลง" → ดูราคาเดิม → ใหม่ (Stripe แสดงจำนวนผู้สมัครเดิมด้วย) → ติ๊กยืนยัน → บันทึก',
+                            'ระหว่างที่ CapDeal/ทนาย ยังบันทึกผ่าน Stripe ไม่ได้ ปุ่มจะเป็น "บันทึกเป็นร่าง (ยังไม่ใช้จริง)" ร่างเก็บแยกไว้ เว็บยังแสดงและเก็บเงินราคาเดิม ลูกค้าไม่เห็นร่าง',
+                            'การ์ดที่มีร่างขึ้นป้าย "ร่าง — ยังไม่ใช้จริง" ช่องราคาแสดงร่าง และใต้ช่องบอก "บนเว็บตอนนี้" ตัวเลขต้นทุน/กำไรคิดจากค่าที่พิมพ์ · กด "ล้างร่าง" เพื่อทิ้งร่าง',
+                            'พอตั้ง Stripe แล้ว (เปิด PRICING_WRITE_ENABLED) การ์ดจะบอก "มีราคาร่างค้างอยู่" และเติมช่องจากร่างให้ → ตรวจการเปลี่ยนแปลง → บันทึกตามปกติ ร่างถูกล้างอัตโนมัติเมื่อบันทึกสำเร็จ',
                         ],
                     },
                     {
@@ -250,22 +276,47 @@ export const financeGroup: GuideGroup = {
                         items: [
                             'ค่าเริ่มต้นมาจากไฟล์ LAWSLANE-ต้นทุน-2026-10.xlsx: อัตราแลกเปลี่ยน, เป้า margin, โควตา, จำนวนผู้ใช้ 3 สถานการณ์, ราคาบริการ, ราคาโมเดล AI, token ต่อการเรียก',
                             'แก้แล้วตัวเลขกำไรทุกช่องเปลี่ยนทันที (ยังไม่บันทึก) กด "บันทึกสมมติฐาน" เพื่อเก็บ',
-                            'ตัวเลือก "ปันค่าส่วนกลางตามสถานการณ์" ด้านบนเปลี่ยนค่าส่วนกลางต่อบัญชี (เริ่มต้น/เติบโต/ขยาย)',
+                            'ตัวเลือก "สถานการณ์" ด้านบนเปลี่ยนค่าส่วนกลางต่อบัญชีและคอลัมน์ที่ไฮไลต์ในแท็บต้นทุนระบบ (เริ่มต้น/เติบโต/ขยาย)',
+                            'ควรแก้: อัตราแลกเปลี่ยนเดือนละครั้ง · จำนวนผู้ใช้ต่อสถานการณ์ทุกเดือน/ไตรมาส · เป้า margin เมื่อเปลี่ยนนโยบาย · ราคาบริการเมื่อผู้ให้บริการเปลี่ยนราคา',
+                            'มีแถวใหม่จากไฟล์: LINE OA, SlipOK, ใบแจ้งหนี้ PDF, SMS OTP, Lalin, AI ของ admin, แพลน Business (ร่าง)',
                             'มีบิลจริงแล้ว ให้ใส่ยอดในแถว "ใช้ยอดจริงแทน" แทนค่าที่คำนวณ',
                         ],
                     },
                 ],
                 warnings: [
-                    'ถ้าขึ้น "ดูได้อย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ล็อกเฉพาะ CapDeal/ทนาย ส่วนอื่นยังบันทึกได้',
+                    'ถ้าขึ้น "ดูได้อย่างเดียว" แปลว่ายังไม่เปิด PRICING_WRITE_ENABLED หรือ Stripe key ไม่พร้อม ล็อกเฉพาะการบันทึกจริงของ CapDeal/ทนาย (ยังบันทึกเป็นร่างได้) ส่วนอื่นยังบันทึกได้',
                     'ป้าย Stripe: test ต้องคู่กับ collection planPricing_test เท่านั้น',
                     'ต้นทุนเป็นค่าประมาณจากราคาประกาศ × สมมติฐาน ไม่ใช่ยอดบิลจริง',
                     'ถ้าขึ้น "มีคนแก้ไปแล้ว โหลดใหม่" ให้โหลดหน้าใหม่แล้วแก้อีกครั้ง · ทุกการบันทึกเก็บประวัติที่ planPricingLogs (uid ผู้แก้เท่านั้น)',
                 ],
             },
             en: {
-                title: 'Plan pricing and cost/margin',
-                summary: 'Every price on one page (subscriptions, one-time items, interpreter GP) with estimated cost and margin from assumptions. Super Admin only.',
+                title: 'Plan pricing and system costs',
+                summary: 'One page, two tabs: "ตั้งราคา" (set prices: subscriptions, one-time items, interpreter GP) and "ต้นทุนระบบ" (system costs: the whole Excel cost model in plain language), sharing one scenario selector and one set of cost assumptions. Super Admin only.',
                 blocks: [
+                    {
+                        heading: 'Layout: top tabs + guide + ⓘ buttons',
+                        items: [
+                            'Top tabs "ตั้งราคา" | "ต้นทุนระบบ" — the open tab is kept in the URL (/pricing?view=costs&section=...) so it survives reload · /pricing/costs jumps to system costs.',
+                            'The scenario selector (start/growth/scale) and the "Cost assumptions" box below are shared by both tabs; edits update both immediately without reloading.',
+                            '"คู่มือหน้านี้" (expand) explains what the page is, how the numbers flow, what to edit when, and what is live.',
+                            'Every editable field has an ⓘ button with four parts: what it is / how it works / when to edit / what changes (which numbers on the page move + real-world effect). For assumptions the affected numbers are derived from the actual model.',
+                            'Three real-world badges: "estimate only — no effect on sites" (all assumptions) · "stored, not live yet" (Wittaya, AI Plus, credit packs, E-Book/shipping, drafts) · "live immediately" (CapDeal/lawyer prices saved via Stripe, interpreter GP).',
+                            'Every confirm dialog summarises the impact of exactly the fields you changed.',
+                            'Every product card states what customers get (real quotas from the code) and where the price is shown, with links to the live pages (new tab); pages that still use a hard-coded price are labelled.',
+                        ],
+                    },
+                    {
+                        heading: 'Tab "ต้นทุนระบบ" (8 sub-tabs)',
+                        items: [
+                            'Overview: 3-scenario table (users, paying accounts, shared infra, total run cost, revenue, gross profit), number-flow diagram and automatic takeaways.',
+                            'Per site: each site’s direct cost + shared infra allocated by traffic share, estimated revenue and gross profit (docs/Lalin/Sitthi get no allocation).',
+                            'Plan margins: read-only margin table for every plan (incl. Business draft and free tiers); edit prices in the set-prices tab.',
+                            'Monthly run cost: every service row, shared vs per site, with totals, fixed/tiered, payment fees, AI and USD.',
+                            'Usage volumes / unit costs / vendor prices (yellow ⚠ = unconfirmed) / 13 notes.',
+                            'Differences from the Excel file: Stripe fees include 7% VAT and interpreter jobs use the Beam fee instead of Stripe + Connect + ฿10 (VAT = 0 matches the file except the interpreter row).',
+                        ],
+                    },
                     {
                         heading: 'Tab "Subscriptions"',
                         items: [
@@ -275,6 +326,9 @@ export const financeGroup: GuideGroup = {
                             'Under each price, per account per month: AI cost at full/average usage, Stripe fee, infra share, profit and margin, and the minimum price for the target margin. Red = loss.',
                             'Yearly prices pay the fee once a year, divided by 12.',
                             '"ตรวจการเปลี่ยนแปลง" → review old → new (Stripe also shows existing subscribers) → tick → save.',
+                            'While CapDeal/Lawyer cannot save through Stripe yet, the button becomes "บันทึกเป็นร่าง (ยังไม่ใช้จริง)" (save as draft). The draft is stored separately; the site keeps showing and charging the current price and customers never see it.',
+                            'A card with a draft shows the "ร่าง — ยังไม่ใช้จริง" badge, the fields show the draft and each field shows the live price below it. Cost/margin use the typed values. "ล้างร่าง" discards the draft.',
+                            'Once Stripe is set up (PRICING_WRITE_ENABLED on), the card says a draft is pending and prefills the fields from it → preview → save as usual. The draft is cleared automatically when the save succeeds.',
                         ],
                     },
                     {
@@ -290,13 +344,15 @@ export const financeGroup: GuideGroup = {
                         items: [
                             'Defaults come from LAWSLANE-ต้นทุน-2026-10.xlsx: FX, target margin, quotas, users in 3 scenarios, service prices, AI model prices, tokens per call.',
                             'Edits update every margin immediately (unsaved). Click "บันทึกสมมติฐาน" to keep them.',
-                            'The scenario selector at the top changes the infra share per account (start/growth/scale).',
+                            'The "scenario" selector at the top changes the infra share per account and the highlighted column in system costs (start/growth/scale).',
+                            'Edit: FX monthly · users per scenario monthly/quarterly · target margin when policy changes · vendor prices when vendors change them.',
+                            'New rows from the file: LINE OA, SlipOK, invoice PDFs, SMS OTP, Lalin, admin AI, Business plans (draft).',
                             'Once real bills exist, enter them in "override with real bill" instead of the computed total.',
                         ],
                     },
                 ],
                 warnings: [
-                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Only CapDeal/Lawyer are locked; other sections still save.',
+                    'A "view-only" banner means PRICING_WRITE_ENABLED is off or the Stripe key is not ready. Only real CapDeal/Lawyer saves are locked (drafts still save); other sections still save.',
                     'Stripe "test" must pair with the planPricing_test collection.',
                     'Costs are estimates (list price × assumptions), not real bills.',
                     'If it says someone else changed it, reload and edit again. Every save is logged to planPricingLogs (editor uid only).',
