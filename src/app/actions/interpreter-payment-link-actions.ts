@@ -70,6 +70,67 @@ export async function listApprovedInterpreterOptionsAction(): Promise<ApprovedIn
         .sort((a, b) => a.name.localeCompare(b.name, 'th'));
 }
 
+export interface InterpreterRequestRow {
+    ticketId: string;
+    clientName: string;
+    service: string;
+    languageFrom: string;
+    languageTo: string;
+    date: string;
+    mode: string;
+    location: string;
+    /** สถานะตั๋ว: pending / resolved */
+    status: string;
+    reportedAt: string | null;
+    /** สถานะลิงก์ชำระเงินล่าสุดของตั๋วนี้ (null = ยังไม่ได้ส่งลิงก์) */
+    linkStatus: string | null;
+}
+
+/**
+ * คำขอใช้บริการล่ามจากหน้า /interpreters ของเว็บหลัก — เก็บเป็นตั๋วใน tickets
+ * (problemType 'ขอใช้บริการล่าม') เพื่อใช้แชทคุยกับลูกค้า หน้านี้ดึงมาแสดงในหน้างานล่าม
+ * where เท่ากับฟิลด์เดียว ไม่ต้องมี composite index แล้วเรียงในเครื่อง
+ */
+export async function listInterpreterRequestsAction(): Promise<InterpreterRequestRow[]> {
+    const { adminApp } = await requireAdmin(PERM_REQUESTS);
+    const db = adminApp.firestore();
+    const snap = await db.collection('tickets').where('problemType', '==', 'ขอใช้บริการล่าม').limit(300).get();
+    const ids = snap.docs.map((d) => d.id);
+
+    // ลิงก์ล่าสุดของแต่ละตั๋ว (where in ได้ครั้งละ 30)
+    const latestLink = new Map<string, { status: string; at: number }>();
+    for (let i = 0; i < ids.length; i += 30) {
+        const links = await db.collection(LINKS).where('ticketId', 'in', ids.slice(i, i + 30)).get();
+        for (const d of links.docs) {
+            const x = d.data();
+            const at = x.createdAt?.toMillis?.() ?? 0;
+            const expired = x.status === 'open' && x.expiresAt?.toMillis?.() < Date.now();
+            const prev = latestLink.get(x.ticketId);
+            if (!prev || at > prev.at) latestLink.set(x.ticketId, { status: expired ? 'expired' : String(x.status), at });
+        }
+    }
+
+    return snap.docs
+        .map((d) => {
+            const x = d.data();
+            const r = x.interpreterRequest || {};
+            return {
+                ticketId: d.id,
+                clientName: String(x.clientName || x.email || ''),
+                service: String(r.service || ''),
+                languageFrom: String(r.languageFrom || ''),
+                languageTo: String(r.languageTo || ''),
+                date: String(r.date || ''),
+                mode: String(r.mode || ''),
+                location: String(r.location || ''),
+                status: String(x.status || 'pending'),
+                reportedAt: iso(x.reportedAt),
+                linkStatus: latestLink.get(d.id)?.status ?? null,
+            };
+        })
+        .sort((a, b) => (b.reportedAt || '').localeCompare(a.reportedAt || ''));
+}
+
 export async function listTicketPaymentLinksAction(ticketId: string): Promise<PaymentLinkRow[]> {
     const { adminApp } = await requireAdmin(PERM_REQUESTS);
     const snap = await adminApp.firestore().collection(LINKS).where('ticketId', '==', str(ticketId, 64)).get();
