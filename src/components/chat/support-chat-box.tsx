@@ -17,6 +17,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, Timest
 import { translateToMultipleLanguages } from '@/app/actions/translate';
 import { getSecureDownloadUrl } from '@/app/actions/secure-view';
 import { useTranslations } from 'next-intl';
+import { getAuthPhotoUrlsAction } from '@/app/actions/user-management';
 
 interface SupportChatBoxProps {
   ticket: ReportedTicket;
@@ -50,6 +51,16 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false, on
 
   const { auth, firestore } = useFirebase();
   const { data: user } = useUser(auth);
+
+  // ข้อความลูกค้าส่วนใหญ่บันทึก avatarUrl เป็น null — แอดมินดูรูปจากบัญชี Google/LINE ของเจ้าของตั๋วแทน
+  const [customerPhoto, setCustomerPhoto] = useState('');
+  useEffect(() => {
+    const uid = ticket.userId;
+    if (!isAdmin || !uid) return;
+    let cancelled = false;
+    getAuthPhotoUrlsAction([uid]).then(photos => { if (!cancelled) setCustomerPhoto(photos[uid] || ''); });
+    return () => { cancelled = true; };
+  }, [isAdmin, ticket.userId]);
 
   const adminProfile = {
     name: 'ฝ่ายสนับสนุน',
@@ -198,7 +209,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false, on
                   >
                     {!ownMessage && (
                       <Avatar className="h-10 w-10">
-                        <SecureImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : undefined)} alt={msg.senderName} className="h-full w-full" />
+                        <SecureImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : customerPhoto || undefined)} alt={msg.senderName} className="h-full w-full" />
                         <AvatarFallback>
                           <UserCog className="w-5 h-5" />
                         </AvatarFallback>

@@ -37,6 +37,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { getDashboardData } from '@/lib/data'
 import { getMainLink } from '@/lib/domain-utils';
+import { getAuthPhotoUrlsAction } from '@/app/actions/user-management';
 import { useToast } from '@/hooks/use-toast'
 import { Separator } from '@/components/ui/separator'
 import { SecureImage } from '@/components/secure-image'
@@ -60,6 +61,14 @@ export default function AdminCustomerDetailPage() {
   const router = useRouter();
 
   const [customer, setCustomer] = React.useState<UserProfile | null>(null);
+  // ไม่มี users.avatar → ใช้รูปจากบัญชี Google/LINE (Firebase Auth) เหมือนหน้ารายการลูกค้า
+  const [authPhoto, setAuthPhoto] = React.useState('');
+  React.useEffect(() => {
+    if (!customer || customer.avatar || typeof id !== 'string') return;
+    let cancelled = false;
+    getAuthPhotoUrlsAction([id]).then(photos => { if (!cancelled) setAuthPhoto(photos[id] || ''); });
+    return () => { cancelled = true; };
+  }, [customer, id]);
   const [cases, setCases] = React.useState<Case[]>([]);
   const [currentDate, setCurrentDate] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -309,7 +318,7 @@ export default function AdminCustomerDetailPage() {
               <div className="font-semibold">รายละเอียด</div>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <SecureImage src={customer.avatar} alt={customer.name || 'User'} className="h-full w-full" />
+                  <SecureImage src={customer.avatar || authPhoto} alt={customer.name || 'User'} className="h-full w-full" />
                   <AvatarFallback>{customer.name ? customer.name.slice(0, 2) : 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-1">
