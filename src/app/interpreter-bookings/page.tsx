@@ -148,7 +148,10 @@ export default function AdminInterpreterBookingsPage() {
                                                 {b.createdAt ? new Date(b.createdAt).toLocaleString('th-TH') : '—'}
                                             </Link>
                                         </TableCell>
-                                        <TableCell>{b.interpreterName}</TableCell>
+                                        <TableCell>
+                                            {b.interpreterName}
+                                            {b.external && <Badge variant="outline" className="ml-2 border-amber-300 bg-amber-50 text-amber-800">นอกระบบ</Badge>}
+                                        </TableCell>
                                         <TableCell className="text-sm">
                                             {INTERPRETER_SERVICE_LABELS[b.serviceType] || b.serviceType}
                                             <span className="text-muted-foreground"> · {INTERPRETER_LANGUAGE_LABELS[b.languagePair.from]}→{INTERPRETER_LANGUAGE_LABELS[b.languagePair.to]}</span>

@@ -73,6 +73,23 @@ async function notify(db: FirebaseFirestore.Firestore, recipient: string, title:
     }).catch(err => console.error('notify failed:', err));
 }
 
+/**
+ * ล่ามนอกระบบ (external-interpreter-actions.ts) — งานไม่มีฟิลด์บอก เพราะลูกค้าอ่านเอกสารงานได้
+ * ดูจากว่ามี externalInterpreters/{interpreterId} หรือไม่
+ */
+async function externalInterpreter(db: FirebaseFirestore.Firestore, interpreterId: string) {
+    if (!interpreterId || interpreterId.includes('/')) return null;
+    const snap = await db.collection('externalInterpreters').doc(interpreterId).get();
+    return snap.exists ? snap.data()! : null;
+}
+
+async function externalIdSet(db: FirebaseFirestore.Firestore, ids: string[]): Promise<Set<string>> {
+    const unique = [...new Set(ids.filter(id => id && !id.includes('/')))];
+    if (unique.length === 0) return new Set();
+    const snaps = await db.getAll(...unique.map(id => db.collection('externalInterpreters').doc(id)));
+    return new Set(snaps.filter(s => s.exists).map(s => s.id));
+}
+
 async function signedUrl(adminApp: admin.app.App, path: string): Promise<string | null> {
     if (!path) return null;
     try {
@@ -267,9 +284,10 @@ export async function listInterpreterBookingsAction(filter: string): Promise<Adm
     else if (filter && filter !== 'all') q = col.where('status', '==', filter);
     else q = col.orderBy('createdAt', 'desc');
     const snap = await q.limit(200).get();
-    return JSON.parse(JSON.stringify(
-        snap.docs.map(d => toBooking(d.id, d.data())).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-    ));
+    const rows = snap.docs.map(d => toBooking(d.id, d.data()));
+    const externals = await externalIdSet(adminApp.firestore(), rows.map(r => r.interpreterId));
+    for (const r of rows) r.external = externals.has(r.interpreterId);
+    return JSON.parse(JSON.stringify(rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))));
 }
 
 export async function getInterpreterBookingDetailAction(id: string): Promise<{
@@ -280,6 +298,8 @@ export async function getInterpreterBookingDetailAction(id: string): Promise<{
     /** เบอร์/LINE ที่ลูกค้ากรอกตอนจอง (ล่ามเห็นหลังจ่ายเงินแล้ว) */
     bookingContact: { name: string; phone: string; lineId: string } | null;
     chat: AdminChatMessage[];
+    /** ล่ามนอกระบบ — แอดมินรับงาน/ปิดงานแทน */
+    external: { realName: string; phone: string; lineId: string; note: string } | null;
 } | null> {
     const { adminApp } = await requireAdmin(PERM_REQUESTS);
     const db = adminApp.firestore();
@@ -302,6 +322,8 @@ export async function getInterpreterBookingDetailAction(id: string): Promise<{
             .collection('messages').orderBy('createdAt', 'desc').limit(200).get(),
     ]);
     const c = contactSnap.data();
+    const ext = await externalInterpreter(db, booking.interpreterId);
+    booking.external = !!ext;
     const chat: AdminChatMessage[] = chatSnap.docs.reverse().map(m => {
         const x = m.data();
         return { id: m.id, senderRole: x.senderRole, text: x.text, originalText: x.originalText ?? null, offerId: x.offerId ?? null, createdAt: iso(x.createdAt) };
@@ -313,6 +335,7 @@ export async function getInterpreterBookingDetailAction(id: string): Promise<{
         customer: { name: u.name || '', email: u.email || '', phone: u.phone || '' },
         bookingContact: c ? { name: c.name || '', phone: c.phone || '', lineId: c.lineId || '' } : null,
         chat,
+        external: ext ? { realName: ext.realName || '', phone: ext.phone || '', lineId: ext.lineId || '', note: ext.note || '' } : null,
     }));
 }
 
@@ -365,7 +388,10 @@ export async function reviewInterpreterSlipAction(id: string, approve: boolean, 
             return b;
         });
         if (approve) {
-            await notify(db, booking.interpreterUserId, 'งานล่ามใหม่', 'ลูกค้าชำระเงินแล้ว กรุณารับงานหรือปฏิเสธ', '/interpreter-dashboard', ref.id);
+            // ล่ามนอกไม่มีบัญชีในเว็บ — แอดมินแจ้งล่ามเองแล้วกด "ล่ามรับงานแล้ว" แทน
+            if (!(await externalInterpreter(db, booking.interpreterId))) {
+                await notify(db, booking.interpreterUserId, 'งานล่ามใหม่', 'ลูกค้าชำระเงินแล้ว กรุณารับงานหรือปฏิเสธ', '/interpreter-dashboard', ref.id);
+            }
             await notify(db, booking.customerId, 'ยืนยันการชำระเงินแล้ว', 'รอล่ามยืนยันรับงาน', '/dashboard', ref.id);
         } else {
             await notify(db, booking.customerId, 'การชำระเงินไม่ผ่าน', str(note, 200) || 'สลิปไม่ถูกต้อง กรุณาติดต่อทีมงาน', '/dashboard', ref.id);
@@ -428,6 +454,55 @@ export async function markInterpreterRefundedAction(id: string, reference: strin
 // จ่ายเงินล่าม + GP
 // ===========================================================================
 
+/**
+ * งานของล่ามนอกระบบ — แอดมินกดแทนล่าม (ล่ามนอกไม่มีบัญชีในเว็บ)
+ * ตรรกะเดียวกับ respondToInterpreterBookingAction / completeInterpreterBookingAction ของเว็บหลัก
+ * และแจ้งลูกค้าด้วยข้อความเดียวกัน ลูกค้าจึงไม่เห็นความต่างจากล่ามในระบบ
+ */
+export async function adminAdvanceExternalBookingAction(id: string, step: 'accept' | 'complete'): Promise<Result> {
+    try {
+        const { uid: adminUid, adminApp } = await requireAdmin(PERM_REQUESTS);
+        const db = adminApp.firestore();
+        const ref = db.collection('interpreterBookings').doc(safeId(id));
+        const before = (await ref.get()).data();
+        if (!before) throw new ActionError('ไม่พบรายการ');
+        if (!(await externalInterpreter(db, String(before.interpreterId)))) throw new ActionError('ใช้ได้เฉพาะงานของล่ามนอกระบบ');
+        const customerId = await db.runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const b = snap.data();
+            if (!snap.exists || !b) throw new ActionError('ไม่พบรายการ');
+            const ts = admin.firestore.FieldValue.serverTimestamp();
+            if (step === 'accept') {
+                if (b.status !== 'paid') throw new ActionError('รับงานได้เฉพาะงานที่ชำระเงินแล้ว');
+                tx.update(ref, { status: 'accepted', acceptedAt: ts, updatedAt: ts });
+            } else {
+                if (b.status !== 'accepted') throw new ActionError('ปิดงานได้เฉพาะงานที่รับแล้ว');
+                tx.update(ref, { status: 'completed', payoutStatus: 'due', completedAt: ts, updatedAt: ts });
+            }
+            // บันทึกว่าแอดมินคนไหนกด — เก็บใน private (ลูกค้าอ่านไม่ได้)
+            tx.set(ref.collection('private').doc('admin'), step === 'accept'
+                ? { acceptedBy: adminUid, acceptedAt: ts }
+                : { completedBy: adminUid, completedAt: ts }, { merge: true });
+            return String(b.customerId);
+        });
+        if (step === 'accept') {
+            await db.collection('notifications').add({
+                type: 'interpreter_booking',
+                title: 'ล่ามรับงานแล้ว',
+                message: 'ล่ามยืนยันรับงานของคุณแล้ว',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                read: false,
+                recipient: customerId,
+                link: '/dashboard',
+                relatedId: ref.id,
+            }).catch(err => console.error('notify failed:', err));
+        }
+        return { ok: true };
+    } catch (e) {
+        return fail(e, 'บันทึกไม่สำเร็จ');
+    }
+}
+
 /** ยอดที่ต้องโอนให้ล่าม (งาน completed ที่ payoutStatus = due) รวมตามล่าม */
 export async function listDueInterpreterPayoutsAction(): Promise<InterpreterPayoutGroup[]> {
     const { adminApp } = await requireAdmin(PERM_PAYOUTS);
@@ -454,7 +529,9 @@ export async function listDueInterpreterPayoutsAction(): Promise<InterpreterPayo
         groups.set(b.interpreterId, g);
     }
     await Promise.all([...groups.values()].map(async g => {
-        const priv = (await db.collection('interpreterProfiles').doc(g.interpreterId).collection('private').doc('details').get()).data() || {};
+        const ext = await externalInterpreter(db, g.interpreterId);
+        g.external = !!ext;
+        const priv = ext || (await db.collection('interpreterProfiles').doc(g.interpreterId).collection('private').doc('details').get()).data() || {};
         g.bankName = priv.bankName || '';
         g.bankAccountNumber = priv.bankAccountNumber || '';
         g.bankAccountName = priv.bankAccountName || '';
@@ -497,8 +574,8 @@ export async function markInterpreterPayoutPaidAction(input: { interpreterId: st
             for (const s of snaps) tx.update(s.ref, { payoutStatus: 'paid', payoutId: payoutRef.id, updatedAt: ts });
             return { totalNet };
         });
-        const profile = (await db.collection('interpreterProfiles').doc(interpreterId).get()).data() || {};
-        await notify(db, profile.userId || interpreterId, 'โอนค่าจ้างแล้ว', `฿${(totals.totalNet / 100).toLocaleString('th-TH')} · อ้างอิง ${reference}`, '/interpreter-dashboard', payoutRef.id);
+        const profile = (await db.collection('interpreterProfiles').doc(interpreterId).get()).data();
+        if (profile) await notify(db, profile.userId || interpreterId, 'โอนค่าจ้างแล้ว', `฿${(totals.totalNet / 100).toLocaleString('th-TH')} · อ้างอิง ${reference}`, '/interpreter-dashboard', payoutRef.id);
         return { ok: true, payoutId: payoutRef.id };
     } catch (e) {
         return fail(e, 'บันทึกการโอนไม่สำเร็จ');

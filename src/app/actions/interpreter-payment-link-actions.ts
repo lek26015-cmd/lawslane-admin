@@ -173,7 +173,11 @@ export async function createInterpreterPaymentLinkAction(input: {
         if (!ticket?.userId) return { ok: false, error: 'ไม่พบตั๋วนี้' };
 
         const interpreterId = str(input.interpreterId, 128);
-        const interp = interpreterId && !interpreterId.includes('/') ? (await db.collection('interpreterProfiles').doc(interpreterId).get()).data() : null;
+        const validId = !!interpreterId && !interpreterId.includes('/');
+        let interp = validId ? (await db.collection('interpreterProfiles').doc(interpreterId).get()).data() : null;
+        // ล่ามนอกระบบ (external-interpreter-actions.ts) — ใส่ลงลิงก์รูปร่างเดียวกับล่ามในระบบ
+        const external = !interp && validId ? (await db.collection('externalInterpreters').doc(interpreterId).get()).data() : null;
+        if (external) interp = { name: external.name, status: 'approved' };
         if (!interp || interp.status !== 'approved') return { ok: false, error: 'กรุณาเลือกล่ามที่อนุมัติแล้ว' };
 
         const title = str(input.title, 120);
@@ -198,6 +202,8 @@ export async function createInterpreterPaymentLinkAction(input: {
             interpreterId,
             interpreterUserId: interp.userId || interpreterId,
             interpreterName: String(interp.name || ''),
+            // ลิงก์อ่านผ่าน Admin SDK เท่านั้น ลูกค้าไม่เห็นฟิลด์นี้ — เว็บหลักใช้ข้ามแจ้งเตือนล่าม
+            external: !!external,
             title,
             amountBaht,
             service,

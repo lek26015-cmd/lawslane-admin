@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
+    adminAdvanceExternalBookingAction,
     adminCancelInterpreterBookingAction,
     getInterpreterBookingDetailAction,
     markInterpreterRefundedAction,
@@ -69,13 +70,22 @@ export default function AdminInterpreterBookingDetailPage() {
             <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-bold font-headline">{INTERPRETER_SERVICE_LABELS[b.serviceType] || b.serviceType} · {b.interpreterName}</h1>
                 <Badge variant="secondary">{INTERPRETER_BOOKING_STATUS_LABELS[b.status] || b.status}</Badge>
+                {d.external && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">ล่ามนอกระบบ</Badge>}
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
                 <Card className="rounded-xl">
                     <CardHeader><CardTitle>รายละเอียดงาน</CardTitle></CardHeader>
                     <CardContent>
-                        <Row label="ล่าม"><Link className="text-blue-600" href={`/interpreters/${b.interpreterId}`}>{b.interpreterName}</Link></Row>
+                        {d.external ? (
+                            <Row label="ล่าม (นอกระบบ)">
+                                {b.interpreterName}{d.external.realName ? ` · ชื่อจริง ${d.external.realName}` : ''}
+                                {' · '}{d.external.phone || '—'} · LINE {d.external.lineId || '—'}
+                                {d.external.note && <span className="block text-xs text-muted-foreground whitespace-pre-line">{d.external.note}</span>}
+                            </Row>
+                        ) : (
+                            <Row label="ล่าม"><Link className="text-blue-600" href={`/interpreters/${b.interpreterId}`}>{b.interpreterName}</Link></Row>
+                        )}
                         <Row label="ลูกค้า (บัญชี)">{d.customer.name || '—'} · {d.customer.email || '—'} · {d.customer.phone || '—'}</Row>
                         <Row label="ติดต่อที่กรอกตอนจอง">{d.bookingContact ? `${d.bookingContact.name} · ${d.bookingContact.phone} · LINE ${d.bookingContact.lineId || '—'}` : '—'}</Row>
                         <Row label="คู่ภาษา">{INTERPRETER_LANGUAGE_LABELS[b.languagePair.from]} → {INTERPRETER_LANGUAGE_LABELS[b.languagePair.to]}</Row>
@@ -157,6 +167,16 @@ export default function AdminInterpreterBookingDetailPage() {
                         {['pending_payment', 'paid', 'accepted'].includes(b.status) && (
                             <Button disabled={busy || !note} variant="destructive" onClick={() => run(() => adminCancelInterpreterBookingAction(b.id, note), 'ยกเลิกงานและรอคืนเงินลูกค้า?')}>
                                 ยกเลิกงาน (รอคืนเงิน)
+                            </Button>
+                        )}
+                        {d.external && b.status === 'paid' && (
+                            <Button disabled={busy} onClick={() => run(() => adminAdvanceExternalBookingAction(b.id, 'accept'), 'ยืนยันว่าล่ามนอกตกลงรับงานนี้แล้ว? ลูกค้าจะได้แจ้งเตือน "ล่ามรับงานแล้ว"')}>
+                                ล่ามรับงานแล้ว (แทนล่ามนอก)
+                            </Button>
+                        )}
+                        {d.external && b.status === 'accepted' && (
+                            <Button disabled={busy} onClick={() => run(() => adminAdvanceExternalBookingAction(b.id, 'complete'), 'ปิดงานนี้ว่าเสร็จแล้ว? ยอดจะไปรอโอนที่เมนู "จ่ายเงินล่าม"')}>
+                                ปิดงาน (เสร็จสิ้น)
                             </Button>
                         )}
                         {b.status === 'refund_pending' && (
