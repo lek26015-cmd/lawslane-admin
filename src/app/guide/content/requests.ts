@@ -111,6 +111,15 @@ export const requestsGroup: GuideGroup = {
                 summary: 'งานจองล่ามที่ลูกค้าโอนเงินเข้า Lawslane แพลตฟอร์มเก็บเงินไว้ หัก GP แล้วโอนต่อให้ล่ามหลังงานเสร็จ',
                 blocks: [
                     {
+                        heading: 'คำขอใหม่ (แท็บ "คำขอจากลูกค้า")',
+                        items: [
+                            'แท็บแรกรวมคำขอที่ลูกค้าส่งจากหน้าล่ามของเว็บหลัก คำขอที่ยังไม่ปิดอยู่บนสุด',
+                            'คอลัมน์ "ลิงก์ชำระเงิน" บอกว่าส่งลิงก์แล้วหรือยัง และลูกค้าจ่ายถึงขั้นไหน',
+                            'กดวันที่เพื่อเปิดตั๋ว คุยกับลูกค้าในแชท แล้วสร้างลิงก์ชำระเงินจากแผงด้านขวา',
+                            'คำขอเดียวกันยังอยู่ในเมนู "Ticket ช่วยเหลือ" ด้วย เพราะใช้ตั๋วเป็นช่องแชท',
+                        ],
+                    },
+                    {
                         heading: 'ตรวจสลิป (แท็บ "สลิปรอตรวจ")',
                         items: [
                             'เปิดงาน ดูการ์ด "เงิน": ยอดที่ลูกค้าจ่าย GP ยอดที่ล่ามได้ ผลตรวจ SlipOK และรูปสลิป',
@@ -144,6 +153,15 @@ export const requestsGroup: GuideGroup = {
                 title: 'Interpreter jobs',
                 summary: 'Interpreter bookings that customers pay to Lawslane. The platform holds the money, deducts GP and pays the interpreter after the job is done.',
                 blocks: [
+                    {
+                        heading: 'New requests (tab "คำขอจากลูกค้า")',
+                        items: [
+                            'The first tab lists requests customers sent from the interpreters page on the main site. Open requests are on top.',
+                            'The "payment link" column shows whether a link was sent and how far the customer has paid.',
+                            'Click the date to open the ticket, chat with the customer and create a payment link from the right-hand panel.',
+                            'The same request still appears under "Support Tickets", because the ticket is the chat channel.',
+                        ],
+                    },
                     {
                         heading: 'Check slips (tab "Slips to check")',
                         items: [
