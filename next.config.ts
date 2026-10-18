@@ -155,6 +155,13 @@ const nextConfig: NextConfig = {
         destination: 'https://www.lawslane.com/:locale/lawyer-dashboard/financials',
         permanent: false,
       },
+      // การแจ้งเตือนเก่าใน Firestore เก็บลิงก์แบบ /admin/... (สมัยหลังบ้านอยู่ในเว็บหลัก)
+      // เว็บนี้ไม่มี /admin นำหน้า จึงตัดออกให้กดจากกระดิ่งแล้วไม่เจอ 404
+      {
+        source: '/admin/:path*',
+        destination: '/:path*',
+        permanent: false,
+      },
       {
         source: '/b2b-surveys',
         destination: '/surveys',
