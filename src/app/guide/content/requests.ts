@@ -129,6 +129,14 @@ export const requestsGroup: GuideGroup = {
                         ],
                     },
                     {
+                        heading: 'งานของล่ามนอกระบบ (ป้าย "นอกระบบ")',
+                        items: [
+                            'ล่ามนอกไม่มีบัญชีในเว็บ ระบบจึงไม่แจ้งเตือนล่าม แอดมินต้องติดต่อล่ามเอง',
+                            'หลังยืนยันสลิปแล้ว และล่ามตกลงรับงาน กด "ล่ามรับงานแล้ว (แทนล่ามนอก)" ลูกค้าจะได้แจ้งเตือนเหมือนล่ามในระบบรับงาน',
+                            'งานเสร็จแล้วกด "ปิดงาน (เสร็จสิ้น)" ยอดจะไปรอโอนที่ "จ่ายเงินล่าม" พร้อมบัญชีที่กรอกไว้ตอนเพิ่มล่ามนอก',
+                        ],
+                    },
+                    {
                         heading: 'ยกเลิกและคืนเงิน',
                         items: [
                             '"ยกเลิกงาน (รอคืนเงิน)" ใช้กับงานที่จ่ายแล้วแต่ต้องยกเลิก ต้องใส่เหตุผล งานจะไปอยู่แท็บ "รอคืนเงิน"',
@@ -169,6 +177,14 @@ export const requestsGroup: GuideGroup = {
                             'If correct, click "ยืนยันสลิป (ได้รับเงินแล้ว)". The time slot is locked and both the interpreter and the customer are notified.',
                             'If wrong, click "สลิปไม่ถูกต้อง". The job is cancelled, the slot released and the customer notified.',
                             'If confirmation fails because the slot was taken, reject and refund the customer instead.',
+                        ],
+                    },
+                    {
+                        heading: 'External interpreter jobs ("นอกระบบ" badge)',
+                        items: [
+                            'External interpreters have no account on the site, so they get no notifications. Contact them yourself.',
+                            'After the slip is confirmed and the interpreter agrees, click "ล่ามรับงานแล้ว (แทนล่ามนอก)". The customer gets the same notification as when a registered interpreter accepts.',
+                            'When the job is done, click "ปิดงาน (เสร็จสิ้น)". The amount moves to "Interpreter payouts" with the bank account entered for that interpreter.',
                         ],
                     },
                     {

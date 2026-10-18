@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Link2, Loader2, XCircle } from 'lucide-react';
+import { Copy, Link2, Loader2, UserPlus, XCircle } from 'lucide-react';
+import { listExternalInterpretersAction, type ExternalInterpreter } from '@/app/actions/external-interpreter-actions';
+import { ExternalInterpreterDialog } from '@/components/tickets/external-interpreter-dialog';
 import {
     cancelInterpreterPaymentLinkAction,
     createInterpreterPaymentLinkAction,
@@ -45,6 +47,8 @@ type Request = { service?: string; languageFrom?: string; languageTo?: string; d
 export function InterpreterPaymentLinkPanel({ ticketId, request, disabled }: { ticketId: string; request?: Request; disabled?: boolean }) {
     const { toast } = useToast();
     const [interpreters, setInterpreters] = useState<ApprovedInterpreterOption[]>([]);
+    const [externals, setExternals] = useState<ExternalInterpreter[]>([]);
+    const [externalDialog, setExternalDialog] = useState(false);
     const [links, setLinks] = useState<PaymentLinkRow[]>([]);
     const [interpreterId, setInterpreterId] = useState('');
     const [title, setTitle] = useState('');
@@ -62,6 +66,7 @@ export function InterpreterPaymentLinkPanel({ ticketId, request, disabled }: { t
 
     useEffect(() => {
         listApprovedInterpreterOptionsAction().then(setInterpreters).catch(() => setInterpreters([]));
+        listExternalInterpretersAction().then(setExternals).catch(() => setExternals([]));
         refresh().catch(() => undefined);
     }, [refresh]);
 
@@ -112,17 +117,40 @@ export function InterpreterPaymentLinkPanel({ ticketId, request, disabled }: { t
                 {!disabled && (
                     <div className="space-y-3">
                         <div className="space-y-1">
-                            <Label>ล่าม</Label>
+                            <div className="flex items-center justify-between">
+                                <Label>ล่าม</Label>
+                                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setExternalDialog(true)}>
+                                    <UserPlus className="w-3 h-3 mr-1" /> เพิ่มล่ามนอกระบบ
+                                </Button>
+                            </div>
                             <Select value={interpreterId} onValueChange={setInterpreterId}>
-                                <SelectTrigger><SelectValue placeholder="เลือกล่ามที่อนุมัติแล้ว" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="เลือกล่าม" /></SelectTrigger>
                                 <SelectContent>
-                                    {sorted.map((i) => (
-                                        <SelectItem key={i.id} value={i.id}>
-                                            {i.name}{matches(i) ? ' ✓' : ''} · {i.languageCodes.map((c) => LANG_TH[c] || c).join('/')}
-                                        </SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        <SelectLabel>ล่ามในระบบ</SelectLabel>
+                                        {sorted.map((i) => (
+                                            <SelectItem key={i.id} value={i.id}>
+                                                {i.name}{matches(i) ? ' ✓' : ''} · {i.languageCodes.map((c) => LANG_TH[c] || c).join('/')}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                    {externals.length > 0 && (
+                                        <SelectGroup>
+                                            <SelectLabel>ล่ามนอกระบบ (ลูกค้าไม่เห็นว่าเป็นล่ามนอก)</SelectLabel>
+                                            {externals.map((x) => (
+                                                <SelectItem key={x.id} value={x.id}>
+                                                    {x.name}{x.realName ? ` (${x.realName})` : ''}{x.languageCodes.length ? ` · ${x.languageCodes.map((c) => LANG_TH[c] || c).join('/')}` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    )}
                                 </SelectContent>
                             </Select>
+                            {externals.some((x) => x.id === interpreterId) && (
+                                <p className="text-xs text-muted-foreground">
+                                    ล่ามนอกไม่มีบัญชีในเว็บ — หลังลูกค้าจ่ายแล้ว แอดมินต้องกด &quot;ล่ามรับงานแล้ว&quot; และ &quot;ปิดงาน&quot; แทนในหน้างานล่าม
+                                </p>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1 col-span-2">
@@ -205,6 +233,14 @@ export function InterpreterPaymentLinkPanel({ ticketId, request, disabled }: { t
                     </div>
                 )}
             </CardContent>
+            <ExternalInterpreterDialog
+                open={externalDialog}
+                onOpenChange={setExternalDialog}
+                onSaved={async (id) => {
+                    setExternals(await listExternalInterpretersAction());
+                    setInterpreterId(id);
+                }}
+            />
         </Card>
     );
 }

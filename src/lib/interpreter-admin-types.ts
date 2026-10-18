@@ -118,6 +118,8 @@ export interface AdminInterpreterBooking {
     customerId: string;
     interpreterId: string;
     interpreterName: string;
+    /** ล่ามนอกระบบ (externalInterpreters) — ฝั่งแอดมินเท่านั้น ไม่ได้เก็บบนเอกสารงาน */
+    external?: boolean;
     kind: 'interpretation' | 'translation';
     serviceType: string;
     languagePair: { from: string; to: string };
@@ -155,4 +157,5 @@ export interface InterpreterPayoutGroup {
     bankName: string;
     bankAccountNumber: string;
     bankAccountName: string;
+    external?: boolean;
 }

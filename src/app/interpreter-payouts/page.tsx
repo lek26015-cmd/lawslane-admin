@@ -34,7 +34,10 @@ function PayoutRow({ g, onPaid }: { g: InterpreterPayoutGroup; onPaid: () => voi
         <Card className="rounded-xl">
             <CardContent className="pt-6 grid md:grid-cols-4 gap-4 items-end">
                 <div>
-                    <p className="font-semibold">{g.interpreterName}</p>
+                    <p className="font-semibold">
+                        {g.interpreterName}
+                        {g.external && <span className="ml-2 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs font-normal text-amber-800">นอกระบบ</span>}
+                    </p>
                     <p className="text-sm text-muted-foreground">{g.bookingIds.length} งาน · ลูกค้าจ่าย ฿{formatSatang(g.totalGross)} · GP ฿{formatSatang(g.totalGp)}</p>
                 </div>
                 <div className="text-sm">
