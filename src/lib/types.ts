@@ -173,6 +173,8 @@ export interface ReportedTicket {
   status: 'pending' | 'resolved';
   reportedAt: Date;
   clientName?: string;
+  /** uid เจ้าของตั๋ว — ใช้ดึงรูปโปรไฟล์จาก Firebase Auth ในแชท */
+  userId?: string;
   description?: string;
   files?: { name: string, url: string, size: number }[];
 }
