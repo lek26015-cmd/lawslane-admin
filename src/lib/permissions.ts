@@ -31,6 +31,7 @@ export const PERMISSIONS = {
     'financials.transactions': 'รายการธุรกรรม',
     'financials.withdrawals': 'คำร้องถอนเงิน',
     'financials.interpreterPayouts': 'จ่ายเงินล่าม / คืนเงิน / ตั้ง GP ล่าม',
+    'financials.lawyerPayouts': 'จ่ายเงินทนาย / คืนเงินค่าทนาย',
     'coupons': 'คูปองส่วนลด',
     'gp_coupons': 'คูปอง GP ทนาย',
     'support': 'Ticket และอีเมล',
