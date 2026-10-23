@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-    ArrowLeftCircle,
     BrainCircuit,
     Briefcase,
     Building2,
@@ -15,7 +14,6 @@ import {
     Megaphone,
     MessageSquare,
     Package,
-    Percent,
     Scale,
     Settings,
     ShieldCheck,
@@ -112,12 +110,12 @@ export const navSections: NavSection[] = [
         titleEn: "Finance",
         items: [
             { href: "/financials?tab=overview", icon: <Landmark className="h-4 w-4" />, label: "ภาพรวมการเงิน", labelEn: "Finance Overview", permission: "financials.overview" },
-            { href: "/financials?tab=verification", icon: <ShieldCheck className="h-4 w-4" />, label: "ตรวจสอบสลิป", labelEn: "Slip Verification", permission: "financials.verification" },
-            { href: "/financials?tab=transactions", icon: <FileText className="h-4 w-4" />, label: "รายการธุรกรรม", labelEn: "Transactions", permission: "financials.transactions" },
-            { href: "/financials?tab=withdrawals", icon: <ArrowLeftCircle className="h-4 w-4" />, label: "คำร้องถอนเงิน", labelEn: "Withdrawals", permission: "financials.withdrawals" },
+            // ค่าทนายผ่านบัญชีระบบ (PLAN-10) · เมนูตรวจสลิป/ธุรกรรม/ถอนเงิน/คูปอง GP แบบเก่าซ่อนไว้
+            // (อ่านข้อมูลของโมเดลก่อน direct-pay ที่ไม่มีใครเขียนแล้ว — หน้ายังอยู่ที่ /financials, /gp-coupons)
+            { href: "/lawyer-payments", icon: <ShieldCheck className="h-4 w-4" />, label: "ค่าทนาย (ตรวจสลิป)", labelEn: "Lawyer Fees", permission: "financials.verification" },
+            { href: "/lawyer-payouts", icon: <HandCoins className="h-4 w-4" />, label: "จ่ายเงินทนาย", labelEn: "Lawyer Payouts", permission: "financials.lawyerPayouts" },
             { href: "/interpreter-payouts", icon: <HandCoins className="h-4 w-4" />, label: "จ่ายเงินล่าม", labelEn: "Interpreter Payouts", permission: "financials.interpreterPayouts" },
             { href: "/coupons", icon: <Ticket className="h-4 w-4" />, label: "คูปองส่วนลด", labelEn: "Discount Coupons", permission: "coupons" },
-            { href: "/gp-coupons", icon: <Percent className="h-4 w-4" />, label: "คูปอง GP ทนาย", labelEn: "Lawyer GP Coupons", permission: "gp_coupons" },
             { href: "/pricing", icon: <Tag className="h-4 w-4" />, label: "ราคาแพ็กเกจ", labelEn: "Plan Pricing", superAdminOnly: true },
         ]
     },
