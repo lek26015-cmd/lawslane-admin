@@ -209,7 +209,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false, on
                   >
                     {!ownMessage && (
                       <Avatar className="h-10 w-10">
-                        <SecureImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : customerPhoto || undefined)} alt={msg.senderName} className="h-full w-full" />
+                        <SecureImage src={msg.avatarUrl || (msg.role === 'admin' ? adminProfile.avatar : customerPhoto || undefined)} alt={msg.senderName} className="h-full w-full" fallback={null} />
                         <AvatarFallback>
                           <UserCog className="w-5 h-5" />
                         </AvatarFallback>
@@ -267,7 +267,7 @@ export function SupportChatBox({ ticket, isDisabled = false, isAdmin = false, on
                     </div>
                     {ownMessage && (
                       <Avatar className="h-10 w-10">
-                        <SecureImage src={msg.avatarUrl || (isAdmin ? adminProfile.avatar : undefined)} alt="Me" className="h-full w-full" />
+                        <SecureImage src={msg.avatarUrl || (isAdmin ? adminProfile.avatar : undefined)} alt="Me" className="h-full w-full" fallback={null} />
                         <AvatarFallback>{isAdmin ? <UserCog className="w-5 h-5" /> : "Me"}</AvatarFallback>
                       </Avatar>
                     )}
