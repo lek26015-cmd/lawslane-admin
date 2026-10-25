@@ -20,7 +20,9 @@ import {
     pickDue,
     postPaidEffects,
     readLawyerGpPercent,
+    releasePendingUpdate,
 } from '@/lib/lawyer-payment-apply';
+import { partialKey, readPartial } from '@/lib/lawyer-payment-partial';
 
 const PERM_REVIEW = 'financials.verification';
 const PERM_PAYOUTS = 'financials.lawyerPayouts';
@@ -55,6 +57,10 @@ export interface AdminLawyerPayment {
     installmentIndex: number | null;
     description: string;
     grossAmount: number;
+    /** แบ่งจ่าย: ยอดเต็มของรายการ · ยอดที่ยืนยันแล้วก่อนครั้งนี้ (สตางค์) — 0 = ข้อมูลก่อนมีแบ่งจ่าย */
+    itemAmount: number;
+    paidBefore: number;
+    partial: boolean;
     gpPercent: number;
     gpAmount: number;
     netToLawyer: number;
@@ -80,6 +86,9 @@ function toRow(id: string, x: FirebaseFirestore.DocumentData): AdminLawyerPaymen
         installmentIndex: typeof x.installmentIndex === 'number' ? x.installmentIndex : null,
         description: x.description || '',
         grossAmount: Number(x.grossAmount) || 0,
+        itemAmount: Number(x.itemAmount) || 0,
+        paidBefore: Number(x.paidBefore) || 0,
+        partial: x.partial === true,
         gpPercent: Number(x.gpPercent) || 0,
         gpAmount: Number(x.gpAmount) || 0,
         netToLawyer: Number(x.netToLawyer) || 0,
@@ -138,8 +147,9 @@ export async function getLawyerPaymentDetailAction(id: string): Promise<{
 
 /**
  * ผลตรวจสลิปด้วยมือ
- * - approve: ยอดยังตรงกับรายการที่ค้าง → รายการในห้องเป็นจ่ายแล้ว · payoutStatus held (หรือ due ถ้าปิดเคสแล้ว)
- * - reject: ปลดล็อกรายการในห้องให้ลูกความแนบสลิปใหม่ได้
+ * - approve: ยอดของสลิปนี้ยังถูกกันไว้ในห้อง (partialPayments) → นับเป็นยอดที่ชำระแล้วของรายการ
+ *   ยอดสะสมครบ = รายการในห้องเป็นจ่ายแล้ว · payoutStatus held (หรือ due ถ้าปิดเคสแล้ว)
+ * - reject: ปล่อยยอดที่กันไว้ ให้ลูกความแนบสลิปใหม่ได้
  */
 export async function reviewLawyerSlipAction(id: string, approve: boolean, note?: string): Promise<Result> {
     try {
@@ -166,30 +176,28 @@ export async function reviewLawyerSlipAction(id: string, approve: boolean, note?
                 if (!due || due.type !== p.type || (p.type === 'installment' && due.installmentIndex !== p.installmentIndex)) {
                     throw new ActionError('รายการนี้ในห้องชำระแล้วหรือถูกลบ — ให้ปฏิเสธและคืนเงินแทน');
                 }
-                if (bahtToSatang(due.amount) !== Number(p.grossAmount)) {
-                    throw new ActionError('ยอดในห้องเปลี่ยนไปจากตอนแนบสลิป — ให้ปฏิเสธแล้วให้ลูกความแนบใหม่');
+                // ยอดสลิปนี้ต้องยังถูกกันไว้ในห้อง และยอดเต็มของรายการไม่เปลี่ยนจากตอนแนบ
+                const reserved = readPartial(chat, partialKey(p.type, p.installmentIndex)).pending[ref.id];
+                if (reserved === undefined || bahtToSatang(reserved) !== Number(p.grossAmount)) {
+                    throw new ActionError('ไม่พบยอดของสลิปนี้ในห้อง (รายการอาจถูกแก้ไข) — ให้ปฏิเสธแล้วให้ลูกความแนบใหม่');
                 }
-                const applied = applyPaidInTx(chat, due, { confirmedBy: adminUid, confirmedByRole: 'platform', paymentId: ref.id });
+                if (p.itemAmount && bahtToSatang(due.amount) !== Number(p.itemAmount)) {
+                    throw new ActionError('ยอดรายการในห้องเปลี่ยนไปจากตอนแนบสลิป — ให้ปฏิเสธแล้วให้ลูกความแนบใหม่');
+                }
+                const applied = applyPaidInTx(
+                    chat, due, { confirmedBy: adminUid, confirmedByRole: 'platform', paymentId: ref.id }, Number(p.grossAmount) / 100,
+                );
                 tx.update(chatRef, applied.update);
                 tx.update(ref, { ...review, status: 'paid', paidAt: ts, payoutStatus: chat.status === 'closed' ? 'due' : 'held' });
-                return { approve, chat, amount: applied.amount, label: applied.label, firstPaid: applied.firstPaid, clientId: String(p.clientId || ''), chatId: String(p.chatId) };
+                return {
+                    approve, chat, amount: applied.amount, label: applied.label, firstPaid: applied.firstPaid,
+                    itemAmount: applied.itemAmount, remaining: applied.remaining,
+                    clientId: String(p.clientId || ''), chatId: String(p.chatId),
+                };
             }
 
-            // ปลดล็อกรายการในห้อง (ถ้ายังชี้มาที่การจ่ายนี้)
-            const update: Record<string, any> = { updatedAt: ts };
-            if (p.type === 'installment') {
-                const installments: any[] = Array.isArray(chat.installments) ? [...chat.installments] : [];
-                const i = Number(p.installmentIndex);
-                if (installments[i]?.platformPaymentId === ref.id) {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { platformPaymentId, ...rest } = installments[i];
-                    installments[i] = rest;
-                    update.installments = installments;
-                }
-            } else if (chat.platformPaymentPending?.paymentId === ref.id) {
-                update.platformPaymentPending = admin.firestore.FieldValue.delete();
-            }
-            tx.update(chatRef, update);
+            // ปล่อยยอดที่กันไว้ในห้อง (ถ้ายังกันไว้ให้การจ่ายนี้)
+            tx.update(chatRef, { ...releasePendingUpdate(chat, { type: p.type, installmentIndex: p.installmentIndex }, ref.id), updatedAt: ts });
             tx.update(ref, { ...review, status: 'rejected', payoutStatus: 'none' });
             return {
                 approve, chat, amount: Number(p.grossAmount) / 100,

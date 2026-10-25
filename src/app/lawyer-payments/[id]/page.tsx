@@ -68,7 +68,13 @@ export default function AdminLawyerPaymentDetailPage() {
                 <Card className="rounded-xl">
                     <CardHeader><CardTitle>เงิน</CardTitle></CardHeader>
                     <CardContent>
-                        <Row label="ลูกความจ่าย"><span className="font-bold">฿{formatSatang(p.grossAmount)}</span></Row>
+                        <Row label="ลูกความจ่าย"><span className="font-bold">฿{formatSatang(p.grossAmount)}</span>{p.partial && ' (แบ่งจ่าย)'}</Row>
+                        {p.partial && (
+                            <>
+                                <Row label="ยอดเต็มของรายการ">฿{formatSatang(p.itemAmount)}</Row>
+                                <Row label="ชำระแล้วก่อนครั้งนี้">฿{formatSatang(p.paidBefore)}</Row>
+                            </>
+                        )}
                         <Row label={`GP ${p.gpPercent}%`}>฿{formatSatang(p.gpAmount)}</Row>
                         <Row label="ทนายได้รับ">฿{formatSatang(p.netToLawyer)}</Row>
                         <Row label="สลิป">{p.slipVerified ? 'SlipOK ตรวจผ่าน' : 'ยังไม่ผ่านการตรวจอัตโนมัติ'}</Row>

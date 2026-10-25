@@ -16,9 +16,11 @@ export const financeGroup: GuideGroup = {
                         heading: 'ตรวจสลิป (แท็บ "สลิปรอตรวจ")',
                         items: [
                             'เปิดรายการ ดูยอดที่ลูกความจ่าย GP และยอดที่ทนายได้ เทียบกับรูปสลิปและบัญชีธนาคารของระบบ',
-                            'ถูกต้อง กด "ยืนยันสลิป (ได้รับเงินแล้ว)" งวด/ค่าบริการในห้องแชทจะขึ้นชำระแล้ว ลูกความและทนายได้แจ้งเตือน',
+                            'ถูกต้อง กด "ยืนยันสลิป (ได้รับเงินแล้ว)" ยอดนี้นับเป็นยอดที่ชำระแล้วของงวด/ค่าบริการ ถ้ายอดสะสมครบ รายการในห้องแชทจะขึ้นชำระแล้ว ลูกความและทนายได้แจ้งเตือน',
+                            'ลูกความแบ่งจ่ายรายการเดียวได้หลายครั้ง (ครั้งละอย่างน้อย ฿1,000 ยอดคงเหลือต่ำกว่านั้นต้องจ่ายทั้งหมด) แต่ละครั้งเป็นรายการแยกในหน้านี้ ป้าย "แบ่งจ่าย" บอกยอดเต็มของรายการ และ GP คิดแยกทีละรายการ',
+                            'สลิปที่รอตรวจกันยอดไว้ในห้องแล้ว ลูกความจ่ายส่วนที่เหลือต่อได้ แต่ยอดรวมเกินยอดรายการไม่ได้ ถ้าปฏิเสธ ยอดที่กันไว้จะคืนให้จ่ายใหม่',
                             'ไม่ถูกต้อง ใส่หมายเหตุแล้วกด "สลิปไม่ถูกต้อง" ลูกความเห็นหมายเหตุในแชทและแนบสลิปใหม่ได้',
-                            'ยืนยันไม่ได้ถ้ายอดในห้องเปลี่ยนไปจากตอนแนบสลิป หรือรายการนั้นชำระไปแล้ว ให้ปฏิเสธแทน',
+                            'ยืนยันไม่ได้ถ้ายอดรายการในห้องเปลี่ยนไปจากตอนแนบสลิป หรือรายการนั้นชำระครบไปแล้ว ให้ปฏิเสธแทน',
                         ],
                     },
                     {
@@ -43,9 +45,11 @@ export const financeGroup: GuideGroup = {
                         heading: 'Check slips (tab "สลิปรอตรวจ")',
                         items: [
                             'Open the item and compare the amount the client paid, the GP and the lawyer\'s share with the slip image and the platform bank account.',
-                            'If correct, click "ยืนยันสลิป (ได้รับเงินแล้ว)". The installment or fee in the chat becomes paid and both client and lawyer are notified.',
+                            'If correct, click "ยืนยันสลิป (ได้รับเงินแล้ว)". The amount counts towards the installment or fee; once the total is reached the item in the chat becomes paid. Client and lawyer are notified.',
+                            'Clients may split one item into several payments (at least ฿1,000 each; a remainder below that must be paid in full). Each payment is its own row here, tagged "แบ่งจ่าย" with the full item amount, and GP is taken per row.',
+                            'A slip waiting for review reserves its amount in the chat. The client can pay the rest, but never more than the item total. Rejecting releases the reserved amount.',
                             'If wrong, add a note and click "สลิปไม่ถูกต้อง". The client sees the note in the chat and can attach a new slip.',
-                            'Confirmation is blocked if the amount in the chat changed since the slip was attached, or the item is already paid. Reject instead.',
+                            'Confirmation is blocked if the item amount in the chat changed since the slip was attached, or the item is already fully paid. Reject instead.',
                         ],
                     },
                     {

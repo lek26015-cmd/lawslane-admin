@@ -2,6 +2,7 @@ import 'server-only';
 import * as admin from 'firebase-admin';
 import { createContractFromChat } from '@/lib/lawyer-contract-service';
 import { getPendingAdditionalFee } from '@/lib/additional-fee';
+import { partialKey, pendingTotal, readPartial, remainingOf, round2 } from '@/lib/lawyer-payment-partial';
 
 /**
  * สำเนาของ Lawslane/src/lib/lawyer-payment-core.ts — ค่าทนายจ่ายผ่านบัญชีระบบ (LAWSLANE-PLAN-10)
@@ -24,10 +25,15 @@ export type LawyerPayoutStatus = 'held' | 'due' | 'paid' | 'none';
 
 export type LawyerPaymentDue = {
     type: LawyerPaymentType;
+    /** ยอดเต็มของรายการ */
     amount: number;
     installmentIndex?: number;
     description: string;
-    /** แนบสลิปเข้าระบบแล้ว รอแอดมินตรวจ — จ่ายซ้ำไม่ได้จนกว่าจะมีผล */
+    /** แบ่งจ่าย: ยอดที่ยืนยันแล้ว · ยอดสลิปที่รอแอดมินตรวจ · ยอดที่ยังจ่ายได้ (บาท) */
+    paidAmount: number;
+    pendingAmount: number;
+    remaining: number;
+    /** มีสลิปรอแอดมินตรวจ (ยอดนั้นถูกกันไว้ จ่ายส่วนที่เหลือได้) */
     pendingReview: boolean;
     /** ลูกความแจ้งโอนตรงให้ทนายก่อนเปลี่ยนเป็นจ่ายผ่านระบบ — ให้ทนายยืนยันรับเงินได้ */
     legacyNotice: { notifiedAt: string; proofUrl: string | null; note: string | null } | null;
@@ -75,44 +81,55 @@ function legacy(n: any) {
     return n ? { notifiedAt: isoOrNull(n.notifiedAt) || '', proofUrl: n.proofUrl ?? null, note: n.note ?? null } : null;
 }
 
+function withPartial(
+    chat: FirebaseFirestore.DocumentData,
+    d: Omit<LawyerPaymentDue, 'paidAmount' | 'pendingAmount' | 'remaining' | 'pendingReview'>,
+): LawyerPaymentDue {
+    const part = readPartial(chat, partialKey(d.type, d.installmentIndex));
+    const pendingAmount = pendingTotal(part);
+    return { ...d, paidAmount: part.paid, pendingAmount, remaining: remainingOf(d.amount, part), pendingReview: pendingAmount > 0 };
+}
+
 export function listOutstanding(chat: FirebaseFirestore.DocumentData): LawyerPaymentDue[] {
     const out: LawyerPaymentDue[] = [];
-    const pending = chat.platformPaymentPending;
 
     const additional = getPendingAdditionalFee(chat);
     if (additional) {
-        out.push({
+        out.push(withPartial(chat, {
             type: 'additional',
             amount: additional.amount,
             description: chat.pendingFeeRequest?.reason || chat.additionalFeeRequest?.reason || 'ค่าบริการเพิ่มเติม',
-            pendingReview: pending?.type === 'additional',
             legacyNotice: legacy(chat.clientPaymentNotice?.type === 'additional' ? chat.clientPaymentNotice : null),
-        });
+        }));
     }
 
     const installments: any[] = Array.isArray(chat.installments) ? chat.installments : [];
     if (installments.length > 0) {
         installments.forEach((inst, i) => {
             if (inst?.status === 'paid') return;
-            out.push({
+            out.push(withPartial(chat, {
                 type: 'installment',
                 amount: parseAmount(inst?.amount),
                 installmentIndex: i,
                 description: `งวดที่ ${i + 1}${inst?.description ? `: ${inst.description}` : ''}`,
-                pendingReview: !!inst?.platformPaymentId,
                 legacyNotice: legacy(inst?.clientNotice),
-            });
+            }));
         });
     } else if (caseBaseAmount(chat) > 0 && !isCaseFeeSettled(chat)) {
-        out.push({
+        out.push(withPartial(chat, {
             type: 'case',
             amount: caseBaseAmount(chat),
             description: chat.caseTitle || 'ค่าบริการทนายความ',
-            pendingReview: pending?.type === 'case',
             legacyNotice: legacy(chat.clientPaymentNotice?.type === 'case' ? chat.clientPaymentNotice : null),
-        });
+        }));
     }
     return out;
+}
+
+/** เคสนี้มีงวด/ค่าบริการที่จ่ายครบแล้วหรือยัง (ใช้ตัดสินว่าต้องออกสัญญาจ้างไหม) */
+function hasAnyPaidItem(chat: FirebaseFirestore.DocumentData): boolean {
+    if (chat.paidAt || isCaseFeeSettled(chat)) return true;
+    return Array.isArray(chat.installments) && chat.installments.some((x: any) => x?.status === 'paid');
 }
 
 export function pickDue(
@@ -126,7 +143,7 @@ export function pickDue(
         const hit = outstanding.find(d => d.type === want.type);
         if (hit) return hit;
     }
-    return outstanding[0] ?? null;
+    return outstanding.find(d => d.remaining > 0) ?? outstanding[0] ?? null;
 }
 
 export function dueLabel(type: LawyerPaymentType, installmentIndex?: number | null): string {
@@ -159,14 +176,71 @@ export type PaidConfirmation = {
     paymentId?: string | null;
 };
 
+/** ยอดเต็มของรายการ (ตรวจว่ารายการยังค้างอยู่) */
+function itemAmountOf(chat: FirebaseFirestore.DocumentData, type: LawyerPaymentType, installmentIndex?: number | null): number {
+    if (type === 'installment') {
+        const installments: any[] = Array.isArray(chat.installments) ? chat.installments : [];
+        const i = Number(installmentIndex);
+        if (!Number.isInteger(i) || i < 0 || i >= installments.length) throw new LawyerPaymentRejected('หมายเลขงวดไม่ถูกต้อง');
+        if (installments[i]?.status === 'paid') throw new LawyerPaymentRejected('งวดนี้ชำระแล้ว');
+        return parseAmount(installments[i]?.amount);
+    }
+    if (type === 'case') {
+        if (Array.isArray(chat.installments) && chat.installments.length > 0) {
+            throw new LawyerPaymentRejected('เคสนี้แบ่งชำระเป็นงวด กรุณาชำระทีละงวด');
+        }
+        if (isCaseFeeSettled(chat)) throw new LawyerPaymentRejected('รายการนี้ชำระแล้ว');
+        return caseBaseAmount(chat);
+    }
+    if (type === 'additional') {
+        const additional = getPendingAdditionalFee(chat);
+        if (!additional) throw new LawyerPaymentRejected('ไม่พบคำขอค่าบริการเพิ่มเติมที่ค้างอยู่');
+        return additional.amount;
+    }
+    throw new LawyerPaymentRejected('ประเภทรายการไม่ถูกต้อง');
+}
+
 /**
- * ตั้งรายการในห้องเป็น "จ่ายแล้ว" — คืน update ให้ผู้เรียก tx.update เอง (ต้องอ่าน chat ใน tx เดียวกันมาก่อน)
- * ล้างสถานะ "รอตรวจสลิป" และคำแจ้งโอนแบบเดิมของรายการนั้นไปด้วย
+ * กันยอดสลิปที่รอแอดมินตรวจไว้ในห้อง (partialPayments[key].pending[paymentId]) — คืน update
+ * ยอดรวม (จ่ายแล้ว + รอตรวจ + ครั้งนี้) ต้องไม่เกินยอดรายการ
+ */
+export function reservePendingInTx(
+    chat: FirebaseFirestore.DocumentData,
+    input: { type: LawyerPaymentType; installmentIndex?: number | null },
+    paymentId: string,
+    amount: number,
+): Record<string, any> {
+    const itemAmount = itemAmountOf(chat, input.type, input.installmentIndex);
+    const key = partialKey(input.type, input.installmentIndex);
+    const part = readPartial(chat, key);
+    if (amount <= 0 || amount > remainingOf(itemAmount, part) + 0.005) {
+        throw new LawyerPaymentRejected('ยอดเกินยอดคงเหลือของรายการนี้');
+    }
+    return { [`partialPayments.${key}`]: { paid: part.paid, pending: { ...part.pending, [paymentId]: amount }, itemAmount } };
+}
+
+/** แอดมินปฏิเสธสลิป — ปล่อยยอดที่กันไว้ (ไม่มีรายการกันไว้ = คืน {} ) */
+export function releasePendingUpdate(
+    chat: FirebaseFirestore.DocumentData,
+    input: { type: LawyerPaymentType; installmentIndex?: number | null },
+    paymentId: string,
+): Record<string, any> {
+    const key = partialKey(input.type, input.installmentIndex);
+    if (readPartial(chat, key).pending[paymentId] === undefined) return {};
+    return { [`partialPayments.${key}.pending.${paymentId}`]: admin.firestore.FieldValue.delete() };
+}
+
+/**
+ * บันทึกเงินที่ได้รับของรายการในห้อง — คืน update ให้ผู้เรียก tx.update เอง (ต้องอ่าน chat ใน tx เดียวกันมาก่อน)
+ * payAmount = ยอดครั้งนี้ (ไม่ระบุ = ยอดที่เหลือทั้งหมด) · ยอดสะสมครบยอดรายการ → รายการเป็น "จ่ายแล้ว" ตามฟิลด์เดิม
+ * ถ้า confirmation.paymentId เคยกันยอดไว้ตอนรอตรวจ จะย้ายจาก pending มาเป็น paid
+ * จ่ายครบแล้วล้างสถานะแบ่งจ่ายและคำแจ้งโอนแบบเดิมของรายการนั้นไปด้วย
  */
 export function applyPaidInTx(
     chat: FirebaseFirestore.DocumentData,
     input: { type: LawyerPaymentType; installmentIndex?: number | null },
     confirmation: PaidConfirmation,
+    payAmount?: number,
 ) {
     const nowIso = new Date().toISOString();
     const ts = admin.firestore.FieldValue.serverTimestamp();
@@ -176,67 +250,75 @@ export function applyPaidInTx(
         confirmedByRole: confirmation.confirmedByRole,
         ...(confirmation.paymentId ? { platformPaymentId: confirmation.paymentId } : {}),
     };
-    let amount = 0;
-    let firstPaid = false;
 
-    if (input.type === 'installment') {
-        const installments: any[] = Array.isArray(chat.installments) ? [...chat.installments] : [];
-        const i = Number(input.installmentIndex);
-        if (!Number.isInteger(i) || i < 0 || i >= installments.length) throw new LawyerPaymentRejected('หมายเลขงวดไม่ถูกต้อง');
-        if (installments[i]?.status === 'paid') throw new LawyerPaymentRejected('งวดนี้ชำระแล้ว');
-        const paidBefore = installments.filter(x => x?.status === 'paid').length;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { clientNotice, platformPaymentId, ...rest } = installments[i] || {};
-        installments[i] = { ...rest, status: 'paid', paidAt: nowIso, ...conf };
-        const paid = installments.filter(x => x?.status === 'paid');
-        update.installments = installments;
-        update.paidInstallments = paid.length;
-        update.totalPaid = paid.reduce((s, x) => s + parseAmount(x?.amount), 0);
-        amount = parseAmount(installments[i].amount);
-        firstPaid = paidBefore === 0;
-        if (firstPaid) update.paidAt = ts;
-    } else if (input.type === 'case') {
-        if (Array.isArray(chat.installments) && chat.installments.length > 0) {
-            throw new LawyerPaymentRejected('เคสนี้แบ่งชำระเป็นงวด กรุณาชำระทีละงวด');
-        }
-        amount = caseBaseAmount(chat);
-        if (amount <= 0) throw new LawyerPaymentRejected('เคสนี้ยังไม่มียอดค่าบริการ');
-        if (isCaseFeeSettled(chat)) throw new LawyerPaymentRejected('รายการนี้ชำระแล้ว');
-        update.paidAmount = amount;
-        update.paidAt = ts;
-        update.paymentConfirmedAt = ts;
-        update.paymentConfirmedBy = confirmation.confirmedBy;
-        update.paymentConfirmedByRole = confirmation.confirmedByRole;
-        if (chat.clientPaymentNotice?.type === 'case') update.clientPaymentNotice = admin.firestore.FieldValue.delete();
-        firstPaid = true;
-    } else if (input.type === 'additional') {
-        const additional = getPendingAdditionalFee(chat);
-        if (!additional) throw new LawyerPaymentRejected('ไม่พบคำขอค่าบริการเพิ่มเติมที่ค้างอยู่');
-        amount = additional.amount;
-        // ยอดรวมที่เสนอ (chat.amount) บวกเพิ่ม ส่วนที่จ่ายแล้วเก็บแยกใน additionalPayments[]
-        // ไม่บวกเข้า paidAmount (= ค่าบริการหลักของเคสก้อนเดียว)
-        update.amount = parseAmount(chat.amount) + amount;
-        update.additionalPayments = admin.firestore.FieldValue.arrayUnion({
-            amount,
-            reason: chat.pendingFeeRequest?.reason || chat.additionalFeeRequest?.reason || 'ค่าบริการเพิ่มเติม',
-            paidAt: nowIso,
-            ...conf,
-        });
-        if (additional.source === 'pendingFeeRequest') {
-            update.pendingFeeRequest = null;
-        } else {
-            update['additionalFeeRequest.status'] = 'paid';
-            update['additionalFeeRequest.paidAt'] = ts;
-            update['additionalFeeRequest.confirmedBy'] = confirmation.confirmedBy;
-        }
-        if (chat.clientPaymentNotice?.type === 'additional') update.clientPaymentNotice = admin.firestore.FieldValue.delete();
+    const itemAmount = itemAmountOf(chat, input.type, input.installmentIndex);
+    if (itemAmount <= 0) throw new LawyerPaymentRejected('เคสนี้ยังไม่มียอดค่าบริการ');
+    const key = partialKey(input.type, input.installmentIndex);
+    const part = readPartial(chat, key);
+    const pending = { ...part.pending };
+    if (confirmation.paymentId) delete pending[confirmation.paymentId];
+    const amount = round2(payAmount ?? itemAmount - part.paid - pendingTotal({ paid: 0, pending }));
+    if (amount <= 0) throw new LawyerPaymentRejected('รายการนี้ไม่มียอดคงเหลือให้ชำระ');
+    if (part.paid + amount + pendingTotal({ paid: 0, pending }) > itemAmount + 0.005) {
+        throw new LawyerPaymentRejected('ยอดเกินยอดคงเหลือของรายการนี้');
+    }
+    const paidTotal = round2(part.paid + amount);
+    const complete = paidTotal >= itemAmount - 0.005;
+    // งวด/ค่าบริการแรกที่จ่ายครบ → ออกสัญญาจ้าง (แบ่งจ่ายยังไม่ครบ = ยังไม่ออก)
+    // chat.paidAt ตั้งเฉพาะตอนจ่ายครบรายการ (isCaseFeeSettled ถือ paidAt = จ่ายครบ)
+    const firstPaid = complete && !hasAnyPaidItem(chat) && input.type !== 'additional';
+    if (complete && !chat.paidAt && input.type !== 'additional') update.paidAt = ts;
+
+    if (!complete) {
+        update[`partialPayments.${key}`] = { paid: paidTotal, pending, itemAmount };
     } else {
-        throw new LawyerPaymentRejected('ประเภทรายการไม่ถูกต้อง');
+        if (chat.partialPayments?.[key]) update[`partialPayments.${key}`] = admin.firestore.FieldValue.delete();
+        if (input.type === 'installment') {
+            const installments: any[] = [...chat.installments];
+            const i = Number(input.installmentIndex);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { clientNotice, platformPaymentId, ...rest } = installments[i] || {};
+            installments[i] = { ...rest, status: 'paid', paidAt: nowIso, ...conf };
+            update.installments = installments;
+            update.paidInstallments = installments.filter(x => x?.status === 'paid').length;
+        } else if (input.type === 'case') {
+            update.paidAmount = itemAmount;
+            update.paymentConfirmedAt = ts;
+            update.paymentConfirmedBy = confirmation.confirmedBy;
+            update.paymentConfirmedByRole = confirmation.confirmedByRole;
+            if (chat.clientPaymentNotice?.type === 'case') update.clientPaymentNotice = admin.firestore.FieldValue.delete();
+        } else {
+            const additional = getPendingAdditionalFee(chat)!;
+            // ยอดรวมที่เสนอ (chat.amount) บวกเพิ่ม ส่วนที่จ่ายแล้วเก็บแยกใน additionalPayments[]
+            // ไม่บวกเข้า paidAmount (= ค่าบริการหลักของเคสก้อนเดียว)
+            update.amount = parseAmount(chat.amount) + itemAmount;
+            update.additionalPayments = admin.firestore.FieldValue.arrayUnion({
+                amount: itemAmount,
+                reason: chat.pendingFeeRequest?.reason || chat.additionalFeeRequest?.reason || 'ค่าบริการเพิ่มเติม',
+                paidAt: nowIso,
+                ...conf,
+            });
+            if (additional.source === 'pendingFeeRequest') {
+                update.pendingFeeRequest = null;
+            } else {
+                update['additionalFeeRequest.status'] = 'paid';
+                update['additionalFeeRequest.paidAt'] = ts;
+                update['additionalFeeRequest.confirmedBy'] = confirmation.confirmedBy;
+            }
+            if (chat.clientPaymentNotice?.type === 'additional') update.clientPaymentNotice = admin.firestore.FieldValue.delete();
+        }
     }
 
-    if (input.type !== 'installment' && chat.platformPaymentPending?.type === input.type) {
-        update.platformPaymentPending = admin.firestore.FieldValue.delete();
+    // ยอดที่ได้รับแล้วของงวดทั้งหมด (รวมงวดที่จ่ายบางส่วน)
+    if (input.type === 'installment') {
+        const insts: any[] = update.installments ?? chat.installments;
+        update.totalPaid = round2(insts.reduce((s: number, x: any, i: number) => {
+            if (x?.status === 'paid') return s + parseAmount(x?.amount);
+            if (i === Number(input.installmentIndex)) return s + paidTotal;
+            return s + readPartial(chat, partialKey('installment', i)).paid;
+        }, 0));
     }
+
     // ยังมีคำแจ้งโอนแบบเดิมค้างอยู่ไหม (หลังอัปเดตนี้)
     const nextInstallments: any[] = update.installments ?? chat.installments ?? [];
     update.hasPaymentNotice =
@@ -246,17 +328,25 @@ export function applyPaidInTx(
     if (chat.status === 'pending_payment') update.status = 'active';
 
     const label = dueLabel(input.type, input.installmentIndex);
+    const remaining = complete ? 0 : round2(itemAmount - paidTotal);
+    const partialNote = complete
+        ? (amount < itemAmount ? ' (ครบยอดแล้ว)' : '')
+        : ` (บางส่วน คงเหลือ ฿${remaining.toLocaleString()})`;
     update.lastMessage = confirmation.confirmedByRole === 'platform'
-        ? `✅ ชำระ${label} ฿${amount.toLocaleString()} เข้าระบบแล้ว`
-        : `✅ ทนายยืนยันได้รับ${label} ฿${amount.toLocaleString()} แล้ว`;
-    return { update, amount, label, firstPaid };
+        ? `✅ ชำระ${label} ฿${amount.toLocaleString()} เข้าระบบแล้ว${partialNote}`
+        : `✅ ทนายยืนยันได้รับ${label} ฿${amount.toLocaleString()} แล้ว${partialNote}`;
+    return { update, amount, itemAmount, remaining, complete, label, firstPaid };
 }
 
 /** หลังตั้งจ่ายแล้ว: สัญญาจ้าง (ก้อนแรก) + ข้อความในห้อง + แจ้งเตือนลูกความและทนาย — ล้มได้โดยไม่ย้อนการจ่าย */
 export async function postPaidEffects(
     db: FirebaseFirestore.Firestore,
     chatId: string,
-    outcome: { chat: FirebaseFirestore.DocumentData; amount: number; label: string; firstPaid: boolean },
+    outcome: {
+        chat: FirebaseFirestore.DocumentData; amount: number; label: string; firstPaid: boolean;
+        /** ยอดเต็มของรายการ (สัญญาจ้าง) · ยอดที่ยังค้างหลังครั้งนี้ — ไม่ระบุ = จ่ายครบรายการ */
+        itemAmount?: number; remaining?: number;
+    },
     by: PaidConfirmation['confirmedByRole'],
 ) {
     const chatRef = db.collection('chats').doc(chatId);
@@ -264,13 +354,16 @@ export async function postPaidEffects(
     const ts = admin.firestore.FieldValue.serverTimestamp();
     if (outcome.firstPaid) {
         try {
-            await createContractFromChat(db, { chatId, chatData: outcome.chat, amount: outcome.amount, messagesRef });
+            await createContractFromChat(db, { chatId, chatData: outcome.chat, amount: outcome.itemAmount ?? outcome.amount, messagesRef });
         } catch (err) {
             console.error('createContractFromChat failed after payment:', err);
         }
     }
     const platform = by === 'platform';
-    const amountText = `฿${outcome.amount.toLocaleString()}`;
+    const remaining = outcome.remaining ?? 0;
+    const amountText = remaining > 0
+        ? `฿${outcome.amount.toLocaleString()} (ชำระบางส่วน คงเหลือ ฿${remaining.toLocaleString()})`
+        : `฿${outcome.amount.toLocaleString()}`;
     await messagesRef.add({
         chatId,
         text: platform

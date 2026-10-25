@@ -82,6 +82,9 @@ function LawyerPaymentsList() {
                                         <TableCell className="text-sm">
                                             {p.caseTitle || '—'}
                                             <span className="block text-muted-foreground">{p.description}</span>
+                                            {p.partial && (
+                                                <span className="block text-xs text-blue-700">แบ่งจ่าย จากยอดรายการ ฿{formatSatang(p.itemAmount)}</span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-sm">{p.lawyerName || '—'}</TableCell>
                                         <TableCell className="text-right">฿{formatSatang(p.grossAmount)}</TableCell>
