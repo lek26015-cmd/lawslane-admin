@@ -5,77 +5,118 @@ export const financeGroup: GuideGroup = {
     title: { th: 'การเงิน', en: 'Finance' },
     sections: [
         {
-            id: 'financials',
-            href: '/financials?tab=overview',
-            permission: 'financials',
+            id: 'lawyer-payments',
+            href: '/lawyer-payments',
+            permission: 'financials.verification',
             th: {
-                title: 'ภาพรวมการเงิน / ตรวจสลิป / ธุรกรรม / ถอนเงิน',
-                summary: 'ปัจจุบันลูกความโอนค่าบริการตรงให้ทนาย และทนายกดยืนยันได้รับเงินเอง หน้านี้จึงใช้ดูภาพรวมและเคลียร์รายการรูปแบบเก่าที่ยังค้างอยู่',
+                title: 'ค่าทนาย (ตรวจสลิป)',
+                summary: 'ลูกความโอนค่าทนายเข้าบัญชีระบบแล้วแนบสลิป (ตั้งแต่ 19 ต.ค. 2569) SlipOK ตรวจผ่านถือว่าจ่ายแล้วทันที ที่ตรวจไม่ได้มารอที่นี่',
                 blocks: [
                     {
-                        heading: 'แท็บ "ตรวจสลิป"',
+                        heading: 'ตรวจสลิป (แท็บ "สลิปรอตรวจ")',
                         items: [
-                            'แสดงสลิปที่ยังรอตรวจ (นัดหมาย แชท/คดี ค่าบริการเพิ่มเติม งวดผ่อน)',
-                            '"ดูสลิป" ตรวจสลิปกับ SlipOK เทียบยอดและชื่อผู้รับ ถ้าขึ้น "ข้อมูลไม่ตรงกัน (Mismatch)" ห้ามอนุมัติจนกว่าจะตรวจกับลูกค้า',
-                            '"อนุมัติ" เปิดเคสหรือบันทึกงวดว่าชำระแล้ว ระบบโพสต์ข้อความยืนยันในแชทและอีเมลแจ้งทนายกับลูกความ',
-                            '"ปฏิเสธ" มีเฉพาะค่าบริการเพิ่มเติม ต้องใส่เหตุผล (ลูกความเห็น) ลูกความแนบสลิปใหม่ได้',
+                            'เปิดรายการ ดูยอดที่ลูกความจ่าย GP และยอดที่ทนายได้ เทียบกับรูปสลิปและบัญชีธนาคารของระบบ',
+                            'ถูกต้อง กด "ยืนยันสลิป (ได้รับเงินแล้ว)" ยอดนี้นับเป็นยอดที่ชำระแล้วของงวด/ค่าบริการ ถ้ายอดสะสมครบ รายการในห้องแชทจะขึ้นชำระแล้ว ลูกความและทนายได้แจ้งเตือน',
+                            'ลูกความแบ่งจ่ายรายการเดียวได้หลายครั้ง (ครั้งละอย่างน้อย ฿1,000 ยอดคงเหลือต่ำกว่านั้นต้องจ่ายทั้งหมด) แต่ละครั้งเป็นรายการแยกในหน้านี้ ป้าย "แบ่งจ่าย" บอกยอดเต็มของรายการ และ GP คิดแยกทีละรายการ',
+                            'สลิปที่รอตรวจกันยอดไว้ในห้องแล้ว ลูกความจ่ายส่วนที่เหลือต่อได้ แต่ยอดรวมเกินยอดรายการไม่ได้ ถ้าปฏิเสธ ยอดที่กันไว้จะคืนให้จ่ายใหม่',
+                            'ไม่ถูกต้อง ใส่หมายเหตุแล้วกด "สลิปไม่ถูกต้อง" ลูกความเห็นหมายเหตุในแชทและแนบสลิปใหม่ได้',
+                            'ยืนยันไม่ได้ถ้ายอดรายการในห้องเปลี่ยนไปจากตอนแนบสลิป หรือรายการนั้นชำระครบไปแล้ว ให้ปฏิเสธแทน',
                         ],
                     },
                     {
-                        heading: 'แท็บ "ธุรกรรม" และ "ภาพรวม"',
+                        heading: 'แท็บอื่น',
                         items: [
-                            '"ธุรกรรม" ดูรายการนัดหมาย แชท และใบแจ้งหนี้ล่าสุด พร้อมหลักฐาน อ่านอย่างเดียว',
-                            '"ภาพรวม" แสดงกราฟรายเดือน',
-                        ],
-                    },
-                    {
-                        heading: 'แท็บ "คำร้องถอนเงิน"',
-                        items: [
-                            'ใช้กับคำร้องถอนเงินแบบเก่าที่ยังค้าง ระบบคำนวณ "ยอดคงเหลือจริง" ให้ใหม่ทุกครั้ง',
-                            'โอนเงินนอกระบบก่อน แล้วจึงกด "อนุมัติ" (ระบบไม่โอนเงินและไม่แจ้งทนาย)',
-                            'อนุมัติไม่ได้ถ้ายอดต่ำกว่า ฿1,000 หรือเกินยอดคงเหลือ (ป้ายแดง "เกินยอดคงเหลือ")',
+                            '"รอปิดเคส" เงินที่ชำระแล้วและถือไว้จนทนายปิดเคส',
+                            '"รอโอนให้ทนาย" ทนายปิดเคสแล้ว ไปโอนที่เมนู "จ่ายเงินทนาย"',
+                            '"รอคืนเงิน" เคสถูกยกเลิกก่อนปิด โอนคืนลูกความเต็มจำนวนนอกระบบ แล้วกรอกเลขอ้างอิงในหน้ารายการ (ต้องมีสิทธิ์ "จ่ายเงินทนาย")',
                         ],
                     },
                 ],
                 warnings: [
-                    'ตัวเลข "รายได้แพลตฟอร์ม" คำนวณจาก GP 15% แบบเก่า ไม่ใช่รายได้ที่เก็บได้จริงในโมเดลปัจจุบัน และกราฟรายเดือนรวมเดือนเดียวกันของทุกปีเข้าด้วยกัน',
-                    'กด "ดูสลิป" หรือ "ตรวจสอบอีกครั้ง" แต่ละครั้งใช้โควตา SlipOK ของเดือนนั้น ระบบเตือนเมื่อใกล้ครบ',
-                    'รายการประเภท "ใบแจ้งหนี้" อนุมัติจากหน้านี้ไม่ได้',
+                    'รายการที่ลูกความแจ้งโอนตรงให้ทนายไว้ก่อนเปลี่ยนระบบ ทนายยังยืนยันรับเงินเองได้ รายการเหล่านั้นไม่มี GP และไม่ขึ้นที่หน้านี้',
+                    'เมนูตรวจสลิป/ธุรกรรม/ถอนเงิน/คูปอง GP แบบเก่าซ่อนจากเมนูแล้ว เพราะอ่านข้อมูลของระบบเก่าที่ไม่มีใครเขียนแล้ว',
                 ],
             },
             en: {
-                title: 'Finance overview / slips / transactions / withdrawals',
-                summary: 'Clients now pay lawyers directly and lawyers confirm receipt themselves. This page is for the overview and for clearing leftover items from the old model.',
+                title: 'Lawyer fees (slip check)',
+                summary: 'Clients transfer lawyer fees to the platform account and attach a slip (since 19 Oct 2026). SlipOK-verified slips count as paid immediately; the rest wait here.',
                 blocks: [
                     {
-                        heading: 'Tab "Slip check"',
+                        heading: 'Check slips (tab "สลิปรอตรวจ")',
                         items: [
-                            'Lists slips awaiting review (appointments, chats/cases, additional fees, installments).',
-                            '"ดูสลิป" checks the slip with SlipOK against amount and receiver. If it shows "Mismatch", do not approve until you have checked with the customer.',
-                            '"อนุมัติ" opens the case or marks the installment paid, posts a confirmation in the chat, and emails the lawyer and client.',
-                            '"ปฏิเสธ" exists only for additional fees. The reason is shown to the client, who can upload a new slip.',
+                            'Open the item and compare the amount the client paid, the GP and the lawyer\'s share with the slip image and the platform bank account.',
+                            'If correct, click "ยืนยันสลิป (ได้รับเงินแล้ว)". The amount counts towards the installment or fee; once the total is reached the item in the chat becomes paid. Client and lawyer are notified.',
+                            'Clients may split one item into several payments (at least ฿1,000 each; a remainder below that must be paid in full). Each payment is its own row here, tagged "แบ่งจ่าย" with the full item amount, and GP is taken per row.',
+                            'A slip waiting for review reserves its amount in the chat. The client can pay the rest, but never more than the item total. Rejecting releases the reserved amount.',
+                            'If wrong, add a note and click "สลิปไม่ถูกต้อง". The client sees the note in the chat and can attach a new slip.',
+                            'Confirmation is blocked if the item amount in the chat changed since the slip was attached, or the item is already fully paid. Reject instead.',
                         ],
                     },
                     {
-                        heading: 'Tabs "Transactions" and "Overview"',
+                        heading: 'Other tabs',
                         items: [
-                            '"Transactions" lists recent appointments, chats and invoices with evidence. Read-only.',
-                            '"Overview" shows a monthly chart.',
-                        ],
-                    },
-                    {
-                        heading: 'Tab "Withdrawals"',
-                        items: [
-                            'For leftover withdrawal requests from the old model. The real available balance is recalculated each time.',
-                            'Transfer the money outside the system first, then click approve. The system neither transfers money nor notifies the lawyer.',
-                            'Approval is blocked below ฿1,000 or above the available balance (red "exceeds balance" badge).',
+                            '"รอปิดเคส": paid money held until the lawyer closes the case.',
+                            '"รอโอนให้ทนาย": the case is closed; pay the lawyer from "Lawyer payouts".',
+                            '"รอคืนเงิน": the case was cancelled before closing. Refund the client in full outside the system, then enter the reference on the item page (needs the lawyer payouts permission).',
                         ],
                     },
                 ],
                 warnings: [
-                    '"Platform revenue" figures use the old 15% GP formula and are not real collected revenue under the current model. The monthly chart also merges the same month across years.',
-                    'Every "ดูสลิป" or re-check uses that month\'s SlipOK quota. The system warns as you near the limit.',
-                    'Invoice rows cannot be approved from this page.',
+                    'Items a client notified as paid directly to the lawyer before the switch can still be confirmed by the lawyer. They carry no GP and do not appear here.',
+                    'The old slip check, transactions, withdrawals and lawyer GP coupon menus are hidden because they read data the old model no longer writes.',
+                ],
+            },
+        },
+        {
+            id: 'lawyer-payouts',
+            href: '/lawyer-payouts',
+            permission: 'financials.lawyerPayouts',
+            th: {
+                title: 'จ่ายเงินทนาย',
+                summary: 'โอนยอดสุทธิ (หลังหัก GP) ให้ทนายของเคสที่ปิดแล้ว และตั้ง GP ค่าทนาย',
+                blocks: [
+                    {
+                        heading: 'โอนเงินให้ทนาย',
+                        items: [
+                            'แต่ละการ์ดคือทนายหนึ่งคน รวมทุกรายการที่ปิดเคสแล้ว แสดงยอดที่ลูกความจ่าย GP และยอดที่ต้องโอน',
+                            'โอนเข้าบัญชีที่แสดงนอกระบบ กรอกเลขอ้างอิง แล้วกด "บันทึกว่าโอนแล้ว" ทนายได้แจ้งเตือน',
+                            'ทนายที่ยังไม่ตั้งบัญชีรับเงิน กดบันทึกไม่ได้ ให้ทนายเพิ่มบัญชีในหน้ารายได้ของทนายก่อน',
+                        ],
+                    },
+                    {
+                        heading: 'GP ค่าทนาย',
+                        items: [
+                            'แยกจาก GP ล่าม ค่าเริ่มต้น 10% แก้ได้เฉพาะ Super Admin',
+                            'มีผลทันทีกับค่าทนายที่ลูกความชำระใหม่ รายการที่ชำระแล้วใช้ GP ตอนชำระ',
+                        ],
+                    },
+                ],
+                warnings: [
+                    'ยอดคิดใหม่จากฐานข้อมูลตอนกดบันทึก ถ้ามีรายการเปลี่ยนสถานะระหว่างนั้นจะบันทึกไม่ได้ ให้โหลดหน้าใหม่',
+                ],
+            },
+            en: {
+                title: 'Lawyer payouts',
+                summary: 'Pay lawyers their net share (after GP) for closed cases, and set the lawyer GP.',
+                blocks: [
+                    {
+                        heading: 'Pay a lawyer',
+                        items: [
+                            'Each card is one lawyer with every item from closed cases: what clients paid, the GP, and the amount to transfer.',
+                            'Transfer to the account shown outside the system, enter the reference, and click "บันทึกว่าโอนแล้ว". The lawyer is notified.',
+                            'If the lawyer has no payout account, saving is blocked. Ask the lawyer to add one on their earnings page first.',
+                        ],
+                    },
+                    {
+                        heading: 'Lawyer GP',
+                        items: [
+                            'Separate from the interpreter GP. Default 10%; only a Super Admin can change it.',
+                            'Applies immediately to new lawyer-fee payments. Existing payments keep the GP from when they were paid.',
+                        ],
+                    },
+                ],
+                warnings: [
+                    'Totals are recalculated from the database when you save. If an item changed status meanwhile, saving fails; reload the page.',
                 ],
             },
         },
@@ -174,47 +215,6 @@ export const financeGroup: GuideGroup = {
                     'Saving an edit always re-enables the coupon. If it should stay off, switch it off again after editing.',
                     'There is no duplicate-code check and no cap at 100%. Check before saving.',
                     'Deleting cannot be undone.',
-                ],
-            },
-        },
-        {
-            id: 'gp-coupons',
-            href: '/gp-coupons',
-            permission: 'gp_coupons',
-            th: {
-                title: 'คูปอง GP ทนาย',
-                summary: 'คูปองลดอัตรา GP ให้ทนายเฉพาะราย สร้างที่หน้านี้ แล้วมอบให้ทนายที่หน้าโปรไฟล์ทนาย',
-                blocks: [
-                    {
-                        heading: 'ขั้นตอน',
-                        items: [
-                            '"สร้างคูปอง GP" → รหัส → คำอธิบาย → "อัตรา GP ใหม่ (%)" → วันหมดอายุ (ไม่บังคับ)',
-                            'ไปที่ ทนายความ → ดูโปรไฟล์ → "มอบหมายคูปอง GP" เพื่อผูกคูปองกับทนาย',
-                            'คอลัมน์ "ทนายที่ได้รับ" บอกจำนวนทนายที่ผูกคูปองนี้',
-                        ],
-                    },
-                ],
-                warnings: [
-                    'บันทึกหลังแก้ไขจะเปิดใช้งานคูปองอีกครั้งเสมอ',
-                    'ในโมเดลที่ลูกความโอนตรงให้ทนาย ให้ตรวจกับทีมก่อนว่าคูปอง GP ยังมีผลกับการคิดเงินส่วนไหน',
-                ],
-            },
-            en: {
-                title: 'Lawyer GP coupons',
-                summary: 'Coupons that lower the GP rate for specific lawyers. Create them here, then assign them on the lawyer profile page.',
-                blocks: [
-                    {
-                        heading: 'Steps',
-                        items: [
-                            '"สร้างคูปอง GP" → code → description → new GP rate (%) → expiry (optional).',
-                            'Go to Lawyers → profile → "มอบหมายคูปอง GP" to link the coupon to a lawyer.',
-                            'The "Lawyers assigned" column shows how many lawyers hold the coupon.',
-                        ],
-                    },
-                ],
-                warnings: [
-                    'Saving an edit always re-enables the coupon.',
-                    'Under the direct-payment model, check with the team which charges GP coupons still affect.',
                 ],
             },
         },

@@ -366,6 +366,35 @@ export async function saveCostModelAction(draft: { assumptions: unknown; baseUpd
 }
 
 /**
+ * GP ทนาย (PLAN-10) — มีผลทันทีกับค่าทนายที่ลูกความชำระใหม่ (เว็บหลักอ่าน settings/lawyerFees.gpPercent)
+ * การชำระที่เกิดแล้วเก็บ gpPercent ไว้ในเอกสาร lawyerPayments จึงไม่เปลี่ยน · Super Admin เท่านั้น
+ */
+export async function setLawyerGpAction(gpPercent: unknown): Promise<Result<{ gpPercent: number }>> {
+    try {
+        const { uid, db } = await storedGuard();
+        const v = validateGpPercent(gpPercent);
+        if (!v.ok) return { ok: false, error: v.error };
+        const ref = db.collection('settings').doc('lawyerFees');
+        const logRef = db.collection(PLAN_PRICING_LOGS_COLLECTION).doc();
+        await db.runTransaction(async (tx) => {
+            const before = (await tx.get(ref)).data();
+            tx.set(ref, { gpPercent: v.value, updatedAt: FieldValue.serverTimestamp(), updatedBy: uid }, { merge: true });
+            tx.set(logRef, {
+                product: 'lawyer_gp',
+                before: { gpPercent: typeof before?.gpPercent === 'number' ? before.gpPercent : null },
+                after: { gpPercent: v.value },
+                createdPriceIds: [],
+                actorUid: uid,
+                at: new Date().toISOString(),
+            });
+        });
+        return { ok: true, data: { gpPercent: v.value } };
+    } catch (e) {
+        return fail(e);
+    }
+}
+
+/**
  * GP ล่าม — มีผลทันทีกับการจองใหม่ (ระบบจองล่ามอ่าน settings/interpreterFees.gpPercent)
  * งานที่จองแล้วเก็บ gpPercent ไว้ใน quote จึงไม่เปลี่ยน
  * ย้ายมาจาก interpreter-admin-actions.ts (เดิมใช้สิทธิ์ financials.interpreterPayouts) → Super Admin เท่านั้น

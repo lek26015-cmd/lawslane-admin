@@ -721,7 +721,7 @@ export default function AdminLawyerDetailPage() {
                 </div>
               </div>
               <Separator />
-              <div className="font-semibold">ข้อมูลบัญชีธนาคาร (สำหรับถอนเงิน)</div>
+              <div className="font-semibold">ข้อมูลบัญชีธนาคาร (รับเงินโอนจาก Lawslane)</div>
               <div className="grid gap-3 text-sm">
                 <div className="grid gap-1">
                   <span className="text-muted-foreground text-xs">ธนาคาร</span>
@@ -751,65 +751,15 @@ export default function AdminLawyerDetailPage() {
           </CardFooter>
         </Card>
 
-        {/* GP Coupon Card */}
+        {/* GP ค่าทนาย (PLAN-10) — ใช้อัตราเดียวทุกคน ตั้งที่หน้า "จ่ายเงินทนาย"
+            คูปอง GP รายทนายแบบเก่าไม่มีผลกับการคิดเงินแล้ว จึงไม่แสดงที่นี่ */}
         <Card className="rounded-xl">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  ค่า GP และคูปองพิเศษ
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  GP ปัจจุบัน: <strong>{((lawyer.pricing?.platformFeeRate ?? 0.15) * 100).toFixed(1)}%</strong>
-                </CardDescription>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => setIsGpDialogOpen(true)}>
-                มอบหมายคูปอง GP
-              </Button>
-            </div>
+            <CardTitle className="text-base">ค่า GP</CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              ค่าทนายที่ลูกความชำระเข้าบัญชีระบบหัก GP อัตราเดียวทุกคน ดู/แก้ที่ <a href="/lawyer-payouts" className="underline text-primary">จ่ายเงินทนาย</a> · ประวัติค่าบริการอยู่ที่ <a href="/lawyer-payments?tab=all" className="underline text-primary">ค่าทนาย</a>
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
-            {assignedCoupons.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">
-                ยังไม่มีคูปอง GP ที่มอบหมายให้ทนายคนนี้
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {assignedCoupons.map(coupon => (
-                  <div
-                    key={coupon.id}
-                    className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2"
-                  >
-                    <div>
-                      <p className="font-mono font-semibold text-sm text-primary">{coupon.code}</p>
-                      {coupon.description && (
-                        <p className="text-xs text-muted-foreground">{coupon.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-green-700 bg-green-100 border-green-200 text-xs">
-                        GP {(coupon.gpRate * 100).toFixed(1)}%
-                      </Badge>
-                      {coupon.expiryDate && (
-                        <span className="text-xs text-muted-foreground">
-                          หมดอายุ {format(coupon.expiryDate.toDate(), 'd MMM yy', { locale: th })}
-                        </span>
-                      )}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => handleUnassignGpCoupon(coupon.id)}
-                        title="ยกเลิกการมอบหมาย"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
         </Card>
 
         {/* Assign GP Coupon Dialog */}
