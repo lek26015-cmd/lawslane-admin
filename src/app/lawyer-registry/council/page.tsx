@@ -17,9 +17,8 @@ import {
     processCouncilImageAction,
     syncCouncilAnnouncementsAction,
     updateCouncilRowAction,
-    type CouncilSource,
-    type SourceRow,
 } from '@/app/actions/council-registry-actions';
+import type { CouncilSource, SourceRow } from '@/lib/council-pipeline';
 
 const STATUS_LABEL: Record<CouncilSource['status'], { label: string; className: string }> = {
     new: { label: 'ยังไม่อ่าน', className: 'bg-slate-100 text-slate-600 border-slate-200' },
