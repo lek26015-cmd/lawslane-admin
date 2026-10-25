@@ -240,6 +240,15 @@ export const usersGroup: GuideGroup = {
                         ],
                     },
                     {
+                        heading: 'ทนายลงทะเบียนชื่อ',
+                        items: [
+                            'ทนายกรอกชื่อ เลขใบอนุญาต และเบอร์ติดต่อเองที่หน้า /verify-lawyer/register ของเว็บหลัก (ฟรี ไม่ต้องสมัครสมาชิก) รายการจะรออยู่ที่ปุ่ม "ทนายลงทะเบียนชื่อ"',
+                            'เทียบชื่อกับเลขใบอนุญาตกับเว็บสภาทนายความหรือสายด่วน 1167 แก้ชื่อหรือเลขในแถวให้ตรงทะเบียนได้ก่อนกด "อนุมัติ"',
+                            '"อนุมัติ" = สถานะปกติ ลูกความค้นเจอในหน้าตรวจสอบทนายทันที และระบบลบเบอร์กับอีเมลของทนายทิ้ง',
+                            '"ปฏิเสธ" = ลบรายการทิ้ง ใช้เมื่อตรวจไม่ผ่านหรือเลขซ้ำกับรายชื่อที่มีอยู่แล้ว',
+                        ],
+                    },
+                    {
                         heading: 'แก้ทีละรายการ',
                         items: [
                             'รายการแสดง 50 ระเบียนที่อัปเดตล่าสุด ช่องค้นหาค้นได้เฉพาะใน 50 รายการนี้',
@@ -273,6 +282,15 @@ export const usersGroup: GuideGroup = {
                         items: [
                             '"ตรวจเลขใบอนุญาต" lists unconfirmed numbers to confirm, correct or remove.',
                             '"ประกาศสภาทนายความ": announcements are fetched daily; an admin must click Import. Announcements carry no licence numbers.',
+                        ],
+                    },
+                    {
+                        heading: 'Lawyer self-registrations',
+                        items: [
+                            'Lawyers enter their name, licence number and contact phone at /verify-lawyer/register on the main site (free, no account). Submissions wait under the "ทนายลงทะเบียนชื่อ" button.',
+                            'Check the name and licence number on the Lawyers Council website or hotline 1167. You can correct the name or number in the row before clicking "อนุมัติ".',
+                            '"อนุมัติ" (approve) sets the status to active, so clients can find the lawyer on the verification page at once, and deletes the lawyer\'s phone and email.',
+                            '"ปฏิเสธ" (reject) deletes the submission. Use it when the check fails or the number duplicates an existing entry.',
                         ],
                     },
                     {
