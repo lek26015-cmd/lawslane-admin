@@ -1,6 +1,7 @@
 import 'server-only';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { createHash } from 'crypto';
+import { getGeminiModelName } from '@/lib/gemini-model';
 
 /**
  * แกนของการอ่านรายชื่อทนายจากรูปเอกสาร + นำเข้า verifiedLawyers
@@ -24,6 +25,9 @@ export type ExtractedLawyer = {
 // รูปแบบเลขใบอนุญาต "เลข/ปี พ.ศ." เช่น 1365/2532
 const LICENSE_RE = /^\d{1,6}\/\d{4}$/;
 
+// รุ่นสำรองเมื่อโมเดลหลักไม่ว่าง/ถูกปิด — เช็คแล้วว่า key ของระบบเรียกได้ (2026-10-25)
+const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash'];
+
 function normalizeLicense(value: string | undefined): string {
     return (value || '').replace(/\s+/g, '').trim();
 }
@@ -36,8 +40,11 @@ export async function extractLawyersFromImageData(base64Image: string, mimeType:
     if (!apiKey) throw new Error('API Key not found');
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+    // gemini-2.5-flash ถูก Google ปิดสำหรับผู้ใช้ใหม่แล้ว (404) — ใช้ชื่อโมเดลกลาง (env GEMINI_MODEL) ก่อน
+    // แล้วสลับรุ่นสำรองเมื่อโมเดลไม่ว่าง (503/429) หรือถูกปิด (404)
+    const modelNames = [...new Set([getGeminiModelName(), ...FALLBACK_MODELS])];
+    const getModel = (name: string) => genAI.getGenerativeModel({
+        model: name,
         generationConfig: {
             responseMimeType: 'application/json',
             responseSchema: {
@@ -103,7 +110,7 @@ export async function extractLawyersFromImageData(base64Image: string, mimeType:
 8. ข้อมูลต้องเป็นภาษาไทย`;
 
     try {
-        const result = await model.generateContent([
+        const request = [
             prompt,
             {
                 inlineData: {
@@ -111,7 +118,19 @@ export async function extractLawyersFromImageData(base64Image: string, mimeType:
                     data: base64Image,
                 },
             },
-        ]);
+        ];
+        let result;
+        for (const [i, name] of modelNames.entries()) {
+            try {
+                result = await getModel(name).generateContent(request);
+                break;
+            } catch (err: any) {
+                const retryable = [404, 429, 500, 503].includes(err?.status);
+                if (!retryable || i === modelNames.length - 1) throw err;
+                console.warn(`[extractLawyersFromImage] ${name} ใช้ไม่ได้ (${err.status}) — ลองรุ่นถัดไป`);
+            }
+        }
+        if (!result) throw new Error('ไม่มีโมเดลที่ใช้ได้');
 
         const text = result.response.text();
         const parsed: { hasLicenseColumn?: boolean; documentDate?: string; lawyers?: ExtractedLawyer[] } = JSON.parse(text);
