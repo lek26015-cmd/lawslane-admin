@@ -320,36 +320,13 @@ export default function LawyerRegistryPage() {
 
     return (
         <div className="container mx-auto py-8 max-w-6xl">
-            <div className="flex justify-between items-center mb-8">
-                <div>
+            {/* หัวหน้า: ชื่อ + ปุ่มหลัก (ซิงค์/เพิ่ม) แถวบน · ลิงก์ไปหน้าย่อยแยกเป็นแถวล่าง ไม่ให้เบียดชื่อ */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-4">
+                <div className="min-w-0">
                     <h1 className="text-3xl font-bold text-slate-900">ฐานข้อมูลตรวจสอบสถานะทนาย</h1>
-                    <p className="text-slate-500">จัดการฐานข้อมูลรายชื่อทนายความสำหรับตรวจสอบสถานะ</p>
+                    <p className="text-slate-500 mt-1">จัดการฐานข้อมูลรายชื่อทนายความสำหรับตรวจสอบสถานะ</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="gap-2" asChild>
-                        <Link href="/lawyer-registry/self-registrations">
-                            <CheckCircle className="w-4 h-4" />
-                            ทนายลงทะเบียนชื่อ
-                        </Link>
-                    </Button>
-                    <Button variant="outline" className="gap-2" asChild>
-                        <Link href="/lawyer-registry/review">
-                            <AlertCircle className="w-4 h-4" />
-                            ตรวจเลขใบอนุญาต
-                        </Link>
-                    </Button>
-                    <Button variant="outline" className="gap-2" asChild>
-                        <Link href="/lawyer-registry/council">
-                            <FileText className="w-4 h-4" />
-                            ประกาศสภาทนายความ
-                        </Link>
-                    </Button>
-                    <Button variant="outline" className="gap-2" asChild>
-                        <Link href="/lawyer-registry/import">
-                            <ScanLine className="w-4 h-4" />
-                            นำเข้าจากรูปภาพ (OCR)
-                        </Link>
-                    </Button>
+                <div className="flex flex-wrap gap-2 shrink-0">
                     <Button
                         variant="outline"
                         onClick={handleSync}
@@ -442,6 +419,32 @@ export default function LawyerRegistryPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-8 pb-6 border-b border-slate-200">
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                    <Link href="/lawyer-registry/self-registrations">
+                        <CheckCircle className="w-4 h-4" />
+                        ทนายลงทะเบียนชื่อ
+                    </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                    <Link href="/lawyer-registry/review">
+                        <AlertCircle className="w-4 h-4" />
+                        ตรวจเลขใบอนุญาต
+                    </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                    <Link href="/lawyer-registry/council">
+                        <FileText className="w-4 h-4" />
+                        ประกาศสภาทนายความ
+                    </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                    <Link href="/lawyer-registry/import">
+                        <ScanLine className="w-4 h-4" />
+                        นำเข้าจากรูปภาพ (OCR)
+                    </Link>
+                </Button>
             </div>
 
             {/* Edit Dialog */}

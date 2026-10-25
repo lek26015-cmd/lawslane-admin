@@ -22,3 +22,9 @@ export const problemTypeMap: Record<string, string> = {
 export function getProblemTypeKey(problemType: string): string | null {
     return problemTypeMap[problemType] || null;
 }
+
+/**
+ * ตั๋วคำขอใช้บริการล่ามจากหน้า /interpreters ของเว็บหลัก — ดูแลที่หน้างานล่าม
+ * (แท็บคำขอลูกค้า) จึงไม่โชว์ปนในรายการ Ticket ช่วยเหลือ/แดชบอร์ด แต่หน้า /tickets/[id] ยังใช้แชทได้
+ */
+export const INTERPRETER_REQUEST_PROBLEM_TYPE = 'ขอใช้บริการล่าม';
