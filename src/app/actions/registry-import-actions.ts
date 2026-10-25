@@ -9,10 +9,9 @@ import {
     type ImportResult,
 } from '@/lib/registry-core';
 
-export type { ExtractedLawyer, ImportResult };
-
 // ตัวอ่าน/นำเข้าจริงอยู่ที่ src/lib/registry-core.ts (ใช้ร่วมกับ cron ดึงประกาศสภาทนายความ)
 // ไฟล์นี้เป็นแค่ทางเข้าสำหรับหน้าหลังบ้าน — ตรวจสิทธิ์แอดมินก่อนทุกครั้ง
+// ห้าม export type ซ้ำจากไฟล์ 'use server' — Turbopack แปลงเป็นค่าจริงแล้ว crash ตอนโหลด (ReferenceError) ให้ import type จาก lib ตรง ๆ
 
 /**
  * Extract lawyer data from an uploaded image using Gemini Vision.

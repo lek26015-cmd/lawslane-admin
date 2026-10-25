@@ -15,8 +15,6 @@ import {
 } from '@/lib/council-pipeline';
 import type { ImportResult } from '@/lib/registry-core';
 
-export type { CouncilSource, SourceImage, SourceRow };
-
 // หน้าหลังบ้าน /lawyer-registry/council — ทุก action ตรวจสิทธิ์แอดมินก่อน
 async function db() {
     await requireAdmin('users.registry');

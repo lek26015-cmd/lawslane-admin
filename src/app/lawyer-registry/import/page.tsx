@@ -12,8 +12,8 @@ import {
 import {
     extractLawyersFromImage,
     importLawyersToRegistry,
-    type ExtractedLawyer,
 } from '@/app/actions/registry-import-actions';
+import type { ExtractedLawyer } from '@/lib/registry-core';
 
 export default function RegistryImportPage() {
     const [files, setFiles] = useState<{ name: string; preview: string; base64: string; mimeType: string }[]>([]);
