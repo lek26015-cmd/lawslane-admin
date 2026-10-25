@@ -327,6 +327,12 @@ export default function LawyerRegistryPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" className="gap-2" asChild>
+                        <Link href="/lawyer-registry/self-registrations">
+                            <CheckCircle className="w-4 h-4" />
+                            ทนายลงทะเบียนชื่อ
+                        </Link>
+                    </Button>
+                    <Button variant="outline" className="gap-2" asChild>
                         <Link href="/lawyer-registry/review">
                             <AlertCircle className="w-4 h-4" />
                             ตรวจเลขใบอนุญาต
