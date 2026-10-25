@@ -56,6 +56,7 @@ import { useAdminList, type AdminListSource } from '@/hooks/use-admin-list';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { DataTablePagination } from '@/components/admin/DataTablePagination';
 import { TableSkeleton } from '@/components/admin/TableSkeleton';
+import { INTERPRETER_REQUEST_PROBLEM_TYPE } from '@/lib/problem-types';
 
 interface TicketRow {
     id: string;
@@ -132,11 +133,14 @@ export default function AdminTicketsPage() {
 
     // แถวที่จะโชว์จริง: ถ้ากำลังค้นหาอยู่ (query ตัด where(status) ออกไปแล้ว) กรองสถานะ
     // เพิ่มในเครื่องจากหน้าที่ได้มา — ไม่งั้น query เอง filter ให้ครบอยู่แล้ว
+    // ตั๋วขอใช้บริการล่ามดูแลที่หน้างานล่าม จึงตัดออกจากรายการนี้ (กรองในเครื่องเพราะ
+    // where('problemType','!=',...) ใช้คู่ orderBy('reportedAt') ไม่ได้ถ้าไม่มี index ใหม่)
     const visibleRows = React.useMemo(() => {
+        const rows = data.filter((t) => t.problemType !== INTERPRETER_REQUEST_PROBLEM_TYPE);
         if (debouncedSearch && activeTab !== 'all') {
-            return data.filter((t) => t.status === activeTab);
+            return rows.filter((t) => t.status === activeTab);
         }
-        return data;
+        return rows;
     }, [data, debouncedSearch, activeTab]);
 
     // ผูกชื่อลูกค้าเข้ากับ ticket ของหน้านี้ (join แยกเพราะ clientName ไม่ได้เก็บบน ticket doc เอง)

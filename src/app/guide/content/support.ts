@@ -23,7 +23,8 @@ export const supportGroup: GuideGroup = {
                     {
                         heading: 'Ticket ขอใช้บริการล่าม',
                         items: [
-                            'Ticket หัวข้อ "ขอใช้บริการล่าม" มีแผง "ลิงก์ชำระเงินค่าล่าม" (ต้องมีสิทธิ์งานล่าม)',
+                            'Ticket หัวข้อ "ขอใช้บริการล่าม" ไม่แสดงในรายการ Ticket ช่วยเหลือและไม่นับบนแดชบอร์ด ให้เปิดจาก "งานล่าม" แท็บ "คำขอจากลูกค้า"',
+                            'หน้า Ticket ของคำขอล่ามมีแผง "ลิงก์ชำระเงินค่าล่าม" (ต้องมีสิทธิ์งานล่าม)',
                             'เลือกล่ามที่อนุมัติแล้ว บริการ คู่ภาษา ชื่อรายการ ยอด (100–2,000,000 บาท) และวันงาน',
                             'กด "สร้างลิงก์และส่งในแชท" ลิงก์ใช้ได้ 7 วัน ลูกค้าได้แจ้งเตือน เมื่อแนบสลิปแล้วงานจะไปรอตรวจที่ "งานล่าม"',
                             'ใช้ล่ามนอกระบบได้: กด "เพิ่มล่ามนอกระบบ" กรอกชื่อที่ลูกค้าเห็น เบอร์/LINE (ลูกค้าเห็นหลังจ่าย) และบัญชีรับเงิน แล้วเลือกจากกลุ่ม "ล่ามนอกระบบ"',
@@ -51,7 +52,8 @@ export const supportGroup: GuideGroup = {
                     {
                         heading: 'Interpreter service tickets',
                         items: [
-                            'Tickets titled "ขอใช้บริการล่าม" show an interpreter payment link panel (needs the interpreter jobs permission).',
+                            'Tickets titled "ขอใช้บริการล่าม" are left out of the support ticket list and the dashboard count. Open them from "Interpreter jobs", tab "คำขอจากลูกค้า".',
+                            'An interpreter request ticket shows an interpreter payment link panel (needs the interpreter jobs permission).',
                             'Choose an approved interpreter, service, language pair, item name, amount (100–2,000,000 baht) and job date.',
                             'Click "สร้างลิงก์และส่งในแชท". The link lasts 7 days and the customer is notified. Once they attach a slip, the job appears under "Interpreter jobs" for review.',
                             'External interpreters: click "เพิ่มล่ามนอกระบบ", enter the name the customer sees, phone/LINE (shown to the customer after payment) and payout bank account, then pick them from the "ล่ามนอกระบบ" group.',

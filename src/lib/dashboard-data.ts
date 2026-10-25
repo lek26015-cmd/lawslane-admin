@@ -1,6 +1,7 @@
 import 'server-only';
 import { initAdmin } from './firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
+import { INTERPRETER_REQUEST_PROBLEM_TYPE } from './problem-types';
 
 /**
  * ข้อมูลสำหรับหน้า Dashboard (src/app/page.tsx) — ดึงทั้งหมดในคำขอเดียวฝั่ง server
@@ -92,6 +93,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       interpreterSlipSnap,
       interpreterRefundSnap,
       interpreterPayoutDueSnap,
+      pendingInterpreterTicketsSnap,
     ] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('users').where('registeredAt', '>=', sevenDaysAgo).count().get(),
@@ -104,13 +106,20 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       // 'new' คือสถานะที่ยังไม่ถูกดำเนินการ (ดู src/app/sme-requests/page.tsx)
       db.collection('smeRequests').where('status', '==', 'new').count().get(),
       db.collection('lawyerProfiles').where('status', '==', 'pending').limit(5).get(),
-      db.collection('tickets').where('status', '==', 'pending').limit(5).get(),
+      // เผื่อจำนวนไว้ เพราะตัดตั๋วขอใช้บริการล่ามออกในเครื่องแล้วค่อยตัดเหลือ 5
+      db.collection('tickets').where('status', '==', 'pending').limit(20).get(),
       db.collection('contracts').count().get(),
       db.collection('cap-deals').where('hasNewPayment', '==', true).count().get(),
       db.collection('interpreterProfiles').where('status', '==', 'pending').count().get(),
       db.collection('interpreterBookings').where('hasNewPayment', '==', true).count().get(),
       db.collection('interpreterBookings').where('status', '==', 'refund_pending').count().get(),
       db.collection('interpreterBookings').where('payoutStatus', '==', 'due').count().get(),
+      // ตั๋วขอใช้บริการล่ามดูแลที่หน้างานล่าม — นับแยกไว้หักออกจาก Ticket ที่เปิดอยู่
+      db.collection('tickets')
+        .where('status', '==', 'pending')
+        .where('problemType', '==', INTERPRETER_REQUEST_PROBLEM_TYPE)
+        .count()
+        .get(),
     ]);
 
     const pendingLawyers: PendingLawyerPreview[] = pendingLawyersPreviewSnap.docs.map((doc) => {
@@ -125,20 +134,23 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       };
     });
 
-    const tickets: TicketPreview[] = ticketsPreviewSnap.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        userId: data.userId ?? '',
-        problemType: data.problemType ?? '',
-      };
-    });
+    const tickets: TicketPreview[] = ticketsPreviewSnap.docs
+      .filter((doc) => doc.get('problemType') !== INTERPRETER_REQUEST_PROBLEM_TYPE)
+      .slice(0, 5)
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          userId: data.userId ?? '',
+          problemType: data.problemType ?? '',
+        };
+      });
 
     return {
       stats: {
         totalUsers: totalUsersSnap.data().count,
         newUsersThisWeek: newUsersSnap.data().count,
-        activeTicketsCount: activeTicketsSnap.data().count,
+        activeTicketsCount: Math.max(0, activeTicketsSnap.data().count - pendingInterpreterTicketsSnap.data().count),
         pendingLawyersCount: pendingLawyersSnap.data().count,
         approvedLawyersCount: approvedLawyersSnap.data().count,
         pendingRequestsCount:
