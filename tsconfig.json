@@ -36,7 +36,8 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "functions"
   ],
   "devDependencies": {
     "@types/qrcode.react": "^1.0.5"
