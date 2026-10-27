@@ -11,7 +11,11 @@
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { logger } from 'firebase-functions';
-import { ON_CREATE, ON_UPDATE, sendToLalin } from './events.js';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { ON_CREATE, ON_UPDATE, sendToLalin, buildClientMessage, clientUidOf, lawyerProfileIdOf } from './events.js';
+
+initializeApp();
 
 const LALIN_EVENT_SECRET = defineSecret('LALIN_EVENT_SECRET');
 const LALIN_EVENT_URL = 'https://lalin-assistant.vercel.app/api/lawslane-event';
@@ -50,3 +54,24 @@ export const lalinNewSmeRequest = created('smeRequests');
 export const lalinAppointmentSlip = updated('appointments');
 export const lalinInterpreterSlip = updated('interpreterBookings');
 export const lalinCapdealSlip = updated('cap-deals');
+
+// ลูกค้าส่งข้อความหาทนาย (Lalin จำกัดไม่ให้แจ้งถี่เกินต่อห้อง)
+export const lalinClientMessage = onDocumentCreated({ ...OPTIONS, document: 'chats/{chatId}/messages/{messageId}' }, async (event) => {
+  const { chatId } = event.params;
+  const message = event.data?.data();
+  if (!message?.senderId) return;
+
+  const db = getFirestore();
+  const chat = (await db.collection('chats').doc(chatId).get()).data();
+  if (!chat || message.senderId !== clientUidOf(chat)) return;
+
+  const lawyerProfileId = lawyerProfileIdOf(chat);
+  const [client, lawyer] = await Promise.all([
+    db.collection('users').doc(message.senderId).get(),
+    lawyerProfileId ? db.collection('lawyerProfiles').doc(lawyerProfileId).get() : null,
+  ]);
+  await forward(`chats/${chatId}/messages`, event.params.messageId, buildClientMessage(chatId, chat, message, {
+    clientName: client.data()?.name,
+    lawyerName: lawyer?.data()?.name,
+  }));
+});

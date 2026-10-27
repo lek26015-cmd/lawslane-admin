@@ -27,3 +27,13 @@ test('ส่งพร้อม secret header', async () => {
   assert.equal(seen.o.headers['x-lalin-secret'], 's');
   await assert.rejects(sendToLalin({ url: 'u', secret: 's', payload: {}, fetchImpl: async () => ({ ok: false, status: 401 }) }), /401/);
 });
+
+test('แชท: แจ้งเฉพาะข้อความที่ลูกค้าส่ง และไม่ส่งเนื้อข้อความ', async () => {
+  const { buildClientMessage } = await import('../events.js');
+  const chat = { userId: 'C1', lawyerId: 'LP1', participants: ['C1', 'LU1'] };
+  const built = buildClientMessage('chat9', chat, { senderId: 'C1', text: '[E2EE-v2]xxx' }, { clientName: 'มานี', lawyerName: 'สมชาย' });
+  assert.deepEqual(built, { event: 'new_client_message', data: { chatId: 'chat9', clientName: 'มานี', lawyerName: 'สมชาย' } });
+  assert.equal(buildClientMessage('chat9', chat, { senderId: 'LU1', text: 'hi' }), null, 'ทนายตอบไม่ต้องแจ้ง');
+  assert.equal(buildClientMessage('chat9', { clientId: 'C2' }, { senderId: 'ADMIN' }), null, 'แอดมินส่งไม่ต้องแจ้ง');
+  assert.equal(buildClientMessage('chat9', { participants: ['a', 'b'] }, { senderId: 'a' }), null, 'ห้องเก่าที่ไม่รู้ว่าใครเป็นลูกค้า ไม่แจ้ง');
+});
