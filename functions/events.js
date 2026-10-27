@@ -44,6 +44,25 @@ export const ON_UPDATE = {
     ? { event: 'new_payment_slip', data: { kind: 'CapDeal' } } : null,
 };
 
+/**
+ * ข้อความแชทใหม่ (chats/{chatId}/messages/{id}) → แจ้งเฉพาะเมื่อลูกค้าเป็นคนส่ง
+ * ตัวระบุลูกค้า/ทนายของห้องใช้กติกาเดียวกับ resolveChatParty ใน Lawslane/src/app/actions/chat-actions.ts
+ * ไม่ส่งเนื้อข้อความ (แชทเป็น E2EE อยู่แล้ว และเป็นความลับระหว่างลูกค้ากับทนาย)
+ */
+export function clientUidOf(chat) {
+  return chat?.clientId || chat?.userId || chat?.client_id || '';
+}
+
+export function lawyerProfileIdOf(chat) {
+  return chat?.lawyerId || chat?.lawyer_id || '';
+}
+
+export function buildClientMessage(chatId, chat, message, { clientName, lawyerName } = {}) {
+  const clientUid = clientUidOf(chat);
+  if (!clientUid || message?.senderId !== clientUid) return null;
+  return { event: 'new_client_message', data: { chatId, clientName: clientName || null, lawyerName: lawyerName || null } };
+}
+
 export async function sendToLalin({ url, secret, payload, fetchImpl = fetch }) {
   const res = await fetchImpl(url, {
     method: 'POST',
