@@ -22,7 +22,35 @@ interface Message {
   text: string;
   senderId: string;
   timestamp: any;
+  type?: string;
   metadata?: any;
+}
+
+/**
+ * ข้อความระบบรุ่นเก่าเขียนเป็น markdown (ห้องแชทเว็บหลักไม่แปลง markdown) — ตัด ** / * ครอบ
+ * และบรรทัดลิงก์ล้วน แบบเดียวกับ cardText() ใน chat-box.tsx ของเว็บหลัก
+ */
+function cardText(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => !/^\s*(🔗\s*)?\[[^\]]*\]\([^)]*\)\s*$/.test(line))
+    .filter((line) => !/ได้ที่ลิงก์ด้านล่างนี้:?\s*$/.test(line))
+    .join('\n')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(^|\n)\*([^*\n]+)\*(?=\n|$)/g, '$1$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** การ์ดที่ลูกความเห็นในห้องแชทเว็บหลัก (หัวการ์ด + ปุ่ม) — จับแบบเดียวกับ chat-box.tsx */
+function systemCard(msg: Message): { title: string; button: string } | null {
+  if (msg.type === 'case_proposal' || (msg.text.includes('ใบเสนอราคา') && msg.text.includes('/invoice/'))) {
+    return { title: 'ใบเสนอราคา', button: '📄 เปิดดูรายละเอียดใบเสนอราคา' };
+  }
+  if (msg.text.includes('💳')) {
+    return { title: 'ชำระค่าบริการ', button: '💳 ชำระค่าบริการผ่าน Lawslane' };
+  }
+  return null;
 }
 
 export default function AdminChatViewer() {
@@ -174,12 +202,28 @@ export default function AdminChatViewer() {
                     (!isLawyerMessage && clientIds.size > 0 && !clientIds.has(msg.senderId));
 
                   if (isSystemMessage) {
+                    const card = systemCard(msg);
                     return (
                       <div key={msg.id} className="flex flex-col items-center gap-1">
                         <div className="text-[10px] text-muted-foreground">ข้อความจากระบบ</div>
-                        <div className="max-w-lg rounded-xl border border-dashed border-slate-300 bg-slate-100 px-4 py-2.5 text-sm text-slate-700">
-                          <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                        </div>
+                        {card ? (
+                          <div className="w-full max-w-md overflow-hidden rounded-2xl border-2 border-blue-500 bg-white text-sm shadow-sm">
+                            <div className="bg-blue-700 px-4 py-2.5 text-xs font-bold text-white">{card.title}</div>
+                            <div className="space-y-3 p-4">
+                              <p className="whitespace-pre-wrap leading-relaxed text-slate-600">{cardText(msg.text)}</p>
+                              <Button disabled className="h-10 w-full rounded-xl bg-blue-600 font-bold">
+                                {card.button}
+                              </Button>
+                              <p className="text-center text-[10px] text-muted-foreground">
+                                ปุ่มนี้ลูกความกดได้ในห้องแชทของเว็บหลัก
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="max-w-lg rounded-xl border border-dashed border-slate-300 bg-slate-100 px-4 py-2.5 text-sm text-slate-700">
+                            <p className="whitespace-pre-wrap leading-relaxed">{cardText(msg.text)}</p>
+                          </div>
+                        )}
                         <div className="text-[10px] text-muted-foreground">
                           {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleString('th-TH') : ''}
                         </div>
