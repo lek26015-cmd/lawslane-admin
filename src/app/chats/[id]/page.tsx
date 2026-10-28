@@ -32,6 +32,8 @@ export default function AdminChatViewer() {
   const { firestore } = useFirebase();
 
   const [chatData, setChatData] = React.useState<any>(null);
+  // auth uid ของทนาย — chats.lawyerId เป็น id ของ lawyerProfiles แต่ senderId ของข้อความเป็น auth uid
+  const [lawyerUid, setLawyerUid] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -45,9 +47,12 @@ export default function AdminChatViewer() {
         const chatDoc = await getDoc(doc(firestore, 'chats', chatId));
         if (chatDoc.exists()) {
           const data = chatDoc.data();
-          // We need to figure out who is who if names are not explicitly saved.
-          // Usually we can just rely on data.lawyerId to identify lawyer messages.
           setChatData(data);
+          if (data.lawyerId) {
+            getDoc(doc(firestore, 'lawyerProfiles', data.lawyerId))
+              .then((profileDoc) => setLawyerUid(profileDoc.data()?.userId ?? null))
+              .catch((err) => console.error("Error fetching lawyer profile:", err));
+          }
         }
       } catch (err) {
         console.error("Error fetching chat details:", err);
@@ -107,8 +112,15 @@ export default function AdminChatViewer() {
     );
   }
 
-  // Find out the client and lawyer IDs to format UI
-  const lawyerId = chatData.lawyerId;
+  // ห้องเก่าบางห้องเก็บ lawyerId เป็น auth uid จึงนับทั้งสองค่าเป็นทนาย
+  // participants ที่ไม่ใช่ลูกความก็คือทนาย (กันไว้เผื่อโหลดโปรไฟล์ทนายไม่ได้)
+  const clientIds = new Set<string>([chatData.userId, chatData.clientId].filter(Boolean));
+  const lawyerIds = new Set<string>([chatData.lawyerId, lawyerUid].filter(Boolean));
+  if (clientIds.size > 0) {
+    (chatData.participants || []).forEach((p: string) => {
+      if (!clientIds.has(p)) lawyerIds.add(p);
+    });
+  }
   
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -155,8 +167,26 @@ export default function AdminChatViewer() {
                 </div>
               ) : (
                 messages.map((msg) => {
-                  const isLawyerMessage = msg.senderId === lawyerId;
-                  
+                  const isLawyerMessage = lawyerIds.has(msg.senderId);
+                  // ข้อความที่ระบบโพสต์เอง (ใบเสนอราคา, ร่างสัญญา, ช่องทางชำระเงิน) ใช้ senderId 'system'
+                  const isSystemMessage =
+                    msg.senderId === 'system' ||
+                    (!isLawyerMessage && clientIds.size > 0 && !clientIds.has(msg.senderId));
+
+                  if (isSystemMessage) {
+                    return (
+                      <div key={msg.id} className="flex flex-col items-center gap-1">
+                        <div className="text-[10px] text-muted-foreground">ข้อความจากระบบ</div>
+                        <div className="max-w-lg rounded-xl border border-dashed border-slate-300 bg-slate-100 px-4 py-2.5 text-sm text-slate-700">
+                          <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleString('th-TH') : ''}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={msg.id}
